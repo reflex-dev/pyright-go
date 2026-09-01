@@ -49,6 +49,18 @@ type PartialStubService struct {
 
 	// movedDirectories holds the disposables that clean up moved directories.
 	movedDirectories []uri.Disposable
+
+	// mappedDirectories records the same mappings as (mapped, original) pairs.
+	// The original has no such field; it exists so a caller can report which
+	// directories were merged, which the bridge needs and nothing else reads.
+	mappedDirectories []MappedDirectory
+}
+
+// MappedDirectory is one partial-stub merge: the installed package directory
+// the stubs were mapped onto, and the stub directory they came from.
+type MappedDirectory struct {
+	MappedUri   uri.Uri
+	OriginalUri uri.Uri
 }
 
 var _ SupportPartialStubs = (*PartialStubService)(nil)
@@ -135,6 +147,10 @@ func (s *PartialStubService) ProcessPartialStubPackages(
 				}
 
 				// Merge partial stub packages into the library.
+				s.mappedDirectories = append(s.mappedDirectories, MappedDirectory{
+					MappedUri:   packagePath,
+					OriginalUri: partialStubPackagePath,
+				})
 				s.movedDirectories = append(s.movedDirectories, s.realFs.MapDirectory(
 					packagePath,
 					partialStubPackagePath,
@@ -161,6 +177,13 @@ func (s *PartialStubService) ClearPartialStubs() {
 		d.Dispose()
 	}
 	s.movedDirectories = nil
+	s.mappedDirectories = nil
+}
+
+// MappedDirectories reports the merges made so far. Not part of the original;
+// see the field comment.
+func (s *PartialStubService) MappedDirectories() []MappedDirectory {
+	return s.mappedDirectories
 }
 
 func (s *PartialStubService) allowMoving(isBundled bool, packagePyTyped *PyTypedInfo, stubPyTyped *PyTypedInfo) bool {

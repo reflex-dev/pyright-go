@@ -84,6 +84,19 @@ const tests: { name: string; fn: TestFn }[] = [];
 (globalThis as any).it = (globalThis as any).test;
 (globalThis as any).describe = (_name: string, fn: () => void) => fn();
 
+// importResolver.test.ts registers an afterAll to dispose a temp file. The
+// hooks run in registration order after every test has, which is what jest
+// does for a suite that never fails to complete.
+const afterAllHooks: TestFn[] = [];
+(globalThis as any).afterAll = (fn: TestFn) => {
+    afterAllHooks.push(fn);
+};
+(globalThis as any).beforeAll = (fn: TestFn) => {
+    fn();
+};
+(globalThis as any).afterEach = (_fn: TestFn) => {};
+(globalThis as any).beforeEach = (_fn: TestFn) => {};
+
 export function report() {
     let passed = 0;
     const failures: { name: string; error: any }[] = [];
@@ -105,6 +118,14 @@ export function report() {
             } else {
                 failures.push({ name: t.name, error });
             }
+        }
+    }
+
+    for (const hook of afterAllHooks) {
+        try {
+            hook();
+        } catch {
+            // A failing cleanup hook is not a test failure.
         }
     }
 
@@ -179,6 +200,12 @@ if (testFile === 'uri.test.ts') {
     testOnlyAliases[path.join(refSrc, 'common/uri/uri')] = path.join(bridgeDir, 'shim-uri.ts');
     testOnlyAliases[path.join(refSrc, 'common/uri/uriUtils')] = path.join(bridgeDir, 'shim-uriUtils.ts');
     testOnlyAliases[path.join(refSrc, 'common/pathUtils')] = path.join(bridgeDir, 'shim-pathUtils.ts');
+}
+
+// importResolver.test.ts builds a file system and a config in TypeScript and
+// asserts on what the resolver makes of them; the shim ships all three across.
+if (testFile === 'importResolver.test.ts') {
+    testOnlyAliases[path.join(refSrc, 'analyzer/importResolver')] = path.join(bridgeDir, 'shim-importResolver.ts');
 }
 
 // pathUtils is pure string functions, like symbolNameUtils below.

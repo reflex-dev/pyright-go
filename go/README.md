@@ -34,6 +34,11 @@ Where the Go differs, the reason is written down at the point of difference.
 | Type model | `analyzer/types.ts`, `typeUtils.ts`, `typePrinter.ts`, … | `analyzer/types*.go`, `typeutils*.go`, `typeprinter*.go` | **done and verified** (Stage A) |
 | Parse tree utils | `analyzer/parseTreeUtils.ts`, `parseTreeWalker.ts` | `analyzer/parsetreeutils_*.go`, `parsetreewalker.go` | **done and verified** (Stage A) |
 | **Binder** | `analyzer/binder.ts` + deps | `analyzer/binder*.go` | **done and verified** (Stage B) |
+| Path utils | `common/pathUtils.ts` | `common/pathutils.go` | **done and verified** (Stage C) |
+| URIs | `common/uri/*.ts` + the parts of `vscode-uri` they reach | `common/uri/*.go` | **done and verified** (Stage C) |
+| File system | `common/fileSystem.ts`, `readonlyAugmentedFileSystem.ts`, `pyrightFileSystem.ts`, `partialStubService.ts` | `common/uri/filesystem.go`, `analyzer/*filesystem.go`, `analyzer/partialstubservice.go` | done (Stage C) |
+| Config options | `common/configOptions.ts` | `analyzer/configoptions*.go` | partial — the JSON reader lands with the service |
+| **Import resolver** | `analyzer/importResolver.ts` + deps | `analyzer/importresolver*.go` | **done and verified** (Stage C) |
 
 The front end is complete. `Parser.ParseSourceFile` and
 `Parser.ParseTextExpression` are exported and produce the same tree the
@@ -50,14 +55,15 @@ statements, imports), `parser_patterns.go` (`match`), `parser_errors.go` and
 `parser_entry.go`. Every method carries the name of the TypeScript method it
 corresponds to.
 
-`ANALYZER-PLAN.md` has the staging; `analyzer/STATUS.md` covers Stage A and
-`analyzer/STATUS-STAGE-B.md` covers Stage B.
+`ANALYZER-PLAN.md` has the staging; `analyzer/STATUS.md` covers Stage A,
+`analyzer/STATUS-STAGE-B.md` Stage B and `analyzer/STATUS-STAGE-C.md` Stage C.
 
 ### Not yet ported
 
-The rest of `analyzer/` — the import resolver, the program/service layer, the
-type evaluator and the checker (Stages C and D of `ANALYZER-PLAN.md`). So this
-parses and binds Python exactly as pyright does, and type-checks nothing.
+The program/service layer — `sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`
+and `service.ts`, the rest of Stage C — and the type evaluator and checker,
+which are all of Stage D. So this parses, binds and resolves imports exactly as
+pyright does, and type-checks nothing.
 Neither the language server nor the CLI is ported.
 
 ## How it is verified

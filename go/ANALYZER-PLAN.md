@@ -118,7 +118,7 @@ sample files and 752 typeshed stdlib stubs in both import modes -- 4,190
 file-runs, 0 different. See `analyzer/STATUS-STAGE-B.md`, which also lists what
 the differential cannot reach until the import resolver arrives in Stage C.
 
-### Stage C — import resolver, program, filesystem (~9k lines TS)
+### Stage C — import resolver, program, filesystem (~9k lines TS) — **import resolver DONE**
 
 `importResolver.ts`, `importResolverFileSystem.ts`, `pythonPathUtils.ts`,
 `typeshedInfoProvider.ts`, `sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`,
@@ -137,6 +137,18 @@ This is the one stage where deliberate divergence is right. Port `Uri`
 handling) because import resolution depends on them, but not `RealFileSystem`,
 the chokidar watchers, the background-thread machinery, or the service provider.
 Those are Node-isms with no bearing on results.
+
+That is how it went for the resolver half. `importResolver.ts` and everything
+under it are ported and `importResolver.test.ts` runs unmodified: 34/34. `Uri`
+came with more than expected -- the parts of `vscode-uri` pyright's Uri classes
+reach had to be ported too, because the exact percent-encoding it produces ends
+up in a Uri's key. `uri.test.ts` (95/95) and `pathUtils.test.ts` (63/63) are
+gates in their own right. See `analyzer/STATUS-STAGE-C.md`.
+
+What remains is `sourceFile.ts`, `sourceFileInfo.ts`, `program.ts` and
+`service.ts`. All four reach the evaluator and the checker, so they land with
+the check phase stubbed -- which is the "skeleton first, then fatten" step
+below.
 
 ### Stage D — evaluator and checker (~55k lines TS)
 

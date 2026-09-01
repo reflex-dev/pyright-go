@@ -9,7 +9,7 @@ REF ?= /tmp/pyright-ref/packages/pyright-internal/src
 ESBUILD ?= $(shell ls -d $$(npm root 2>/dev/null)/@esbuild/*/bin/esbuild 2>/dev/null | head -1)
 SERVER := $(CURDIR)/bin/tokenserver
 
-.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge clean generate
+.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge clean generate
 
 all: fmt vet test
 
@@ -50,12 +50,16 @@ bridge-parser-tests: $(SERVER)
 bridge-typeprinter-tests: $(SERVER)
 	node tools/ts-bridge/run-ts-tests.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --test typePrinter.test.ts
 
-# Run pyright's own symbol name and type cache tests against the Go port.
+# Run pyright's own pathUtils, Uri, import resolver, symbol name and type cache
+# tests against the Go port.
 bridge-pathutils-tests: $(SERVER)
 	node tools/ts-bridge/run-ts-tests.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --test pathUtils.test.ts
 
 bridge-uri-tests: $(SERVER)
 	node tools/ts-bridge/run-ts-tests.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --test uri.test.ts
+
+bridge-importresolver-tests: $(SERVER)
+	node tools/ts-bridge/run-ts-tests.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --test importResolver.test.ts
 
 bridge-symbolnameutils-tests: $(SERVER)
 	node tools/ts-bridge/run-ts-tests.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --test symbolNameUtils.test.ts
@@ -93,7 +97,7 @@ bridge-binder-typeshed: $(SERVER)
 bridge-binder-oracle:
 	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
 
-bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder bridge-binder-typeshed
+bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder bridge-binder-typeshed
 
 # Regenerate the two generated files from the TypeScript sources.
 generate:

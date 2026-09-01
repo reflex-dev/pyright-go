@@ -399,6 +399,8 @@ func main() {
 			result, errMsg = handleUriNormalize(req.Payload)
 		case "uriutils":
 			result, errMsg = handleUriUtils(req.Payload)
+		case "importresolver":
+			result, errMsg = handleImportResolver(req.Payload)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}
