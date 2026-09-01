@@ -98,7 +98,7 @@ which is the whole job of `processPartialStubPackages`.
 
 ### Checked for vacuity
 
-Nine probes. Seven turn a gate red:
+Fifteen probes. Ten turn a gate red:
 
 | probe | effect |
 | --- | --- |
@@ -190,5 +190,21 @@ All four reach `typeEvaluator` and `checker`, which are Stage D, so they can
 only land with the check phase stubbed -- which is exactly the "skeleton first,
 then fatten" sequencing ANALYZER-PLAN.md asks for: stand up the program loop
 with a deliberately incomplete evaluator so pyright's real test harness runs end
-to end early. Their tests (`sourceFile.test.ts`, `service.test.ts`,
-`config.test.ts`, `ipythonMode.test.ts`) are the gates for that step.
+to end early.
+
+**They have no gate before that point**, which is why they are not here. Every
+stage so far landed against an oracle, and each of these four has one only once
+the evaluator exists:
+
+- `sourceFile.test.ts` -- two of its four tests need `RealFileSystem` and
+  `FullAccessHost` (both out of scope), and the other two drive the fourslash
+  harness through `service.test_program.analyze()`, i.e. the checker.
+- `config.test.ts` -- constructs an `AnalyzerService`, so it needs all four
+  files *and* the evaluator underneath them.
+- `service.test.ts`, `ipythonMode.test.ts` -- likewise.
+
+So the right order is to port them together with the first cut of the
+evaluator, at which point `config.test.ts` and `sourceFile.test.ts` become
+gates and the `expected_text` scoreboard ANALYZER-PLAN.md describes starts
+counting. Landing 6,000 lines before then would be the first unverified step in
+the port.
