@@ -448,3 +448,82 @@ func TestContainsOnlyWhitespace(t *testing.T) {
 		t.Error("ContainsOnlyWhitespace should honor the start/end window")
 	}
 }
+
+// TestTextTrim pins the trim helpers against JavaScript's String.prototype,
+// whose whitespace set is wider than unicode.IsSpace: U+FEFF is trimmed, U+200B
+// is not.
+func TestTextTrim(t *testing.T) {
+	cases := []struct{ in, start, end, both string }{
+		{"", "", "", ""},
+		{"  ", "", "", ""},
+		{"  a  ", "a  ", "  a", "a"},
+		{"a", "a", "a", "a"},
+		// U+FEFF, U+00A0 and U+3000 are JavaScript whitespace and are trimmed;
+		// U+200B (zero-width space) is not. Written as escapes because a literal
+		// U+FEFF in a Go source file is rejected as a byte order mark.
+		{"\ufeff\u00a0x\u3000", "x\u3000", "\ufeff\u00a0x", "x"},
+		{"\u200bx\u200b", "\u200bx\u200b", "\u200bx\u200b", "\u200bx\u200b"},
+		{"\t\n\r\v\f x \t\n\r\v\f", "x \t\n\r\v\f", "\t\n\r\v\f x", "x"},
+	}
+	for _, c := range cases {
+		text := NewText(c.in)
+		if got := text.TrimStart().String(); got != c.start {
+			t.Errorf("NewText(%q).TrimStart() = %q, want %q", c.in, got, c.start)
+		}
+		if got := text.TrimEnd().String(); got != c.end {
+			t.Errorf("NewText(%q).TrimEnd() = %q, want %q", c.in, got, c.end)
+		}
+		if got := text.Trim().String(); got != c.both {
+			t.Errorf("NewText(%q).Trim() = %q, want %q", c.in, got, c.both)
+		}
+	}
+}
+
+// TestTextSplitAndJoin pins split/join against JavaScript's semantics: the
+// result of splitting always has one more element than the separator count, so
+// an empty input yields one empty piece rather than none.
+func TestTextSplitAndJoin(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{"", []string{""}},
+		{"a", []string{"a"}},
+		{"a,b", []string{"a", "b"}},
+		{",", []string{"", ""}},
+		{"a,,b,", []string{"a", "", "b", ""}},
+	}
+	for _, c := range cases {
+		parts := NewText(c.in).SplitByChar(',')
+		if len(parts) != len(c.want) {
+			t.Errorf("NewText(%q).SplitByChar(',') gave %d parts, want %d", c.in, len(parts), len(c.want))
+			continue
+		}
+		for i, part := range parts {
+			if part.String() != c.want[i] {
+				t.Errorf("NewText(%q).SplitByChar(',')[%d] = %q, want %q", c.in, i, part.String(), c.want[i])
+			}
+		}
+		if got := JoinText(parts, ",").String(); got != c.in {
+			t.Errorf("JoinText(split(%q)) = %q, want round trip", c.in, got)
+		}
+	}
+}
+
+func TestTextHasPrefixString(t *testing.T) {
+	cases := []struct {
+		in, prefix string
+		want       bool
+	}{
+		{"pyright: strict", "pyright:", true},
+		{"pyright", "pyright:", false},
+		{"", "", true},
+		{"x", "", true},
+		{"éx", "é", true},
+	}
+	for _, c := range cases {
+		if got := NewText(c.in).HasPrefixString(c.prefix); got != c.want {
+			t.Errorf("NewText(%q).HasPrefixString(%q) = %v, want %v", c.in, c.prefix, got, c.want)
+		}
+	}
+}

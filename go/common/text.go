@@ -113,6 +113,71 @@ func (t Text) IndexOfString(s string) int {
 	return -1
 }
 
+// HasPrefixString reports whether t starts with the UTF-8 string prefix,
+// matching JavaScript's `String.prototype.startsWith`.
+func (t Text) HasPrefixString(prefix string) bool {
+	needle := NewText(prefix)
+	if len(needle) > len(t) {
+		return false
+	}
+	return t[:len(needle)].Equal(needle)
+}
+
+// TrimStart matches JavaScript's `String.prototype.trimStart`, which strips
+// WhiteSpace and LineTerminator code units -- the same set the regular
+// expression class \s matches, and a superset of what unicode.IsSpace covers
+// (it includes U+FEFF).
+func (t Text) TrimStart() Text {
+	i := 0
+	for i < len(t) && isJSWhitespaceCodeUnit(t[i]) {
+		i++
+	}
+	return t[i:]
+}
+
+// TrimEnd matches JavaScript's `String.prototype.trimEnd`.
+func (t Text) TrimEnd() Text {
+	end := len(t)
+	for end > 0 && isJSWhitespaceCodeUnit(t[end-1]) {
+		end--
+	}
+	return t[:end]
+}
+
+// Trim matches JavaScript's `String.prototype.trim`.
+func (t Text) Trim() Text {
+	return t.TrimStart().TrimEnd()
+}
+
+// SplitByChar matches JavaScript's `String.prototype.split` with a
+// single-code-unit separator: the result always has one more element than the
+// number of separators, so splitting "" yields one empty piece and splitting
+// "a," yields two.
+func (t Text) SplitByChar(sep Char) []Text {
+	parts := []Text{}
+	start := 0
+	for i := 0; i < len(t); i++ {
+		if Char(t[i]) == sep {
+			parts = append(parts, t[start:i])
+			start = i + 1
+		}
+	}
+	return append(parts, t[start:])
+}
+
+// JoinText matches JavaScript's `Array.prototype.join`.
+func JoinText(parts []Text, sep string) Text {
+	sepText := NewText(sep)
+	out := Text{}
+	for i, part := range parts {
+		if i > 0 {
+			out = append(out, sepText...)
+		}
+		out = append(out, part...)
+	}
+	return out
+}
+
 // Repeat returns t concatenated with itself count times.
 func (t Text) Repeat(count int) Text {
 	if count <= 0 {
