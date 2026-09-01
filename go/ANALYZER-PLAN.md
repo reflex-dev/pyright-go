@@ -92,7 +92,13 @@ directly and prints them, so it exercises the representation without needing the
 evaluator at all. The bridge for it replays the test's construction calls against
 the Go type model, so it covers `types.ts` too.
 
-### Stage B — the binder (~12k lines TS including its deps)
+### Stage B — the binder (~12k lines TS including its deps) — **IN PROGRESS**
+
+Everything except `binder.ts` itself is ported, and the differential harness
+described below is built and validated against the real TypeScript binder over
+all 1,343 corpus files. `binder.ts` is not started. See
+`analyzer/STATUS-STAGE-B.md`.
+
 
 `binder.ts` (4,913) plus `importStatementUtils.ts`, `staticExpressions.ts`,
 `cellChainIndex.ts`, `importResult.ts`, `commentUtils.ts`.
