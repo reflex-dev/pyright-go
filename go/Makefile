@@ -59,14 +59,26 @@ bridge-parsetreeutils: $(SERVER)
 bridge-corpus: $(SERVER)
 	node tools/ts-bridge/compare-corpus.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
 
-bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-corpus bridge-ast bridge-parsetreeutils
+# Diff everything the binder produces -- scopes, symbols, declarations and the
+# code-flow graph -- over the whole sample corpus, in both import modes.
+# binder.ts has no directly bridgeable test either; see dump-binder.ts.
+bridge-binder: $(SERVER)
+	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
+
+# Run the binder differential's TypeScript oracle on its own and report what it
+# produced. Validates the harness without needing the Go binder.
+bridge-binder-oracle:
+	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
+
+bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder
 
 # Regenerate the two generated files from the TypeScript sources.
 generate:
 	node localization/gen/generate.js $(REF)/localization localization/localize_gen.go
 	node parser/gen/generate_unicode.js $(REF)/parser/unicode.ts parser/unicode_gen.go
 	python3 analyzer/gen/generate_parsetreewalker.py $(REF)/analyzer/parseTreeWalker.ts
-	gofmt -w localization/localize_gen.go parser/unicode_gen.go analyzer/parsetreewalker.go
+	python3 analyzer/gen/generate_configoptions.py $(REF)/common
+	gofmt -w localization/localize_gen.go parser/unicode_gen.go analyzer/parsetreewalker.go analyzer/configoptions_gen.go
 
 clean:
 	rm -rf bin

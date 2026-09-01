@@ -142,11 +142,26 @@ node tools/ts-bridge/compare-ast.js --ref /tmp/pyright-ref/packages/pyright-inte
 node --max-old-space-size=8192 tools/ts-bridge/compare-parsetreeutils.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
 ```
 
-The bridge needs `esbuild` and `vscode-uri` available to Node
-(`npm install --no-save esbuild vscode-uri` from this directory); `make bridge`
-runs all six checks. Or run them individually with `make bridge-tests`,
-`make bridge-parser-tests`, `make bridge-typeprinter-tests`,
-`make bridge-corpus`, `make bridge-ast`, `make bridge-parsetreeutils`.
+```bash
+node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
+```
+
+The bridge needs `esbuild`, `vscode-uri`, `vscode-jsonrpc` and
+`vscode-languageserver` available to Node — install all four in one command,
+because `--no-save` prunes anything not named:
+
+```bash
+npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver
+```
+
+`make bridge` runs all seven checks. Or run them individually with
+`make bridge-tests`, `make bridge-parser-tests`,
+`make bridge-typeprinter-tests`, `make bridge-corpus`, `make bridge-ast`,
+`make bridge-parsetreeutils`, `make bridge-binder`.
+
+`make bridge-binder-oracle` runs the binder differential's TypeScript side
+alone and reports what it produced. It needs no Go server, so it validates the
+harness independently of the port.
 
 `typePrinter.test.ts` works differently from the others: rather than shipping
 data to Go, the shim records the test's type-construction calls and replays
