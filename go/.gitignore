@@ -1,0 +1,5 @@
+bin/
+
+# Written by tools/ts-bridge/run-ts-tests.js; contains an absolute path to the
+# locally installed esbuild package.
+tools/ts-bridge/esbuild-shim.js
