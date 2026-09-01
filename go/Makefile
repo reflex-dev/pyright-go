@@ -9,7 +9,7 @@ REF ?= /tmp/pyright-ref/packages/pyright-internal/src
 ESBUILD ?= $(shell ls -d $$(npm root 2>/dev/null)/@esbuild/*/bin/esbuild 2>/dev/null | head -1)
 SERVER := $(CURDIR)/bin/tokenserver
 
-.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge clean generate
+.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge clean generate
 
 all: fmt vet test
 
@@ -28,10 +28,12 @@ fmt:
 vet:
 	go vet ./...
 
-# Extract the 1.1.412 sources the port was transliterated from.
+# Extract the 1.1.412 sources the port was transliterated from, plus the
+# bundled typeshed stdlib stubs, which the binder differential also runs over.
 ref:
 	@mkdir -p $(dir $(REF))/../../..
 	git -C $(REPO) archive 1.1.412 packages/pyright-internal/src | tar -x -C $(dir $(REF))../../..
+	git -C $(REPO) archive 1.1.412 packages/pyright-internal/typeshed-fallback/stdlib | tar -x -C $(dir $(REF))../../..
 
 # Run the unmodified TypeScript tests against the Go implementation.
 bridge-tests: $(SERVER)
@@ -65,12 +67,17 @@ bridge-corpus: $(SERVER)
 bridge-binder: $(SERVER)
 	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
 
+# The same, over the bundled typeshed stdlib stubs, which are far heavier code
+# than the samples.
+bridge-binder-typeshed: $(SERVER)
+	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --dir $(REF)/../typeshed-fallback/stdlib
+
 # Run the binder differential's TypeScript oracle on its own and report what it
 # produced. Validates the harness without needing the Go binder.
 bridge-binder-oracle:
 	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
 
-bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder
+bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder bridge-binder-typeshed
 
 # Regenerate the two generated files from the TypeScript sources.
 generate:

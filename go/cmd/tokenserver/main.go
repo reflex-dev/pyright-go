@@ -44,6 +44,9 @@ type request struct {
 	PythonVersion                       string `json:"pythonVersion"`
 	ReportErrorsForParsedStringContents bool   `json:"reportErrorsForParsedStringContents"`
 
+	// binder
+	ImportsResolve bool `json:"importsResolve"`
+
 	// statics
 	Which               string `json:"which"`
 	OperatorType        int    `json:"operatorType"`
@@ -379,6 +382,8 @@ func main() {
 			result, errMsg = handleTypes(req.Payload)
 		case "parsetreeutils":
 			result, errMsg = handleParseTreeUtils(&req)
+		case "binder":
+			result, errMsg = handleBinder(&req)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}

@@ -22,6 +22,10 @@
  *
  *   - A missing property is equal to `false`.
  *   - A missing property is equal to an empty array.
+ *   - A missing property is equal to an empty string. This one is new here:
+ *     Go string fields like ParamDeclaration.InferredName have "" where the
+ *     TypeScript leaves the property undefined, and a plain Go string cannot
+ *     represent the difference.
  *
  * Usage:
  *   node compare-binder.js --ref <pyright-internal/src> \
@@ -214,7 +218,7 @@ function normalized(value) {
     if (value === undefined || value === null) {
         return undefined;
     }
-    if (value === false) {
+    if (value === false || value === '') {
         return undefined;
     }
     if (Array.isArray(value) && value.length === 0) {
