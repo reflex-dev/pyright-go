@@ -631,6 +631,10 @@ func (b *Binder) walkStatementsAndReportUnreachable(statements []parser.Statemen
 
 // deferBinding corresponds to _deferBinding.
 func (b *Binder) deferBinding(callback func()) {
+	if b.moduleSymbolOnly {
+		return
+	}
+
 	// Defer the binding task.
 	b.deferredBindingTasks = append(b.deferredBindingTasks, &deferredBindingTask{
 		Scope:               b.currentScope,
