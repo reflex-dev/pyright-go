@@ -137,3 +137,20 @@ func EscapeRegExp(text string) string {
 	}
 	return sb.String()
 }
+
+// TrimJSString is JavaScript's String.prototype.trim, whose whitespace set is
+// wider than Go's strings.TrimSpace: it adds U+00A0, U+1680, U+2000-U+200A,
+// U+2028, U+2029, U+202F, U+205F, U+3000 and U+FEFF, and does not include
+// U+0085. common/text.go has the same function for Text; this is the string
+// form, which pythonPathUtils needs for .pth file lines.
+func TrimJSString(s string) string {
+	return strings.TrimFunc(s, isJSWhitespaceRune)
+}
+
+func isJSWhitespaceRune(r rune) bool {
+	switch r {
+	case '\t', '\n', '\v', '\f', '\r', ' ', 0x00a0, 0x1680, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff:
+		return true
+	}
+	return r >= 0x2000 && r <= 0x200a
+}
