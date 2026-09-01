@@ -47,6 +47,9 @@ type request struct {
 	// binder
 	ImportsResolve bool `json:"importsResolve"`
 
+	// symbolnameutils
+	Name string `json:"name"`
+
 	// statics
 	Which               string `json:"which"`
 	OperatorType        int    `json:"operatorType"`
@@ -384,6 +387,10 @@ func main() {
 			result, errMsg = handleParseTreeUtils(&req)
 		case "binder":
 			result, errMsg = handleBinder(&req)
+		case "symbolnameutils":
+			result, errMsg = handleSymbolNameUtils(&req)
+		case "typecacheutils":
+			result, errMsg = handleTypeCacheUtils(req.Payload)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}

@@ -162,6 +162,21 @@ if (testFile === 'typePrinter.test.ts') {
     testOnlyAliases[path.join(refSrc, 'analyzer/typePrinter')] = path.join(bridgeDir, 'shim-typePrinter.ts');
 }
 
+// typeCacheUtils.test.ts builds TypeVars, so it needs the same construction-log
+// shim; the cache shim reads that log.
+if (testFile === 'typeCacheUtils.test.ts') {
+    testOnlyAliases[path.join(refSrc, 'analyzer/types')] = path.join(bridgeDir, 'shim-types.ts');
+    testOnlyAliases[path.join(refSrc, 'analyzer/typeCacheUtils')] = path.join(bridgeDir, 'shim-typeCacheUtils.ts');
+}
+
+// symbolNameUtils is pure string predicates, so the shim needs nothing else.
+if (testFile === 'symbolNameUtils.test.ts') {
+    testOnlyAliases[path.join(refSrc, 'analyzer/symbolNameUtils')] = path.join(
+        bridgeDir,
+        'shim-symbolNameUtils.ts'
+    );
+}
+
 const aliasPlugin = `
 const path = require('path');
 const aliases = ${JSON.stringify(aliases)};
