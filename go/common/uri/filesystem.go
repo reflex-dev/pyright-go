@@ -24,12 +24,10 @@
  *     them; the language server does.
  *   - createFileSystemWatcher, and with it the whole fileWatcher module.
  *   - createReadStream / createWriteStream, which exist for the zip reader.
- *   - mapDirectory and the Disposable it returns, which is the partial-stub
- *     service.
  *
- * The mapped-uri members (IsMappedUri, GetOriginalUri, GetMappedUri) are kept:
- * the import resolver calls them, and a file system that maps nothing answers
- * them trivially.
+ * mapDirectory and the mapped-uri members are kept. They look like plumbing but
+ * are not: they are how a partial stub package gets merged onto the library it
+ * augments, which is behaviour the import resolver's tests assert on directly.
  */
 
 package uri
@@ -107,6 +105,22 @@ type ReadOnlyFileSystem interface {
 	IsInZip(u Uri) bool
 }
 
+// Disposable corresponds to vscode-jsonrpc's interface of the same name, which
+// MapDirectory returns to undo itself.
+type Disposable interface {
+	Dispose()
+}
+
+// DisposableFunc adapts a plain function, which is the shape every
+// implementation in pyright uses.
+type DisposableFunc func()
+
+func (f DisposableFunc) Dispose() { f() }
+
+// MapDirectoryFilter decides whether one mapped path is really mapped. It is
+// optional in the original, where its absence means "everything".
+type MapDirectoryFilter func(originalUri Uri, fs FileSystem) bool
+
 // FileSystem corresponds to the interface of the same name.
 type FileSystem interface {
 	ReadOnlyFileSystem
@@ -118,6 +132,8 @@ type FileSystem interface {
 	RmdirSync(u Uri) error
 
 	CopyFileSync(u Uri, dst Uri) error
+
+	MapDirectory(mappedUri Uri, originalUri Uri, filter MapDirectoryFilter) Disposable
 }
 
 // TmpfileOptions corresponds to the interface of the same name.
@@ -158,3 +174,33 @@ func (d *VirtualDirent) IsCharacterDevice() bool { return false }
 func (d *VirtualDirent) IsSymbolicLink() bool    { return false }
 func (d *VirtualDirent) IsFIFO() bool            { return false }
 func (d *VirtualDirent) IsSocket() bool          { return false }
+
+// DirentMap is an insertion-ordered map of Dirents by name.
+//
+// ReadOnlyAugmentedFileSystem builds its directory listing in a `Map<string,
+// fs.Dirent>` "to make sure we don't have duplicates", then returns
+// `[...entries.values()]`. The order that produces is insertion order with
+// later writes keeping their original position, which is what this preserves.
+type DirentMap struct {
+	order  []string
+	byName map[string]Dirent
+}
+
+func NewDirentMap() *DirentMap {
+	return &DirentMap{byName: map[string]Dirent{}}
+}
+
+func (m *DirentMap) Set(name string, entry Dirent) {
+	if _, ok := m.byName[name]; !ok {
+		m.order = append(m.order, name)
+	}
+	m.byName[name] = entry
+}
+
+func (m *DirentMap) Values() []Dirent {
+	out := make([]Dirent, 0, len(m.order))
+	for _, name := range m.order {
+		out = append(out, m.byName[name])
+	}
+	return out
+}

@@ -374,6 +374,14 @@ func (fs *FileSystem) CopyFileSync(u uri.Uri, dst uri.Uri) error {
 	return fs.WriteFileSync(dst, data)
 }
 
+// MapDirectory is not implemented, matching the harness TestFileSystem this
+// stands in for -- it throws "Not implemented in test file system." there. The
+// mapping the partial-stub service sets up happens a layer above, in
+// ReadOnlyAugmentedFileSystem, and never reaches here.
+func (fs *FileSystem) MapDirectory(mappedUri uri.Uri, originalUri uri.Uri, filter uri.MapDirectoryFilter) uri.Disposable {
+	panic("Not implemented in test file system.")
+}
+
 func (fs *FileSystem) remove(path string) error {
 	components := splitPath(path)
 	if len(components) == 0 {

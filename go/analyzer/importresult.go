@@ -4,12 +4,7 @@
  * Licensed under the MIT license.
  * Author: Eric Traut
  *
- * Transliterated from analyzer/importResult.ts and the PyTypedInfo half of
- * analyzer/pyTypedUtils.ts (pyright 1.1.412).
- *
- * getPyTypedInfo and getPyTypedInfoForPyTypedFile are not here: they read the
- * filesystem through common/fileSystem.ts, which lands with the import
- * resolver. Only the PyTypedInfo shape is needed by ImportResult.
+ * Transliterated from analyzer/importResult.ts (pyright 1.1.412).
  */
 
 package analyzer
@@ -19,11 +14,8 @@ import (
 	"github.com/microsoft/pyright/go/common/uri"
 )
 
-// PyTypedInfo corresponds to the interface of the same name in pyTypedUtils.ts.
-type PyTypedInfo struct {
-	PyTypedPath      uri.Uri
-	IsPartiallyTyped bool
-}
+// PyTypedInfo, which ImportResult carries, moved to pytypedutils.go when the
+// rest of that module landed in Stage C.
 
 // ImportType corresponds to the const enum of the same name.
 type ImportType int

@@ -168,3 +168,8 @@ func (s *OrderedSet[T]) ForEach(fn func(value T)) {
 		fn(v)
 	}
 }
+
+// Clear corresponds to Set.clear.
+func (s *OrderedSet[T]) Clear() {
+	s.m.Clear()
+}
