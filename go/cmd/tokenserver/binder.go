@@ -39,6 +39,17 @@ type binderNode struct {
 	CodeFlowExprs *[]string `json:"cfe,omitempty"`
 	CodeFlowCmplx *float64  `json:"cfc,omitempty"`
 	StaticCondVal *bool     `json:"scv,omitempty"`
+
+	// The scope-dependent parseTreeUtils functions.
+	EvalScope              int      `json:"esn"`
+	EvalScopeProxy         bool     `json:"esnProxy"`
+	EvalScopeChained       bool     `json:"esnChained"`
+	ExecScope              int      `json:"exs"`
+	EnclosingFuncEvalScope int      `json:"efes"`
+	ScopeID                string   `json:"sid"`
+	TypeVarScopes          []string `json:"tvs"`
+	FileID                 *string  `json:"fileId,omitempty"`
+	EvalNodeForAssignExpr  *int     `json:"ena,omitempty"`
 }
 
 type binderSymbol struct {
@@ -385,6 +396,28 @@ func handleBinder(req *request) (any, string) {
 			entry.Decl = dumpDeclaration(decl)
 		}
 
+		// The seven parseTreeUtils functions the Stage A differential had to
+		// skip, because each needs a bound scope or the file info. They are
+		// covered here rather than there because this is the harness that
+		// binds.
+		evaluationScope := analyzer.GetEvaluationScopeNode(node)
+		entry.EvalScope = nodeIdx(evaluationScope.Node)
+		entry.EvalScopeProxy = evaluationScope.UseProxyScope
+		entry.EvalScopeChained = evaluationScope.UseChainedModuleLevelScopes
+		entry.ExecScope = nodeIdx(analyzer.GetExecutionScopeNode(node))
+		entry.EnclosingFuncEvalScope = nodeIdx(funcOrNil(analyzer.GetEnclosingFunctionEvaluationScope(node)))
+		entry.ScopeID = analyzer.GetScopeIdForNode(node)
+		entry.TypeVarScopes = analyzer.GetTypeVarScopesForNode(node)
+		if fileInfo := analyzer.GetFileInfoFromNode(node); fileInfo != nil {
+			fileID := fileInfo.FileID
+			entry.FileID = &fileID
+		}
+
+		if assignmentExpr, ok := node.(*parser.AssignmentExpressionNode); ok {
+			evalNode := nodeIdx(analyzer.GetEvaluationNodeForAssignmentExpression(assignmentExpr))
+			entry.EvalNodeForAssignExpr = &evalNode
+		}
+
 		switch node.GetNodeType() {
 		case parser.ParseNodeTypeModule,
 			parser.ParseNodeTypeFunction,
@@ -608,6 +641,15 @@ func exprIdxSlice(exprs []parser.ExpressionNode, nodeIdx func(parser.ParseNode) 
 		out = append(out, nodeIdx(expr))
 	}
 	return out
+}
+
+// funcOrNil normalizes an absent *FunctionNode to a nil interface, the same
+// hazard childOrNil handles in the generated walker.
+func funcOrNil(node *parser.FunctionNode) parser.ParseNode {
+	if node == nil {
+		return nil
+	}
+	return node
 }
 
 // exprOrNil normalizes an absent optional expression to a nil interface, the

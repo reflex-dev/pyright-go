@@ -43,6 +43,7 @@ import { latestStablePythonVersion } from '@pyright/common/pythonVersion';
 import { Uri } from '@pyright/common/uri/uri';
 import { AnalyzerFileInfo, ImportLookupResult } from '@pyright/analyzer/analyzerFileInfo';
 import * as AnalyzerNodeInfo from '@pyright/analyzer/analyzerNodeInfo';
+import * as ParseTreeUtils from '@pyright/analyzer/parseTreeUtils';
 import { Binder } from '@pyright/analyzer/binder';
 import { FlowFlags, FlowNode } from '@pyright/analyzer/codeFlowTypes';
 import { Declaration, DeclarationType } from '@pyright/analyzer/declaration';
@@ -291,6 +292,24 @@ export function dump(text: string, options: DumpOptions): any {
         const decl = AnalyzerNodeInfo.getDeclaration(node);
         if (decl) {
             entry.d = dumpDeclaration(decl);
+        }
+
+        // The seven parseTreeUtils functions the Stage A differential had to
+        // skip, because each needs a bound scope or the file info. They are
+        // covered here rather than there because this is the harness that
+        // binds.
+        const evaluationScope = ParseTreeUtils.getEvaluationScopeNode(node);
+        entry.esn = nodeIdx(evaluationScope.node);
+        entry.esnProxy = !!evaluationScope.useProxyScope;
+        entry.esnChained = !!evaluationScope.useChainedModuleLevelScopes;
+        entry.exs = nodeIdx(ParseTreeUtils.getExecutionScopeNode(node));
+        entry.efes = nodeIdx(ParseTreeUtils.getEnclosingFunctionEvaluationScope(node));
+        entry.sid = ParseTreeUtils.getScopeIdForNode(node);
+        entry.tvs = ParseTreeUtils.getTypeVarScopesForNode(node);
+        entry.fileId = ParseTreeUtils.getFileInfoFromNode(node)?.fileId;
+
+        if (node.nodeType === ParseNodeType.AssignmentExpression) {
+            entry.ena = nodeIdx(ParseTreeUtils.getEvaluationNodeForAssignmentExpression(node));
         }
 
         // getCodeFlowExpressions / getCodeFlowComplexity are only set on
