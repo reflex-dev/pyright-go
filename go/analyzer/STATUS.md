@@ -63,12 +63,36 @@ Reference sources: `$REF/analyzer/*.ts` at pyright 1.1.412, where `$REF` is
 
 Both gates are green.
 
-### `typePrinter.test.ts`, unmodified, against the Go implementation
+### Three of pyright's own test files, unmodified, against the Go implementation
 
 ```
 make bridge-typeprinter-tests REF=<path to pyright-internal/src>
 6 passed, 0 failed, 0 skipped, 6 total
+
+make bridge-symbolnameutils-tests REF=<path to pyright-internal/src>
+7 passed, 0 failed, 0 skipped, 7 total
+
+make bridge-typecacheutils-tests REF=<path to pyright-internal/src>
+2 passed, 0 failed, 0 skipped, 2 total
 ```
+
+`symbolNameUtils.test.ts` is the simplest bridge in the tree: eight pure string
+predicates, one request per call, no state.
+
+`typeCacheUtils.test.ts` rides on the same construction log as the type printer,
+because it builds TypeVars. `addContextualTypeCacheEntry` returns the caller's
+own entry objects, which cannot cross the wire, so the Go side returns the
+*indices* of the survivors and the shim reassembles the array -- all of the
+matching, filtering, eviction and ordering happens in Go. Its one deviation is
+exact rather than approximate: `isEntryValid` is a TypeScript closure, so it is
+evaluated on the Node side and shipped as a boolean array, which is what the
+original does anyway since it is the left operand of an `&&` and runs for every
+entry regardless.
+
+Both were checked for vacuity the same way the printer was: relaxing
+`isDunderName`'s length test from `> 4` to `>= 4` fails one symbol-name test,
+and changing `maxContextualTypeCacheEntriesPerNode` from 8 to 7 fails one cache
+test.
 
 This bridge has a different shape from the tokenizer and parser ones. Those
 alias one module and ship data over the wire. This one aliases `analyzer/types`
@@ -104,11 +128,12 @@ file and evaluates every parseTreeUtils function that does not need a bound
 scope, in both implementations, and diffs the results. Nodes are keyed by
 pre-order index because node ids are per-process counters.
 
-Not covered, because they call `getScope` or `getFileInfo`:
+Not covered here, because they call `getScope` or `getFileInfo`:
 `getEvaluationScopeNode`, `getExecutionScopeNode`,
 `getEnclosingFunctionEvaluationScope`, `getEvaluationNodeForAssignmentExpression`,
-`getScopeIdForNode`, `getTypeVarScopesForNode`, `getFileInfoFromNode`. Those
-become testable in Stage B, once the binder can produce scopes.
+`getScopeIdForNode`, `getTypeVarScopesForNode`, `getFileInfoFromNode`. All seven
+are covered by the **binder** differential (`make bridge-binder`), which is the
+harness that binds; see `analyzer/STATUS-STAGE-B.md`.
 
 This differential earned its keep immediately: see UPSTREAM-BUGS.md #12.
 

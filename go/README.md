@@ -75,6 +75,13 @@ under test for shims that forward to it, then runs the unmodified test files.
 
     23 passed, 0 failed, 4 skipped, 27 total
 
+`src/tests/typePrinter.test.ts`, `src/tests/symbolNameUtils.test.ts` and
+`src/tests/typeCacheUtils.test.ts`:
+
+    6 passed, 0 failed, 0 skipped, 6 total
+    7 passed, 0 failed, 0 skipped, 7 total
+    2 passed, 0 failed, 0 skipped, 2 total
+
 The 4 skipped cases drive the fourslash harness, which needs the binder and the
 import resolver. They are reported as `SKIP` with a reason rather than being
 dropped or counted as passing.
@@ -136,6 +143,14 @@ node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-int
 ```
 
 ```bash
+node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test symbolNameUtils.test.ts
+```
+
+```bash
+node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test typeCacheUtils.test.ts
+```
+
+```bash
 node tools/ts-bridge/compare-corpus.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
 ```
 
@@ -159,9 +174,10 @@ because `--no-save` prunes anything not named:
 npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver
 ```
 
-`make bridge` runs all eight checks. Or run them individually with
+`make bridge` runs all ten checks. Or run them individually with
 `make bridge-tests`, `make bridge-parser-tests`,
-`make bridge-typeprinter-tests`, `make bridge-corpus`, `make bridge-ast`,
+`make bridge-typeprinter-tests`, `make bridge-symbolnameutils-tests`,
+`make bridge-typecacheutils-tests`, `make bridge-corpus`, `make bridge-ast`,
 `make bridge-parsetreeutils`, `make bridge-binder`,
 `make bridge-binder-typeshed`.
 

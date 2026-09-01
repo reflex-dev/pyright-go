@@ -83,7 +83,15 @@ It covers, per file:
 - the whole code-flow graph: flags, antecedents, affected expressions, and every
   subtype's extra fields;
 - the `__all__` info and every bind-time diagnostic (message, range, rule,
-  actions).
+  actions);
+- the seven `parseTreeUtils` functions the Stage A differential had to skip,
+  because each needs a bound scope or the file info: `getEvaluationScopeNode`
+  (all three of its result fields), `getExecutionScopeNode`,
+  `getEnclosingFunctionEvaluationScope`, `getScopeIdForNode`,
+  `getTypeVarScopesForNode`, `getFileInfoFromNode`, and
+  `getEvaluationNodeForAssignmentExpression`. This is the harness that binds, so
+  it is where they belong. Checked for vacuity by changing the separator in
+  `getScopeIdForNode` from `.` to `:`, which fails every file.
 
 Three things are renumbered because all three are per-process counters that
 would never line up between implementations: parse nodes by pre-order index (as
