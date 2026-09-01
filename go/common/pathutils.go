@@ -586,7 +586,7 @@ func GetWildcardRegexPattern(rootPath string, fileSpec string) string {
 				component = escapedSeparator + component
 			}
 
-			regExPattern += replaceReservedCharacters(component, escapedSeparator)
+			regExPattern += ReplaceWildcardReservedCharacters(component, escapedSeparator)
 
 			firstComponent = false
 		}
@@ -595,14 +595,14 @@ func GetWildcardRegexPattern(rootPath string, fileSpec string) string {
 	return regExPattern
 }
 
-// replaceReservedCharacters stands in for
+// ReplaceWildcardReservedCharacters stands in for
 // `component.replace(new RegExp('[^\\w\\s' + sep + ']', 'g'), cb)`.
 //
 // It is written out rather than compiled because JavaScript's \w is ASCII-only
 // while its \s includes every Unicode space separator plus U+FEFF, and Go's
 // regexp agrees on neither. The character class is negated, so getting it wrong
 // escapes too much or too little rather than failing loudly.
-func replaceReservedCharacters(component string, escapedSeparator string) string {
+func ReplaceWildcardReservedCharacters(component string, escapedSeparator string) string {
 	var sb strings.Builder
 	for _, r := range component {
 		switch {

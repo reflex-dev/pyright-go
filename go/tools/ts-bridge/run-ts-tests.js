@@ -152,10 +152,13 @@ if (testFile === 'parser.test.ts') {
     aliases[path.join(refSrc, 'tests/harness/fourslash/testState')] = path.join(bridgeDir, 'shim-testState.ts');
 }
 
-// Aliases that apply only to imports made by the test file itself. The type
-// shims re-export const enums from the real analyzer/types and
-// analyzer/typePrinter; if those modules' own relative imports were rewritten
-// too, the originals would end up wired to the shims instead of to each other.
+// Aliases that apply only to imports made by the test file itself -- matched on
+// the exact importer, not the tests directory, because the harness modules in
+// there (testHost, vfs) import the same modules for their own purposes and must
+// keep the real ones. The type shims re-export const enums from the real
+// analyzer/types and analyzer/typePrinter; if those modules' own relative
+// imports were rewritten too, the originals would end up wired to the shims
+// instead of to each other.
 const testOnlyAliases = {};
 if (testFile === 'typePrinter.test.ts') {
     testOnlyAliases[path.join(refSrc, 'analyzer/types')] = path.join(bridgeDir, 'shim-types.ts');
@@ -167,6 +170,15 @@ if (testFile === 'typePrinter.test.ts') {
 if (testFile === 'typeCacheUtils.test.ts') {
     testOnlyAliases[path.join(refSrc, 'analyzer/types')] = path.join(bridgeDir, 'shim-types.ts');
     testOnlyAliases[path.join(refSrc, 'analyzer/typeCacheUtils')] = path.join(bridgeDir, 'shim-typeCacheUtils.ts');
+}
+
+// uri.test.ts drives the Uri classes, which are shimmed as recipes; see
+// shim-uri.ts. pathUtils comes along because the test imports it directly, and
+// uriUtils because it is the module the Uri-taking helpers live in.
+if (testFile === 'uri.test.ts') {
+    testOnlyAliases[path.join(refSrc, 'common/uri/uri')] = path.join(bridgeDir, 'shim-uri.ts');
+    testOnlyAliases[path.join(refSrc, 'common/uri/uriUtils')] = path.join(bridgeDir, 'shim-uriUtils.ts');
+    testOnlyAliases[path.join(refSrc, 'common/pathUtils')] = path.join(bridgeDir, 'shim-pathUtils.ts');
 }
 
 // pathUtils is pure string functions, like symbolNameUtils below.
@@ -186,7 +198,7 @@ const aliasPlugin = `
 const path = require('path');
 const aliases = ${JSON.stringify(aliases)};
 const testOnlyAliases = ${JSON.stringify(testOnlyAliases)};
-const testsDir = ${JSON.stringify(path.join(refSrc, 'tests'))};
+const testFilePath = ${JSON.stringify(path.join(refSrc, 'tests', testFile))};
 module.exports = {
     name: 'go-bridge-alias',
     setup(build) {
@@ -198,7 +210,7 @@ module.exports = {
             if (!a.path.startsWith('.')) return undefined;
             const resolved = path.resolve(path.dirname(a.importer), a.path);
             if (aliases[resolved]) return { path: aliases[resolved] };
-            if (testOnlyAliases[resolved] && a.importer.startsWith(testsDir)) {
+            if (testOnlyAliases[resolved] && a.importer === testFilePath) {
                 return { path: testOnlyAliases[resolved] };
             }
             return undefined;
@@ -209,6 +221,7 @@ module.exports = {
 
 // esbuild's CLI cannot load plugins, so the alias mapping is applied by
 // pre-resolving through a tiny JS build script that uses the esbuild JS API.
+const nodeModulesDir = findNodeModules(esbuildPath);
 const buildScript = path.join(outDir, 'build.js');
 fs.writeFileSync(path.join(outDir, 'alias-plugin.js'), aliasPlugin);
 fs.writeFileSync(
@@ -222,6 +235,10 @@ esbuild.build({
     format: 'cjs',
     outfile: ${JSON.stringify(bundle)},
     plugins: [require(${JSON.stringify(path.join(outDir, 'alias-plugin.js'))})],
+    // The entry point lives in a temp directory, so Node's own resolution
+    // would not find the repo's node_modules; uri.test.ts reaches fs-extra and
+    // realFileSystem.ts reaches tmp.
+    nodePaths: [${JSON.stringify(nodeModulesDir)}],
     // pyright's tsconfig enables legacy decorators; esbuild needs to be told,
     // because the entry point lives outside the pyright source tree and so does
     // not pick up its tsconfig.
@@ -237,6 +254,18 @@ fs.writeFileSync(
     path.join(bridgeDir, 'esbuild-shim.js'),
     `module.exports = require(${JSON.stringify(esbuildPkg)});\n`
 );
+
+function findNodeModules(startPath) {
+    let dir = path.dirname(startPath);
+    while (dir !== path.dirname(dir)) {
+        const candidate = path.join(dir, 'node_modules');
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+        dir = path.dirname(dir);
+    }
+    throw new Error(`could not locate node_modules near ${startPath}`);
+}
 
 function findEsbuildPackage(binPath) {
     // .../node_modules/@esbuild/<platform>/bin/esbuild -> .../node_modules/esbuild
@@ -262,8 +291,12 @@ const env = {
     ESBUILD_BINARY_PATH: esbuildPath,
 };
 
+// jest runs with rootDir -- packages/pyright-internal -- as the working
+// directory, and a few tests reach the disk relative to it (uri.test.ts's
+// Realcase pair reads process.cwd()/src/tests). Run the bundle the same way.
 const result = require('child_process').spawnSync(process.execPath, [bundle], {
     stdio: 'inherit',
+    cwd: path.dirname(refSrc),
     env,
 });
 

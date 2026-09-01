@@ -204,3 +204,12 @@ func Equals(a, b Uri) bool {
 func IsDefaultWorkspace(u Uri) bool {
 	return strings.Contains(u.FileName(), DefaultWorkspaceRootComponent)
 }
+
+// Compile-time assertions that every implementation in this package satisfies
+// the full interface, including the three protected members of BaseUri.
+var (
+	_ uriInternals = (*ConstantUri)(nil)
+	_ uriInternals = (*EmptyUri)(nil)
+	_ uriInternals = (*FileUri)(nil)
+	_ uriInternals = (*WebUri)(nil)
+)

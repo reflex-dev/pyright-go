@@ -393,6 +393,12 @@ func main() {
 			result, errMsg = handleTypeCacheUtils(req.Payload)
 		case "pathutils":
 			result, errMsg = handlePathUtils(req.Payload)
+		case "uri":
+			result, errMsg = handleUri(req.Payload)
+		case "urinormalize":
+			result, errMsg = handleUriNormalize(req.Payload)
+		case "uriutils":
+			result, errMsg = handleUriUtils(req.Payload)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}
