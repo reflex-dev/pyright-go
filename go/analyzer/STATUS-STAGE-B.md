@@ -1,12 +1,10 @@
-# Stage B status — **in progress**
+# Stage B status — **complete**
 
 Stage B is "the binder" from ANALYZER-PLAN.md: `binder.ts` (4,912 lines) plus
 `importStatementUtils.ts`, `staticExpressions.ts`, `cellChainIndex.ts`,
 `importResult.ts` and `commentUtils.ts`.
 
-Everything except `binder.ts` itself is ported, and the differential harness the
-plan calls for is built and validated against the real TypeScript binder.
-`binder.ts` is not started.
+Everything is ported and the differential gate is green over 4,190 file-runs.
 
 Reference sources: `$REF/analyzer/*.ts` at pyright 1.1.412, where `$REF` is
 `packages/pyright-internal/src` extracted by `make ref`.
@@ -15,13 +13,23 @@ Reference sources: `$REF/analyzer/*.ts` at pyright 1.1.412, where `$REF` is
 
 | TypeScript | Go | notes |
 | --- | --- | --- |
+| `analyzer/binder.ts` | `analyzer/binder*.go` | complete -- all 43 visit methods and all 68 private helpers, split across 8 files |
 | `analyzer/staticExpressions.ts` | `analyzer/staticexpressions.go` | complete |
 | `analyzer/commentUtils.ts` | `analyzer/commentutils.go` | complete |
 | `common/configOptions.ts` | `analyzer/configoptions_gen.go` | `DiagnosticRule`, `DiagnosticRuleSet`, the four preset rule sets and the rule lists -- **generated** by `analyzer/gen/generate_configoptions.py` |
 | `analyzer/cellChainIndex.ts` | `analyzer/cellchainindex.go` | **partial** -- the `CellChainIndexProvider` interface only |
 | `analyzer/importStatementUtils.ts` | `analyzer/importstatementutils.go` | **partial** -- `getWildcardImportNames` only |
 | `analyzer/importResult.ts` | `analyzer/importresult.go` | complete (landed in Stage A) |
-| `analyzer/binder.ts` | — | **not started** |
+| `common/pathUtils.ts` | `common/uri/baseuri.go` | `stripFileExtension` / `getFileExtension`, which `visitImportFrom` needs |
+
+`binder.ts` is split as: `binder.go` (state, constructor, `BindModule`, the
+deferred queue, diagnostics, and the three trailing walkers `YieldFinder`,
+`ReturnFinder`, `DummyScopeGenerator`), `binder_flow.go` (flow-node
+constructors, conditional binding, `_isNarrowingExpression`),
+`binder_scopes.go` (name binding, scope creation, the cell-chain lookup),
+`binder_visit_scopes.go` (class / function / lambda / type-param list / type
+alias / call / module name), `binder_visit_stmts.go`, `binder_visit_exprs.go`,
+`binder_imports.go`, `binder_decls.go`.
 
 ### Why configOptions is generated
 
@@ -48,29 +56,24 @@ makes the substitution provably equivalent rather than approximately so.
 - The `CellChainIndex` class. It walks `SourceFileInfo` chains, which arrive
   with the program in Stage C. The binder only consumes the provider interface.
 
-## The differential harness
-
-Built, and validated against the unmodified TypeScript binder before writing a
-line of the Go one — which is what ANALYZER-PLAN.md asks for, because a single
-wrong code-flow edge produces no visible symptom until some narrowing test tens
-of thousands of lines later fails for reasons nobody can trace back.
+## Verification
 
 ```
-make bridge-binder-oracle REF=<path to pyright-internal/src>
+make bridge-binder REF=<path to pyright-internal/src>
+=== imports resolve: 1343 files      1343 identical, 0 different
+=== imports unresolved: 1343 files   1343 identical, 0 different
 
-=== imports resolve: 1343 files
-oracle produced 11106 scopes, 56604 symbols, 58200 declarations, 63387 flow nodes; 0 files failed to bind
-
-=== imports unresolved: 1343 files
-oracle produced 11106 scopes, 56604 symbols, 58200 declarations, 63387 flow nodes; 0 files failed to bind
+make bridge-binder-typeshed REF=<path to pyright-internal/src>
+=== imports resolve: 752 files       752 identical, 0 different
+=== imports unresolved: 752 files    752 identical, 0 different
 ```
 
-`make bridge-binder` runs the same thing against the Go port and diffs. It will
-fail until `cmd/tokenserver/binder.go` exists.
+`binder.ts` has no bridgeable test — the tests that exercise it drive the
+fourslash harness — so, as with `parseTreeUtils`, a corpus differential stands
+in. It was built and validated against the unmodified TypeScript binder *before*
+the Go binder was written, which is what ANALYZER-PLAN.md asks for.
 
-`binder.ts` has no bridgeable test of its own — the tests that exercise it drive
-the fourslash harness — so as with `parseTreeUtils`, a corpus differential
-stands in. It covers, per file:
+It covers, per file:
 
 - every parse node's scope, flow node, after-flow node, declaration,
   reachability, code-flow expression set and code-flow complexity;
@@ -89,19 +92,49 @@ in a fixed traversal. The renumbering is traversal-order dependent rather than
 id-order dependent, so a graph that differs in *shape* produces a difference
 while one that merely allocated ids in a different interleaving does not.
 
-### What the harness cannot cover yet
+Verified not to be vacuous: dropping `SymbolFlags.ClassMember` from the one
+`addSymbol` call in `_bindNameValueToScope` turns all 40 of the first 20
+file-runs red, on `.scopes[N].symbols[M].flags`.
+
+### What the differential cannot cover yet
 
 The import resolver is Stage C, and `visitModuleName` asserts that every
 `ModuleName` node carries an `ImportResult`, so the harness synthesizes one —
-identically on both sides — and runs the corpus twice: once where every import
+identically on both sides — and runs each corpus twice: once where every import
 resolves and once where none does. That covers both families of branches through
-`visitModuleName`, `visitImportAs` and `visitImportFromAs` (51 bind diagnostics
-in the unresolved mode versus 4 in the resolved one, over the first 40 files).
+`visitModuleName`, `visitImportAs` and `visitImportFromAs`.
 
 What it cannot reach until Stage C is anything that depends on the *content* of
 a resolved import: implicit submodule imports, py.typed detection, the
 missing-stub diagnostic's namespace-package suppression, and wildcard imports
-(which call `importLookup`).
+(which call `importLookup` and get `undefined` here).
+
+## Traps found here, worth carrying into Stage C
+
+- **`array[array.length - 1]` on an empty array.** JavaScript answers
+  `undefined`; Go panics. `visitImportFrom` does exactly this, and an empty
+  `resolvedUris` is reachable — `from . import x` has no name parts. This
+  crashed the first full-corpus run after 300 files had already passed.
+- **`_finishFlowLabel`'s collapse test is on the whole flags value**, not a bit,
+  so a context-manager label (which carries `PostContextManager | BranchLabel`)
+  never collapses. Turning it into a bit test is the obvious "cleanup" and is
+  wrong — though as it happens no context-manager label is ever passed to it, so
+  the differential does not catch this one. It is written as the original writes
+  it.
+- **Flags versus types when dumping.** The harness's TypeScript side keys
+  `preBranch` off the `BranchLabel` *flag*; the Go side originally keyed it off
+  the node's Go type, which a context-manager label does not have. That is a
+  harness bug rather than a port bug, but it is the same confusion in the other
+  direction.
+- **`if (this._currentExceptTargets)` is an always-true array truthiness test.**
+  Dropping the guard is correct; turning it into a length check is not.
+- **`_dunderAllNames` and `_dunderSlotsEntries` each need a companion bool.**
+  The original distinguishes "never seen" (`undefined`) from "seen and empty"
+  (`[]`, which is truthy), and a nil Go slice cannot.
+- **Go closures capture the variable, not the value.** Every callback helper in
+  the binder saves a field, calls back, and restores it; each is written as an
+  explicit save/restore rather than a `defer`, because `_bindNeverCondition`
+  restores conditionally.
 
 ## Known deviation
 
@@ -110,5 +143,5 @@ components. `PythonVersion`'s fields are Go `int`s; the original stores whatever
 `d.value` holds, and it never checks `d.isInteger`, so `sys.version_info >= (3,
 12.5)` compares against minor `12.5` there and minor `12` here. The two disagree
 only when the execution environment's minor version equals the truncated value.
-Nothing in the corpus writes such a comparison, and the differential would find
-it if something did.
+Nothing in either corpus writes such a comparison, and the differential would
+find it if something did.

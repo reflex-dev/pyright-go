@@ -31,6 +31,9 @@ Where the Go differs, the reason is written down at the point of difference.
 | Node/operator name maps | `parser/parseNodeUtils.ts` | `parser/parsenodeutils.go` | done |
 | Timing stats | `common/timing.ts` | `common/timing.go` | done |
 | **Parser** | `parser/parser.ts` | `parser/parser*.go` | **done — all 131 methods** |
+| Type model | `analyzer/types.ts`, `typeUtils.ts`, `typePrinter.ts`, … | `analyzer/types*.go`, `typeutils*.go`, `typeprinter*.go` | **done and verified** (Stage A) |
+| Parse tree utils | `analyzer/parseTreeUtils.ts`, `parseTreeWalker.ts` | `analyzer/parsetreeutils_*.go`, `parsetreewalker.go` | **done and verified** (Stage A) |
+| **Binder** | `analyzer/binder.ts` + deps | `analyzer/binder*.go` | **done and verified** (Stage B) |
 
 The front end is complete. `Parser.ParseSourceFile` and
 `Parser.ParseTextExpression` are exported and produce the same tree the
@@ -47,13 +50,15 @@ statements, imports), `parser_patterns.go` (`match`), `parser_errors.go` and
 `parser_entry.go`. Every method carries the name of the TypeScript method it
 corresponds to.
 
+`ANALYZER-PLAN.md` has the staging; `analyzer/STATUS.md` covers Stage A and
+`analyzer/STATUS-STAGE-B.md` covers Stage B.
+
 ### Not yet ported
 
-The `analyzer/` tree — 103k lines: binder, checker, type evaluator, import
-resolver, and the type system. Nothing of it is ported, so this parses Python
-exactly as pyright does and type-checks nothing. Neither the language server nor
-the CLI is ported. The `common/uri/*` stack is stubbed to the single interface
-that `DiagnosticRelatedInfo` needs.
+The rest of `analyzer/` — the import resolver, the program/service layer, the
+type evaluator and the checker (Stages C and D of `ANALYZER-PLAN.md`). So this
+parses and binds Python exactly as pyright does, and type-checks nothing.
+Neither the language server nor the CLI is ported.
 
 ## How it is verified
 
@@ -154,10 +159,11 @@ because `--no-save` prunes anything not named:
 npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver
 ```
 
-`make bridge` runs all seven checks. Or run them individually with
+`make bridge` runs all eight checks. Or run them individually with
 `make bridge-tests`, `make bridge-parser-tests`,
 `make bridge-typeprinter-tests`, `make bridge-corpus`, `make bridge-ast`,
-`make bridge-parsetreeutils`, `make bridge-binder`.
+`make bridge-parsetreeutils`, `make bridge-binder`,
+`make bridge-binder-typeshed`.
 
 `make bridge-binder-oracle` runs the binder differential's TypeScript side
 alone and reports what it produced. It needs no Go server, so it validates the

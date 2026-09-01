@@ -92,13 +92,7 @@ directly and prints them, so it exercises the representation without needing the
 evaluator at all. The bridge for it replays the test's construction calls against
 the Go type model, so it covers `types.ts` too.
 
-### Stage B — the binder (~12k lines TS including its deps) — **IN PROGRESS**
-
-Everything except `binder.ts` itself is ported, and the differential harness
-described below is built and validated against the real TypeScript binder over
-all 1,343 corpus files. `binder.ts` is not started. See
-`analyzer/STATUS-STAGE-B.md`.
-
+### Stage B — the binder (~12k lines TS including its deps) — **DONE**
 
 `binder.ts` (4,913) plus `importStatementUtils.ts`, `staticExpressions.ts`,
 `cellChainIndex.ts`, `importResult.ts`, `commentUtils.ts`.
@@ -117,6 +111,12 @@ harness *before* writing the binder so it is written against a live oracle.
 This matters because a single wrong code-flow edge produces no visible symptom
 until some narrowing test 40k lines later fails for reasons nobody can trace.
 Catching it here is worth a great deal.
+
+That is how it went. The harness was built and validated against the unmodified
+TypeScript binder before the Go binder existed, and it is green over 1,343
+sample files and 752 typeshed stdlib stubs in both import modes -- 4,190
+file-runs, 0 different. See `analyzer/STATUS-STAGE-B.md`, which also lists what
+the differential cannot reach until the import resolver arrives in Stage C.
 
 ### Stage C — import resolver, program, filesystem (~9k lines TS)
 
