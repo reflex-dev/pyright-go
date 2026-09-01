@@ -374,3 +374,37 @@ func getDirectoryPath(pathString string) string {
 	}
 	return pathString[:i]
 }
+
+// StripFileExtension is pathUtils.stripFileExtension. The TypeScript defaults
+// multiDotExtension to false.
+func StripFileExtension(fileName string, multiDotExtension bool) string {
+	ext := getFileExtension(fileName, multiDotExtension)
+	return fileName[:len(fileName)-len(ext)]
+}
+
+// getFileExtension is pathUtils.getFileExtension. The single-dot form defers to
+// Node's path.extname, which returns the substring from the last dot of the
+// basename -- but only when that dot is neither the first character of the
+// basename nor the last character of the path.
+func getFileExtension(fileName string, multiDotExtension bool) string {
+	if !multiDotExtension {
+		base := getFileName(fileName)
+		dot := strings.LastIndex(base, ".")
+		if dot <= 0 || dot == len(base)-1 && dot == 0 {
+			return ""
+		}
+		return base[dot:]
+	}
+
+	base := getFileName(fileName)
+	firstDotIndex := strings.Index(base, ".")
+	if firstDotIndex < 0 {
+		// `slice(-1)` on a string with no dot returns the last character in
+		// JavaScript, because indexOf returned -1.
+		if len(base) == 0 {
+			return ""
+		}
+		return base[len(base)-1:]
+	}
+	return base[firstDotIndex:]
+}
