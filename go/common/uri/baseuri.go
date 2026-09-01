@@ -17,8 +17,9 @@
 package uri
 
 import (
-	"os"
 	"strings"
+
+	"github.com/microsoft/pyright/go/common"
 )
 
 // uriInternals is Uri plus the three `protected abstract` members of BaseUri.
@@ -229,7 +230,7 @@ func (b *baseUri) GetRelativePathComponents(to Uri) []string {
 }
 
 func (b *baseUri) GetShortenedFileName(maxDirLength int) string {
-	return getShortenedFileName(b.self.GetPath(), maxDirLength)
+	return common.GetShortenedFileName(b.self.GetPath(), maxDirLength)
 }
 
 // normalizeSlashes corresponds to the protected method of the same name.
@@ -249,7 +250,7 @@ func combinePathElements(pathString string, separator string, paths ...string) s
 		if relativePath == "" {
 			continue
 		}
-		if pathString == "" || getRootLength(relativePath) != 0 {
+		if pathString == "" || common.GetRootLength(relativePath) != 0 {
 			pathString = relativePath
 		} else if strings.HasSuffix(pathString, separator) {
 			pathString += relativePath
@@ -310,101 +311,4 @@ func splitKeepingDots(s string) []string {
 		}
 	}
 	return append(out, s[start:])
-}
-
-// getRootLength is pathUtils.getRootLength. Ported here rather than in a full
-// pathUtils port because combinePathElements is the only caller so far.
-func getRootLength(pathString string, sep ...byte) int {
-	separator := byte(os.PathSeparator)
-	if len(sep) > 0 {
-		separator = sep[0]
-	}
-
-	charAt := func(i int) byte {
-		if i < len(pathString) {
-			return pathString[i]
-		}
-		return 0
-	}
-
-	if charAt(0) == separator {
-		if charAt(1) != separator {
-			return 1 // POSIX: "/" (or non-normalized "\")
-		}
-		p1 := strings.IndexByte(pathString[2:], separator)
-		if p1 < 0 {
-			return len(pathString) // UNC: "//server" or "\\server"
-		}
-		return p1 + 2 + 1 // UNC: "//server/" or "\\server\"
-	}
-	if charAt(1) == ':' {
-		if charAt(2) == separator {
-			return 3 // DOS: "c:/" or "c:\"
-		}
-		if len(pathString) == 2 {
-			return 2 // DOS: "c:" (but not "c:d")
-		}
-	}
-
-	return 0
-}
-
-// getShortenedFileName is pathUtils.getShortenedFileName.
-func getShortenedFileName(pathString string, maxDirLength int) string {
-	fileName := getFileName(pathString)
-	dirName := getDirectoryPath(pathString)
-	if len(dirName) > maxDirLength {
-		return "..." + dirName[len(dirName)-maxDirLength:] + string(os.PathSeparator) + fileName
-	}
-	return pathString
-}
-
-func getFileName(pathString string) string {
-	i := strings.LastIndexAny(pathString, "/\\")
-	if i < 0 {
-		return pathString
-	}
-	return pathString[i+1:]
-}
-
-func getDirectoryPath(pathString string) string {
-	i := strings.LastIndexAny(pathString, "/\\")
-	if i < 0 {
-		return ""
-	}
-	return pathString[:i]
-}
-
-// StripFileExtension is pathUtils.stripFileExtension. The TypeScript defaults
-// multiDotExtension to false.
-func StripFileExtension(fileName string, multiDotExtension bool) string {
-	ext := getFileExtension(fileName, multiDotExtension)
-	return fileName[:len(fileName)-len(ext)]
-}
-
-// getFileExtension is pathUtils.getFileExtension. The single-dot form defers to
-// Node's path.extname, which returns the substring from the last dot of the
-// basename -- but only when that dot is neither the first character of the
-// basename nor the last character of the path.
-func getFileExtension(fileName string, multiDotExtension bool) string {
-	if !multiDotExtension {
-		base := getFileName(fileName)
-		dot := strings.LastIndex(base, ".")
-		if dot <= 0 || dot == len(base)-1 && dot == 0 {
-			return ""
-		}
-		return base[dot:]
-	}
-
-	base := getFileName(fileName)
-	firstDotIndex := strings.Index(base, ".")
-	if firstDotIndex < 0 {
-		// `slice(-1)` on a string with no dot returns the last character in
-		// JavaScript, because indexOf returned -1.
-		if len(base) == 0 {
-			return ""
-		}
-		return base[len(base)-1:]
-	}
-	return base[firstDotIndex:]
 }

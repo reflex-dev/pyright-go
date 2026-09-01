@@ -154,7 +154,7 @@ func (b *Binder) VisitImportFrom(node *parser.ImportFromNode) bool {
 	// symbols below) in case one of the imported symbols is the same name as
 	// the submodule. In that case, we want the symbol to appear later in the
 	// declaration list because it should "win" when resolving the alias.
-	fileName := uri.StripFileExtension(b.fileInfo.FileUri.FileName(), false)
+	fileName := common.StripFileExtension(b.fileInfo.FileUri.FileName(), false)
 	isModuleInitFile := fileName == "__init__" &&
 		node.D.Module.D.LeadingDots == 1 &&
 		len(node.D.Module.D.NameParts) == 1

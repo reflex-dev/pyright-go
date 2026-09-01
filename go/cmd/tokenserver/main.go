@@ -391,6 +391,8 @@ func main() {
 			result, errMsg = handleSymbolNameUtils(&req)
 		case "typecacheutils":
 			result, errMsg = handleTypeCacheUtils(req.Payload)
+		case "pathutils":
+			result, errMsg = handlePathUtils(req.Payload)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}

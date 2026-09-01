@@ -169,6 +169,11 @@ if (testFile === 'typeCacheUtils.test.ts') {
     testOnlyAliases[path.join(refSrc, 'analyzer/typeCacheUtils')] = path.join(bridgeDir, 'shim-typeCacheUtils.ts');
 }
 
+// pathUtils is pure string functions, like symbolNameUtils below.
+if (testFile === 'pathUtils.test.ts') {
+    testOnlyAliases[path.join(refSrc, 'common/pathUtils')] = path.join(bridgeDir, 'shim-pathUtils.ts');
+}
+
 // symbolNameUtils is pure string predicates, so the shim needs nothing else.
 if (testFile === 'symbolNameUtils.test.ts') {
     testOnlyAliases[path.join(refSrc, 'analyzer/symbolNameUtils')] = path.join(
