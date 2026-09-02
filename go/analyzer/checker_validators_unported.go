@@ -98,10 +98,6 @@ func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool)
 	c.noteUnported("checker.validateExceptionType")
 }
 
-func (c *Checker) checkBinaryOperation(_ *parser.BinaryOperationNode) {
-	c.noteUnported("checker.checkBinaryOperation")
-}
-
 func (c *Checker) validateConditionalIsBool(_ parser.ExpressionNode) {
 	c.noteUnported("checker.validateConditionalIsBool")
 }
