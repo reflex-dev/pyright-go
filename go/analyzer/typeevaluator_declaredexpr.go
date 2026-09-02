@@ -375,10 +375,45 @@ func (e *typeEvaluator) declaredTypeForTuple(
 // accessed, computes the declared type of the member -- applying descriptor
 // setter types, partial specialization, and function binding as appropriate.
 func (e *typeEvaluator) resolveDeclaredMemberType(
-	_ *Symbol, _ *ClassType, _ Type, _ bool, _ bool, _ Type,
+	symbol *Symbol,
+	classOrObjectBase *ClassType,
+	memberAccessClass Type,
+	useDescriptorSetterType bool,
+	bindFunction bool,
+	selfType Type,
 ) Type {
-	e.unported("resolveDeclaredMemberType")
-	return nil
+	declaredTypeInfo := e.getDeclaredTypeOfSymbol(symbol, nil)
+	if declaredTypeInfo == nil || declaredTypeInfo.Type == nil {
+		return nil
+	}
+	declaredType := declaredTypeInfo.Type
+
+	// The original's comment: if it's a descriptor, we need to get the setter
+	// type.
+	if useDescriptorSetterType && IsClassInstance(declaredType) {
+		setter := e.GetBoundMagicMethod(declaredType.(*ClassType), "__set__", nil, nil, nil, 0)
+		if setter != nil && IsFunction(setter) && len(setter.(*FunctionType).Shared.Parameters) >= 2 {
+			declaredType = FunctionTypeGetParamType(setter.(*FunctionType), 1)
+
+			if IsAnyOrUnknown(declaredType) {
+				return nil
+			}
+		}
+	}
+
+	if classOrObjectBase != nil {
+		if memberAccessClass != nil && IsInstantiableClass(memberAccessClass) {
+			declaredType = PartiallySpecializeType(
+				declaredType, memberAccessClass.(*ClassType), e.GetTypeClassType(), selfType)
+		}
+
+		if IsFunctionOrOverloaded(declaredType) && bindFunction {
+			declaredType = e.BindFunctionToClassOrObject(
+				classOrObjectBase, declaredType, nil, false, selfType, nil, 0)
+		}
+	}
+
+	return declaredType
 }
 
 // getTypeOfIndexedTypedDict corresponds to the typedDicts.ts function of the
