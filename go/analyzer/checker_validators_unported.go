@@ -84,15 +84,6 @@ func (c *Checker) validateEnumClassOverride(_ *parser.ClassNode, _ *ClassType) {
  * The per-function validators.
  */
 
-// validateFunctionParams stands in for the original's long parameter-checking
-// block inside visitFunction: unknown and missing parameter types, keyword names
-// after a `*args: P.args`, and the per-method checks.
-func (c *Checker) validateFunctionParams(
-	_ *parser.FunctionNode, _ *FunctionTypeResult, _ parser.ParseNode,
-) {
-	c.noteUnported("checker.validateFunctionParams")
-}
-
 func (c *Checker) validateFunctionTypeVarUsage(_ *parser.FunctionNode, _ *FunctionTypeResult) {
 	c.noteUnported("checker.validateFunctionTypeVarUsage")
 }
@@ -184,4 +175,8 @@ func (c *Checker) validateNonlocalTypeParam(_ *parser.NameNode) {
 
 func (c *Checker) reportUnusedExceptStatements(_ *parser.TryNode) {
 	c.noteUnported("checker.reportUnusedExceptStatements")
+}
+
+func (c *Checker) validateMethod(_ *parser.FunctionNode, _ *FunctionType, _ parser.ParseNode) {
+	c.noteUnported("checker.validateMethod")
 }
