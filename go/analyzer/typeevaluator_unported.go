@@ -157,19 +157,9 @@ func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classTy
 	e.unported("ValidateInitSubclassArgs")
 }
 
-func (e *typeEvaluator) IsNodeReachable(node parser.ParseNode, sourceNode parser.ParseNode) bool {
-	e.unported("IsNodeReachable")
-	return false
-}
-
 func (e *typeEvaluator) IsAfterNodeReachable(node parser.ParseNode) bool {
 	e.unported("IsAfterNodeReachable")
 	return false
-}
-
-func (e *typeEvaluator) GetNodeReachability(node parser.ParseNode, sourceNode parser.ParseNode) Reachability {
-	e.unported("GetNodeReachability")
-	return ReachabilityReachable
 }
 
 func (e *typeEvaluator) GetAfterNodeReachability(node parser.ParseNode) Reachability {

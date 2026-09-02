@@ -123,12 +123,15 @@ types 19,652 names into 1,835 distinct types, with all three non-type outcomes
 exercised (15 unreachable, 921 untyped, 0 thrown) — so no branch of the dump is
 dead code.
 
-Over the whole corpus the baseline is:
+Over the whole corpus:
 
-    node sets: 1280 of 1343 files agree on which names to type
-    types: 0 of 88487 names match
+| | node sets | names matched |
+| --- | --- | --- |
+| no evaluator | 1280 of 1343 | 0 of 88,487 |
+| evaluator installed, reachability ported | 1280 of 1343 | **158** of 88,487 |
 
-88,487 names is the denominator Stage D climbs. The 63 files whose node sets
+All 158 were computed rather than inherited from an Unknown that happened to
+agree. 88,487 is the denominator Stage D climbs. The 63 files whose node sets
 disagree are the ones below.
 
 ### It found something on the first run
@@ -176,7 +179,7 @@ had any reason to assume.
 | --- | --- | --- | --- |
 | 1 | `typeEvaluatorTypes.ts` — the 109-member interface | 900 | done |
 | 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | state layer done |
-| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker done |
+| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker + reachability done |
 | 4 | the class-shape satellites, lit one at a time | ~11k | |
 | 5 | `checker.ts` | 7,859 | |
 
@@ -201,10 +204,18 @@ measured over the corpus rather than guessed at from reading the source: which
 interface members the sample files actually reach, and how often.
 
 It is a **frontier**, not a full map. The first stub a name touches
-short-circuits the rest, so today every name reports one entry —
-`IsNodeReachable`, 2,965 hits over 60 files — and the next layer appears when
-that one lands. That is the right shape for the work: it always names the thing
-to port next.
+short-circuits the rest, so before reachability landed the whole corpus reported
+one entry, `IsNodeReachable`. Porting it revealed the next layer:
+
+    unported evaluator paths reached: 5 distinct, 235235 hits
+         124978  codeFlowEngine.isCallNoReturn
+          87827  GetType
+          21602  LookUpSymbolRecursive
+            758  EvaluateTypeForSubnode
+             70  codeFlowEngine.isExceptionContextManager
+
+That is the right shape for the work: it always names the thing to port next,
+ranked by how much of the corpus is waiting on it.
 
 This also closed a hazard the moment it opened. The unported `IsNodeReachable`
 answers `false`, which renders as `<unreachable>` — a marker the TypeScript side
@@ -214,6 +225,30 @@ differential is now bracketed by the counter, and an answer that touched a stub
 is reported as `<unported>`, which can never match. The type scoreboard is split
 the same way the gate's is: matches that are a real type, against matches that
 are `Unknown` or a marker.
+
+### Reachability
+
+`getFlowNodeReachability` is ported — the first evaluator member answered for
+real. It was first because the frontier named it, not because it was planned.
+
+Most of reachability is a graph walk over the flow graph the binder already
+built, which the binder differential says matches pyright's over the whole
+corpus. Four cases are not, and call back into the evaluator: the pattern-narrow
+node, a condition whose reference has a declared type, a call that might return
+`NoReturn`, and a context manager that might suppress exceptions. Those reach
+stubs today and count themselves, which is how `isCallNoReturn` became the top
+of the frontier.
+
+One thing was transliterated rather than corrected. The recursive walk reads its
+cache with the id of the *entry* node, not the node currently being visited:
+
+    const cacheEntry = reachabilityCache.get(flowNode.id);   // not curFlowNode
+
+Inside one walk that is a check on where the walk started rather than on where
+it is. It looks like a slip, but changing it changes which results get reused
+and therefore which answers come out, so it is preserved with a comment. It is
+not in UPSTREAM-BUGS.md: without tracing pyright's behaviour on a case where the
+two differ, "looks wrong" is not a defect report.
 
 ### Why there is no smaller step
 

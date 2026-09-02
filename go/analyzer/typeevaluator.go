@@ -37,6 +37,8 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/microsoft/pyright/go/localization"
+
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/parser"
 )
@@ -271,6 +273,10 @@ type typeEvaluator struct {
 	// a Partial<PrefetchedTypes>, so individual fields may still be unset.
 	prefetched *PrefetchedTypes
 
+	// codeFlowReachability holds getFlowNodeReachability's caches, which in the
+	// original are locals of createCodeFlowEngine.
+	codeFlowReachability *codeFlowReachability
+
 	// unportedCounts has no counterpart in the original; see unported below.
 	unportedCounts *common.OrderedMap[string, int]
 	unportedTotal  int
@@ -307,6 +313,7 @@ func NewTypeEvaluator(importLookup ImportLookup, evaluatorOptions EvaluatorOptio
 		importLookup:           importLookup,
 		evaluatorOptions:       evaluatorOptions,
 		speculativeTypeTracker: NewSpeculativeTypeTracker(),
+		codeFlowReachability:   newCodeFlowReachability(),
 	}
 	e.resetCaches()
 	return e
@@ -710,6 +717,11 @@ func expectedTypeWantsTypeForm(expectedType Type) bool {
  * the source. See typeevaluator_unported.go.
  */
 
+// noteUnported is unported under the name other files in the package use to
+// reach it through an interface assertion, so that code which does not hold a
+// *typeEvaluator can still record what it could not do.
+func (e *typeEvaluator) noteUnported(what string) { e.unported(what) }
+
 // unported records that evaluation reached a path typeEvaluator.ts takes and
 // this port does not implement yet.
 func (e *typeEvaluator) unported(what string) {
@@ -745,3 +757,72 @@ func (e *typeEvaluator) UnportedTotal() int { return e.unportedTotal }
 // Compile-time check that the evaluator satisfies the interface it is handed
 // through. Nothing constructs this value.
 var _ TypeEvaluator = (*typeEvaluator)(nil)
+
+/*
+ * Reachability.
+ *
+ * The first evaluator members answered for real rather than stubbed. See
+ * codeflowengine_reachability.go.
+ */
+
+// checkCodeFlowTooComplex corresponds to the function of the same name. It
+// reports a diagnostic as a side effect, which is why it is not a predicate on
+// the node alone.
+func (e *typeEvaluator) checkCodeFlowTooComplex(node parser.ParseNode) bool {
+	var scopeNode parser.ParseNode
+	if node.GetNodeType() == parser.ParseNodeTypeFunction {
+		scopeNode = node
+	} else {
+		scopeNode = GetExecutionScopeNode(node)
+	}
+
+	codeComplexity := GetCodeFlowComplexity(scopeNode.(ScopedNode))
+
+	if codeComplexity > MaxCodeComplexity {
+		var errorRange common.TextRange = scopeNode.NodeBase().TextRange
+		if fn, ok := scopeNode.(*parser.FunctionNode); ok {
+			errorRange = fn.D.Name.NodeBase().TextRange
+		} else if scopeNode.GetNodeType() == parser.ParseNodeTypeModule {
+			errorRange = common.TextRange{Start: 0, Length: 0}
+		}
+
+		fileInfo := GetFileInfo(node)
+		e.AddDiagnosticForTextRange(
+			fileInfo,
+			DiagnosticRuleReportGeneralTypeIssues,
+			localization.LocMessage.CodeTooComplexToAnalyze(),
+			errorRange,
+		)
+
+		return true
+	}
+
+	return false
+}
+
+// IsNodeReachable corresponds to isNodeReachable.
+func (e *typeEvaluator) IsNodeReachable(node parser.ParseNode, sourceNode parser.ParseNode) bool {
+	return e.GetNodeReachability(node, sourceNode) == ReachabilityReachable
+}
+
+// GetNodeReachability corresponds to getNodeReachability.
+func (e *typeEvaluator) GetNodeReachability(node parser.ParseNode, sourceNode parser.ParseNode) Reachability {
+	if e.checkCodeFlowTooComplex(node) {
+		return ReachabilityReachable
+	}
+
+	flowNode := GetFlowNode(node)
+	if flowNode == nil {
+		if node.NodeBase().Parent != nil {
+			return e.GetNodeReachability(node.NodeBase().Parent, sourceNode)
+		}
+		return ReachabilityUnreachableStructural
+	}
+
+	var sourceFlowNode FlowNode
+	if sourceNode != nil {
+		sourceFlowNode = GetFlowNode(sourceNode)
+	}
+
+	return e.codeFlowReachability.GetFlowNodeReachability(e, flowNode, sourceFlowNode, false)
+}

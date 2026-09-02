@@ -291,10 +291,12 @@ if (goLines.length !== files.length) {
     process.exit(1);
 }
 
-// Matches are split by whether the port actually produced a type. An
+// Matches are split by whether the port actually computed the answer. An
 // implementation that answers Unknown everywhere matches pyright wherever
 // pyright also says Unknown, which is a real match for a wrong reason -- the
-// same hazard as a test that passes by reporting nothing.
+// same hazard as a test that passes by reporting nothing. "<unreachable>" and
+// "<none>" are on the computed side: reaching them means the reachability walk
+// or the evaluator actually ran and said so.
 const trivialTypes = new Set(['Unknown', '<unported>', '<no evaluator>']);
 let nodesMatchedReal = 0;
 let nodesMatchedTrivial = 0;
@@ -393,7 +395,7 @@ console.log(
 console.log(`types: ${nodesMatched} of ${total} names match`);
 if (nodesMatched > 0) {
     console.log(
-        `  of those, ${nodesMatchedReal} are a real type and ${nodesMatchedTrivial} are Unknown or a marker`
+        `  of those, ${nodesMatchedReal} were computed and ${nodesMatchedTrivial} are Unknown or unported`
     );
 }
 
