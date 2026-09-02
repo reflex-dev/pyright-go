@@ -692,3 +692,67 @@ whose absence silently degrades the most already-landed code, across member
 lookup, protocol matching, multiple-inheritance variance and dataclass entry
 inheritance. Everything it feeds is currently answering from empty data without
 reporting anything unusual.
+
+## The keystone landed, and what it was worth
+
+`dataClasses.ts` is ported: `synthesizeDataClassMethods`,
+`synthesizeDataClassSlots`, the behavior-override chain, the converter and
+field-specifier helpers, plus `namedTuples.updateNamedTupleBaseClass`. With it,
+`Shared.DataClassBehaviors`, `Shared.DataClassEntries` and
+`Shared.NamedTupleEntries` all have writers for the first time.
+
+The gate went 920 → 975 across that work. The number is worth stating because it
+was not obvious in advance: none of the readers of those three fields were
+broken, none were unfaithful, and none reported an error. They answered from
+empty data and produced *nothing*, which reads exactly like a check that passes.
+
+### The dependency check needs a second half
+
+The rule above — grep a target's dependencies for `unported(` — was run before
+porting `_validateInstanceVariableInitialization` and it passed. The only
+evaluator call in that function is `addDiagnostic`. It still could not be landed,
+because it reads `Shared.NamedTupleEntries` through
+`ClassTypeHasNamedTupleEntry`, a faithful two-line accessor with nothing stubbed
+about it. Nothing wrote what it read.
+
+So the check has two halves, and the second is the one that bites:
+
+1. Grep the target's dependencies for `unported(`.
+2. For each `Shared.X` / `Priv.X` field the target reads, grep `\.X = ` and
+   confirm something in the Go tree assigns it.
+
+This is the fifth member of the family, and the worst-behaved of the five,
+because it fails at *every* reader simultaneously and none of them fail loudly:
+
+- **unwritten fields** — a field read by ported code that only unported code
+  assigns. Every reader answers from the zero value at once.
+
+A caveat on the audit itself: a grep for `\.X = ` under-reports writes made
+through a pointer alias, e.g. `literalMaps := &unionType.Priv.LiteralInstances`.
+A field with zero apparent writes is worth confirming by hand before concluding
+it has none.
+
+### Lazy conditional arms
+
+A sixth hazard, found by the corpus sweep in this same batch and mine rather than
+the original's. At `typeevaluator_override.go:592` a ternary had been rewritten as
+a variable plus an `if`:
+
+```go
+targetParamType := overrideParamDetails.Params[*overrideParamDetails.KwargsIndex].Type
+if overrideParamInfo != nil {
+    targetParamType = overrideParamInfo.Type
+}
+```
+
+The original is `overrideParamInfo?.type` with a fallback, and JavaScript never
+evaluates the fallback when the first arm is present. Go evaluates both. Fourteen
+files panicked on the nil `KwargsIndex`.
+
+Rewriting `a ?? b` or `x ? a : b` as a statement is only faithful when the
+discarded arm cannot fault. A `!` non-null assertion inside the untaken arm — as
+here, `kwargsIndex!` — is the original stating outright that it can.
+
+Neither this nor the sibling bug in the same batch (`&common.OrderedSet[T]{}`
+leaves the inner map nil; the constructor exists for a reason) appeared in the
+60-file sample. The whole-corpus sweep found both.
