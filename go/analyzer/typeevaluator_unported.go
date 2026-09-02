@@ -29,21 +29,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (e *typeEvaluator) GetType(node parser.ExpressionNode) Type {
-	e.unported("GetType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetTypeResult(node parser.ExpressionNode) *TypeResult {
-	e.unported("GetTypeResult")
-	return nil
-}
-
-func (e *typeEvaluator) GetTypeResultForDecorator(node *parser.DecoratorNode) *TypeResult {
-	e.unported("GetTypeResultForDecorator")
-	return nil
-}
-
 func (e *typeEvaluator) GetCachedType(node parser.ExpressionNode) Type {
 	e.unported("GetCachedType")
 	return UnknownTypeCreate(false)
