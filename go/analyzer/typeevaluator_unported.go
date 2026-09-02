@@ -57,7 +57,7 @@ func (e *typeEvaluator) ValidateOverloadedArgTypes(errorNode parser.ExpressionNo
 }
 
 func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classType *ClassType) {
-	e.unported("ValidateInitSubclassArgs")
+	e.validateInitSubclassArgs(node, classType)
 }
 
 func (e *typeEvaluator) GetDeclInfoForStringNode(node *parser.StringNode) *SymbolDeclInfo {
