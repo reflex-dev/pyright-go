@@ -489,3 +489,39 @@ lines sit on top of it.
 Evaluation order is observable through the type caches, so loops get
 transliterated literally, and the recursion and inference limits get ported as
 constants rather than as judgement.
+
+## The gate runs again, and it has a number
+
+For most of Stage D the gate (`make bridge-evaluator-tests`, pyright's own 1,279
+test cases) could not be run to completion. One sample file --
+`tests/samples/solverHigherOrder3.py`, whose subject is a generic function
+passed to itself -- made the analyzer spin at 100% CPU and 8 GB of resident
+memory indefinitely. A single hanging file blocks the whole suite, so there was
+no gate number at all, only the per-node differential.
+
+Bisecting showed the hang predated the typeGuards work by several commits. The
+cause is documented as upstream bug #16: `solveTypeVarRecursive` can produce a
+solution that maps a TypeVar to a type mentioning that same TypeVar, because the
+occurs check in `widenLowerBound` runs when the *bound* is recorded and the cycle
+is created later, when dependent solutions are substituted in. Expanding such a
+solution re-enters the TypeVar at every nesting level until the recursion cap:
+finite, but billions of transformer calls.
+
+Two lessons, both about instruments rather than about the port:
+
+**A differential that samples cannot find a hang.** `make bridge-types
+TYPES_SAMPLE=60` ran green throughout, because the corpus is sorted and the
+hanging file sorts past the sample. The cheapest thing that would have caught it
+is what eventually did: feed every corpus file to the server one at a time under
+`timeout`, and report the ones that do not answer. That probe takes a few
+minutes and should be run before every gate attempt, not after a gate stalls.
+
+**`SIGQUIT` is the first thing to reach for, not the last.** `timeout -s QUIT`
+on the Go server prints every goroutine's stack. That named the offending
+subsystem in one command. An hour was spent watching a process consume CPU
+before anyone asked it what it was doing.
+
+The gate now completes: **453 of 1,279 passing.** That is the first honest
+Stage D number. It is low, and the differential explains why -- the evaluator
+answers most *types* correctly while the checker that turns those types into
+diagnostics is barely started, and the gate asserts only on diagnostics.
