@@ -189,13 +189,3 @@ func (e *typeEvaluator) skipMemberPartialUnknownCheck(
 	parent := argNode.NodeBase().Parent
 	return parent != nil && parent.GetNodeType() == parser.ParseNodeTypeCall
 }
-
-// getTypeOfMemberAccessWithBaseType corresponds to the function of the same
-// name: the member lookup itself, which dispatches on the base type's category
-// and handles descriptors, properties, __getattr__ and metaclass access.
-func (e *typeEvaluator) getTypeOfMemberAccessWithBaseType(
-	_ *parser.MemberAccessNode, baseTypeResult *TypeResult, _ *EvaluatorUsage, _ EvalFlags,
-) *TypeResult {
-	e.unported("getTypeOfMemberAccessWithBaseType")
-	return &TypeResult{Type: UnknownTypeCreate(false), IsIncomplete: baseTypeResult.IsIncomplete}
-}
