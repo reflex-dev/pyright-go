@@ -160,14 +160,6 @@ func (e *typeEvaluator) applyFunctionDecorators(
  * The five things function creation reaches that are separate units of work.
  */
 
-// getTypeOfFunctionPredecorated corresponds to the function of the same name:
-// the shape of the `def` itself. The original's comment: evaluates the type of a
-// "def" statement without applying an async modifier or any decorators.
-func (e *typeEvaluator) getTypeOfFunctionPredecorated(_ *parser.FunctionNode) *FunctionType {
-	e.unported("getTypeOfFunctionPredecorated")
-	return nil
-}
-
 // createAsyncFunction corresponds to the function of the same name. The
 // original's comment: clone the original function and replace its return type
 // with an Awaitable[<returnType>], marking the new function as no longer async.
@@ -196,9 +188,4 @@ func (e *typeEvaluator) applyFunctionDecorator(
 func (e *typeEvaluator) addOverloadsToFunctionType(_ *parser.FunctionNode, t Type) Type {
 	e.unported("addOverloadsToFunctionType")
 	return t
-}
-
-// markParamAccessed corresponds to the function of the same name.
-func (e *typeEvaluator) markParamAccessed(_ *parser.ParameterNode) {
-	e.unported("markParamAccessed")
 }
