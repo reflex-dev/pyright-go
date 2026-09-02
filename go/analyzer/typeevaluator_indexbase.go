@@ -647,15 +647,3 @@ func negateIntLiteral(value LiteralValue) LiteralValue {
 	}
 	return value
 }
-
-// getTypeOfIndexedObjectOrClass corresponds to the function of the same name:
-// the subscript side of the fork, which goes to __getitem__ and friends.
-func (e *typeEvaluator) getTypeOfIndexedObjectOrClass(
-	_ *parser.IndexNode,
-	_ *ClassType,
-	_ Type,
-	_ *EvaluatorUsage,
-) *TypeResult {
-	e.unported("getTypeOfIndexedObjectOrClass")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}

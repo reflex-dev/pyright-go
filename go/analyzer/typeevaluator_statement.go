@@ -157,19 +157,10 @@ func (e *typeEvaluator) evaluateComprehensionForNode(curNode *parser.Comprehensi
  */
 
 // evaluateTypesForForStatement corresponds to the function of the same name.
-func (e *typeEvaluator) evaluateTypesForForStatement(_ *parser.ForNode) {
-	e.unported("evaluateTypesForForStatement")
-}
 
 // evaluateTypesForExceptStatement corresponds to the function of the same name.
-func (e *typeEvaluator) evaluateTypesForExceptStatement(_ *parser.ExceptNode) {
-	e.unported("evaluateTypesForExceptStatement")
-}
 
 // evaluateTypesForWithStatement corresponds to the function of the same name.
-func (e *typeEvaluator) evaluateTypesForWithStatement(_ *parser.WithItemNode) {
-	e.unported("evaluateTypesForWithStatement")
-}
 
 // evaluateComprehensionForIf corresponds to the function of the same name. Its
 // parameter is the `ComprehensionForNode | ComprehensionIfNode` union, which is
@@ -177,9 +168,6 @@ func (e *typeEvaluator) evaluateTypesForWithStatement(_ *parser.WithItemNode) {
 // evaluateTypesForImportFrom corresponds to the function of the same name. The
 // other two import arms already had stubs from the context walk; this one is
 // reached only from here.
-func (e *typeEvaluator) evaluateTypesForImportFrom(_ *parser.ImportFromNode) {
-	e.unported("evaluateTypesForImportFrom")
-}
 
 // evaluateTypesForCaseStatement corresponds to the function of the same name.
 func (e *typeEvaluator) evaluateTypesForCaseStatement(_ *parser.CaseNode) {
