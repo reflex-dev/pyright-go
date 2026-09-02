@@ -170,17 +170,6 @@ func (e *typeEvaluator) assignClassWithTypeArgs(
  * The two type-argument comparisons this reaches.
  */
 
-// assignTypeArgs corresponds to the function of the same name: compares a
-// specialized destination's type arguments against the source's, honoring each
-// parameter's variance.
-func (e *typeEvaluator) assignTypeArgs(
-	_ *ClassType, _ *ClassType, _ *common.DiagnosticAddendum,
-	_ *ConstraintTracker, _ AssignTypeFlags, _ int,
-) bool {
-	e.unported("assignTypeArgs")
-	return false
-}
-
 // assignTupleTypeArgs corresponds to the tuples.ts function of the same name,
 // which handles the variable-length matching a tuple requires.
 func (e *typeEvaluator) assignTupleTypeArgs(
