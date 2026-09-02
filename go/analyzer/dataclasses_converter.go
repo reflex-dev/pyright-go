@@ -260,19 +260,10 @@ func getConverterInputType(
 }
 
 // createFunctionFromConstructorForConverter reaches constructors.ts
-// createFunctionFromConstructor, which is still on the frontier. Until it
-// lands, a converter written as a *class* rather than a function falls through
-// to the "return fieldType" path, which is the same answer the original gives
-// for a class it cannot turn into a callable. That narrows the divergence to
-// attrs-style `converter=SomeClass`; `converter=some_func` is unaffected.
+// createFunctionFromConstructor, which handles the case of a converter written
+// as a class rather than a function.
 func createFunctionFromConstructorForConverter(evaluator TypeEvaluator, classType *ClassType) Type {
-	if e, ok := evaluator.(interface {
-		createFunctionFromConstructor(*ClassType, Type, int) Type
-	}); ok {
-		return e.createFunctionFromConstructor(classType, nil, 0)
-	}
-	noteEvaluatorUnported(evaluator, "constructors.createFunctionFromConstructor")
-	return nil
+	return CreateFunctionFromConstructor(evaluator, classType, nil, 0)
 }
 
 // getConverterAsFunction corresponds to the function of the same name.

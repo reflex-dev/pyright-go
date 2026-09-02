@@ -761,17 +761,3 @@ func isDefaultNewMethod(newMethod Type) bool {
 func HasConstructorTransform(classType *ClassType) bool {
 	return classType.Shared.FullName == "functools.partial"
 }
-
-// ApplyConstructorTransform corresponds to the constructorTransform.ts function
-// of the same name, which rewrites the result of `functools.partial(...)` into a
-// callable with the bound arguments removed.
-func ApplyConstructorTransform(
-	evaluator TypeEvaluator,
-	_ parser.ExpressionNode,
-	_ []*Arg,
-	_ *ClassType,
-	_ *CallResult,
-) *CallResult {
-	noteEvaluatorUnported(evaluator, "constructorTransform.applyConstructorTransform")
-	return nil
-}

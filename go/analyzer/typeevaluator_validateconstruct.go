@@ -179,7 +179,7 @@ func (e *typeEvaluator) validateCallForBuiltInClass(
 		return result, true
 
 	case "NewType":
-		return &CallResult{ReturnType: e.createNewType(errorNode, argList)}, true
+		return &CallResult{ReturnType: classTypeOrNil(e.createNewType(errorNode, argList))}, true
 
 	case "TypedDict":
 		return &CallResult{ReturnType: CreateTypedDictType(e, errorNode, expandedCallType, argList)}, true

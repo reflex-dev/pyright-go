@@ -13,9 +13,7 @@
 
 package analyzer
 
-import (
-	"github.com/microsoft/pyright/go/parser"
-)
+import ()
 
 func noteEvaluatorUnported(evaluator TypeEvaluator, name string) {
 	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
@@ -58,9 +56,3 @@ func IsEnumClassWithMembers(evaluator TypeEvaluator, classType *ClassType) bool 
  */
 
 // createTypeAliasType corresponds to the function of the same name: the PEP 695
-
-// createNewType corresponds to the function of the same name.
-func (e *typeEvaluator) createNewType(_ parser.ExpressionNode, _ []*Arg) Type {
-	e.unported("createNewType")
-	return UnknownTypeCreate(false)
-}

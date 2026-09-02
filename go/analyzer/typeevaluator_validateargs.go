@@ -80,7 +80,10 @@ func (e *typeEvaluator) validateCallForFunction(
 	// The original's comment: handle the NewType specially, replacing the normal
 	// return type.
 	if FunctionTypeIsBuiltIn(fnType, "NewType") {
-		return &CallResult{ReturnType: e.createNewType(errorNode, argList)}
+		// createNewType returns a concrete *ClassType, so a nil result must be
+		// widened explicitly -- assigning it straight into the Type field would
+		// box a typed nil that every IsNever/IsClass check then dereferences.
+		return &CallResult{ReturnType: classTypeOrNil(e.createNewType(errorNode, argList))}
 	}
 
 	functionResult := e.validateArgs(errorNode, argList,
