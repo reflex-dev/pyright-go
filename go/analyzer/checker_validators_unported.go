@@ -24,28 +24,12 @@ func (c *Checker) validateProtocolTypeParamVariance(_ *parser.ClassNode, _ *Clas
 	c.noteUnported("checker.validateProtocolTypeParamVariance")
 }
 
-func (c *Checker) validateSlotsClassVarConflict(_ *ClassType) {
-	c.noteUnported("checker.validateSlotsClassVarConflict")
-}
-
 func (c *Checker) validateBaseClassOverrides(_ *ClassType) {
 	c.noteUnported("checker.validateBaseClassOverrides")
 }
 
 func (c *Checker) validateTypedDictOverrides(_ *ClassType) {
 	c.noteUnported("checker.validateTypedDictOverrides")
-}
-
-func (c *Checker) validateOverloadDecoratorConsistency(_ *ClassType) {
-	c.noteUnported("checker.validateOverloadDecoratorConsistency")
-}
-
-func (c *Checker) validateDisjointBaseClass(_ *ClassType, _ *parser.NameNode) {
-	c.noteUnported("checker.validateDisjointBaseClass")
-}
-
-func (c *Checker) validateMultipleInheritanceBaseClasses(_ *ClassType, _ *parser.NameNode) {
-	c.noteUnported("checker.validateMultipleInheritanceBaseClasses")
 }
 
 func (c *Checker) validateMultipleInheritanceCompatibility(_ *ClassType, _ *parser.NameNode) {
@@ -58,10 +42,6 @@ func (c *Checker) validateConstructorConsistency(_ *ClassType, _ *parser.NameNod
 
 func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {
 	c.noteUnported("checker.validateInstanceVariableInitialization")
-}
-
-func (c *Checker) validateFinalClassNotAbstract(_ *ClassType, _ *parser.ClassNode) {
-	c.noteUnported("checker.validateFinalClassNotAbstract")
 }
 
 func (c *Checker) validateDataClassPostInit(_ *ClassType) {
