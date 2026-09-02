@@ -284,17 +284,6 @@ func getSpeculativeNodeForCall(errorNode parser.ExpressionNode) parser.ParseNode
  * The four category validators this reaches.
  */
 
-// validateCallForFunction corresponds to the function of the same name, which
-// handles the namedtuple and NewType special cases, runs validateArgs, and then
-// applies the function transforms.
-func (e *typeEvaluator) validateCallForFunction(
-	_ parser.ExpressionNode, _ []*Arg, _ *FunctionType, _ bool,
-	_ *ConstraintTracker, _ bool, _ *InferenceContext,
-) *CallResult {
-	e.unported("validateCallForFunction")
-	return &CallResult{ArgumentErrors: true}
-}
-
 // validateCallForOverloaded corresponds to the function of the same name, which
 // tries each overload in order and reports against the best match when none fits.
 func (e *typeEvaluator) validateCallForOverloaded(
