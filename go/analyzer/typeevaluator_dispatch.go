@@ -20,6 +20,7 @@
 package analyzer
 
 import (
+	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -144,10 +145,22 @@ func (e *typeEvaluator) getTypeOfExpression(
 		e.addExpectedTypeCacheEntry(node, inferenceContext.ExpectedType)
 
 		if !typeResult.IsIncomplete && typeResult.ExpectedTypeDiagAddendum == nil {
-			// The assignability check needs assignType. Until it exists the
-			// expected-type mismatch is not detected, which loses a diagnostic
-			// rather than inventing one; it counts itself either way.
-			e.unported("getTypeOfExpression.expectedTypeCheck")
+			diag := common.NewDiagnosticAddendum()
+
+			// The original's comment: make sure the resulting type is assignable
+			// to the expected type.
+			if !e.AssignType(inferenceContext.ExpectedType, typeResult.Type, diag, nil,
+				AssignTypeFlagsDefault, 0) {
+				// The original's comment: set the typeErrors to true, but first
+				// make a copy of the type result because the (non-error) version
+				// may already be cached.
+				copied := *typeResult
+				copied.TypeErrors = true
+				copied.ExpectedTypeDiagAddendum = diag
+				typeResult = &copied
+
+				diag.AddTextRange(node.NodeBase().TextRange)
+			}
 		}
 	}
 
@@ -347,8 +360,28 @@ func (e *typeEvaluator) useSignatureTracker(node *parser.CallNode, callback func
 	return result
 }
 
-func (e *typeEvaluator) addExpectedTypeCacheEntry(_ parser.ParseNode, _ Type) {
-	e.unported("addExpectedTypeCacheEntry")
+func (e *typeEvaluator) addExpectedTypeCacheEntry(node parser.ParseNode, expectedType Type) {
+	cached, ok := e.expectedTypeCache.Get(node.NodeBase().ID)
+	if !ok {
+		e.expectedTypeCache.Set(node.NodeBase().ID, &ExpectedTypeCacheEntry{
+			Type:       expectedType,
+			Candidates: []Type{expectedType},
+		})
+		return
+	}
+
+	// The entry is mutated in place, as the original's is. The candidate list
+	// accumulates every expected type this node has been evaluated against, and
+	// is what getExpectedTypeForNode later reads to offer alternatives; only the
+	// most recent one is the current expected type.
+	cached.Type = expectedType
+
+	for _, candidate := range cached.Candidates {
+		if IsTypeSame(candidate, expectedType, TypeSameOptions{}, 0) {
+			return
+		}
+	}
+	cached.Candidates = append(cached.Candidates, expectedType)
 }
 
 // boolValue reads a `boolean | undefined` field the way JavaScript truthiness
