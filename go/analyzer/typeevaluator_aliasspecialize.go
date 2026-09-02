@@ -169,7 +169,7 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 		if (flags & EvalFlagsEnforceVarianceConsistency) != 0 {
 			usageVariances := e.inferVarianceForTypeAlias(aliasBaseType)
 			if index < len(usageVariances) {
-				if !e.isVarianceOfTypeArgCompatible(typeArgType, usageVariances[index]) {
+				if !IsVarianceOfTypeArgCompatible(typeArgType, usageVariances[index]) {
 					messageDiag := diag.CreateAddendum()
 					messageDiag.AddMessage(localization.LocAddendum.VarianceMismatchForTypeAlias().Format(
 						e.PrintType(typeArgType, nil),

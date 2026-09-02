@@ -589,7 +589,7 @@ func (e *typeEvaluator) checkClassTypeArgsAgainstParams(
 		if adjustedTypeArgType != nil && (flags&EvalFlagsEnforceVarianceConsistency) != 0 {
 			declaredVariance := typeParams[index].Shared.DeclaredVariance
 
-			if !e.isVarianceOfTypeArgCompatible(adjustedTypeArgType, declaredVariance) {
+			if !IsVarianceOfTypeArgCompatible(adjustedTypeArgType, declaredVariance) {
 				diag.AddMessage(localization.LocAddendum.VarianceMismatchForClass().Format(
 					e.PrintType(adjustedTypeArgType, nil),
 					classType.Shared.Name,
@@ -709,22 +709,4 @@ func (e *typeEvaluator) createTypeFormType(c *ClassType, _ parser.ExpressionNode
 func (e *typeEvaluator) explodeGenericClass(c *ClassType) Type {
 	e.unported("explodeGenericClass")
 	return c
-}
-
-// applyTypeArgToTypeVar corresponds to the function of the same name: it checks
-// a supplied type argument against its type parameter's bound or constraints. It
-// returns nil where the original returns undefined, meaning "not assignable".
-func (e *typeEvaluator) applyTypeArgToTypeVar(
-	_ *TypeVarType,
-	typeArgType Type,
-	_ *common.DiagnosticAddendum,
-) Type {
-	e.unported("applyTypeArgToTypeVar")
-	return typeArgType
-}
-
-// isVarianceOfTypeArgCompatible corresponds to the function of the same name.
-func (e *typeEvaluator) isVarianceOfTypeArgCompatible(_ Type, _ Variance) bool {
-	e.unported("isVarianceOfTypeArgCompatible")
-	return true
 }
