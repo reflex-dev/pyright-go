@@ -45,11 +45,13 @@ type DependentType struct {
 	DependentType       Type
 }
 
-// TypeResult corresponds to the interface of the same name.
-type TypeResult struct {
-	Type         Type
-	IsIncomplete bool
-}
+// typeCacheUtils.ts declares its own `TypeResult` -- `{ type, isIncomplete? }`
+// -- which is a structural subset of the evaluator's, so in TypeScript the
+// evaluator hands its own results straight to the cache and the same object
+// satisfies both. Two types of the same name cannot coexist in one Go package,
+// and duplicating the smaller one would mean copying at the boundary that the
+// original does not do, so this file uses the evaluator's TypeResult. See
+// typeevaluatortypes.go.
 
 // ContextualTypeCacheEntry corresponds to the interface of the same name. The
 // TypeScript uses structural typing and `T extends ContextualTypeCacheEntry`;

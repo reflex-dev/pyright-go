@@ -49,6 +49,10 @@ const testFiles = (args.test || 'tokenizer.test.ts').split(',').map((name) => na
 const testFile = testFiles[0];
 const testFilePaths = testFiles.map((name) => path.join(refSrc, 'tests', name));
 
+// The Stage D gate. Only that suite reports the substantive/vacuous split,
+// because only its shim knows what each test expected.
+const isEvaluatorGate = testFiles.some((name) => /^(typeEvaluator\d*|checker)\.test\.ts$/.test(name));
+
 for (const [label, target] of [
     ['--ref', refSrc],
     ['--server', serverPath],
@@ -218,7 +222,7 @@ export function report() {
             tests.length +
             ' total'
     );
-    if (substantivePasses + vacuousPasses > 0 && vacuousPasses > 0) {
+    if (${isEvaluatorGate}) {
         console.log(
             '  of the passes, ' +
                 substantivePasses +
@@ -289,12 +293,10 @@ if (testFile === 'pathUtils.test.ts') {
     testOnlyAliases[path.join(refSrc, 'common/pathUtils')] = path.join(bridgeDir, 'shim-pathUtils.ts');
 }
 
-let isEvaluatorGate = false;
-
 // The Stage D gate. typeEvaluator1-8.test.ts and checker.test.ts reach the
 // analyzer only through tests/testUtils, so aliasing that one module points the
 // whole suite at the Go port; see shim-evaluatorTestUtils.ts.
-if (testFiles.some((name) => /^(typeEvaluator\d*|checker)\.test\.ts$/.test(name))) {
+if (isEvaluatorGate) {
     testOnlyAliases[path.join(refSrc, 'tests/testUtils')] = path.join(
         bridgeDir,
         'shim-evaluatorTestUtils.ts'
@@ -316,7 +318,6 @@ if (testFiles.some((name) => /^(typeEvaluator\d*|checker)\.test\.ts$/.test(name)
         bridgeDir,
         'shim-testState.ts'
     );
-    isEvaluatorGate = true;
 }
 
 // symbolNameUtils is pure string predicates, so the shim needs nothing else.

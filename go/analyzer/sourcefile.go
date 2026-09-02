@@ -54,10 +54,10 @@ type resolveImportResult struct {
 // file IDs.
 var nextUniqueFileId = 1
 
-// TypeEvaluator stands in for analyzer/typeEvaluatorTypes.ts's 88-method
-// interface, which is Stage D. Nothing in the program loop calls a method on
-// it; it is only created, stored and handed to the checker.
-type TypeEvaluator any
+// TypeEvaluator is analyzer/typeEvaluatorTypes.ts's 88-method interface; see
+// typeevaluatortypes.go. Nothing in the program loop calls a method on it -- it
+// is only created, stored and handed to the checker -- so a nil evaluator
+// factory still leaves the loop working.
 
 // Checker stands in for analyzer/checker.ts, which is Stage D.
 type Checker interface {
