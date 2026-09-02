@@ -367,6 +367,57 @@ nil guard instead was tried first, and the corpus differential in
 
 ---
 
+## 13. `TypeshedInfoProvider`'s negative cache entries are never read
+
+`analyzer/typeshedInfoProvider.ts:53`, and the same shape at line 37.
+
+```ts
+const cached = this._typeshedSubdirectoryCache.get(key);
+if (cached !== undefined) {
+    return cached;
+}
+
+const typeshedRoot = this.getTypeshedRoot(customTypeshedPath, importLogger);
+if (!typeshedRoot) {
+    this._typeshedSubdirectoryCache.set(key, undefined);   // <-- never a hit
+    return undefined;
+}
+
+const subdir = PythonPathUtils.getTypeshedSubdirectory(typeshedRoot, isStdLib);
+if (!this._fileSystem.dirExists(subdir)) {
+    this._typeshedSubdirectoryCache.set(key, undefined);   // <-- never a hit
+    return undefined;
+}
+```
+
+The intent is visible in the two `set(key, undefined)` calls: they exist to
+record "searched, found nothing" so the answer is not recomputed. But the read
+is `cached !== undefined`, and `Map.get` returns `undefined` both for a key
+that was never set and for a key that was set to `undefined`, so a cached
+absence is indistinguishable from a miss. Every one of those entries is written
+and then never read.
+
+The consequence is not a wrong answer, it is repeated file-system work: when
+there is no typeshed root, or the `stdlib`/`stubs` subdirectory does not exist,
+`dirExists` runs on every call rather than once. `getTypeshedSubdirectory` is
+called from `_findTypeshedPath`, which the resolver reaches on every unresolved
+import — which is the case where it matters most.
+
+The fix upstream is `if (this._cache.has(key))`, or a sentinel.
+
+`getTypeshedRoot` at line 37 has the same read, but no explicit negative write:
+`_computeTypeshedRoot` returns `undefined` and it is stored by the normal
+`set(key, root)`. Same effect, arrived at less deliberately.
+
+Go port: `analyzer/typeshedinfoprovider.go`. A nil `uri.Uri` in a Go map has
+exactly the same property — a missing key and a stored nil both read as nil — so
+the behaviour carries over without any effort to reproduce it. It is recorded
+here because the *fix* would be a divergence: it changes how often the file
+system is touched, which the import logger records and which the resolver's
+parent-directory cache is layered on top of.
+
+---
+
 ## Non-bugs worth knowing about
 
 These looked wrong at first and are not:

@@ -35,7 +35,8 @@ type defaultTypeshedInfoProvider struct {
 	// `cached !== undefined`, so a cached *absence* is indistinguishable from a
 	// miss and gets recomputed every time. A nil Uri here has exactly that
 	// property, so the behaviour carries over without needing a comment at each
-	// use.
+	// use. See UPSTREAM-BUGS.md #13 -- the original writes those negative
+	// entries deliberately and then can never read them back.
 	typeshedRootCache         map[string]uri.Uri
 	typeshedSubdirectoryCache map[string]uri.Uri
 
