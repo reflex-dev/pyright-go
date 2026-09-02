@@ -144,10 +144,6 @@ func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod T
 	return false
 }
 
-func (e *typeEvaluator) AssignTypeToExpression(target parser.ExpressionNode, typeResult *TypeResult, srcExpr parser.ExpressionNode) {
-	e.unported("AssignTypeToExpression")
-}
-
 func (e *typeEvaluator) AssignClassToSelf(destType *ClassType, srcType *ClassType, assumedVariance Variance) bool {
 	e.unported("AssignClassToSelf")
 	return false

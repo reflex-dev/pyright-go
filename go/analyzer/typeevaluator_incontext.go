@@ -424,8 +424,17 @@ func leftExprOf(node parser.ParseNode) parser.ExpressionNode {
  * them, not the fact that the walk reached something unported.
  */
 
-func (e *typeEvaluator) evaluateTypesForAugmentedAssignment(_ *parser.AugmentedAssignmentNode) {
-	e.unported("evaluateTypesForAugmentedAssignment")
+// evaluateTypesForAugmentedAssignment corresponds to the function of the same
+// name.
+func (e *typeEvaluator) evaluateTypesForAugmentedAssignment(node *parser.AugmentedAssignmentNode) {
+	if e.isTypeCached(node) {
+		return
+	}
+
+	destTypeResult := e.getTypeOfAugmentedAssignment(node, nil)
+
+	noFlags := EvalFlagsNone
+	e.writeTypeCache(node, destTypeResult, &noFlags, nil, false)
 }
 
 // isClassVarAllowedForAssignmentTarget corresponds to the evaluator-local

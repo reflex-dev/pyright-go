@@ -298,9 +298,12 @@ func (e *typeEvaluator) getTypeOfUnaryOperation(
 	return GetTypeOfUnaryOperation(e, node, flags, inferenceContext)
 }
 
-func (e *typeEvaluator) getTypeOfAugmentedAssignment(_ *parser.AugmentedAssignmentNode, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfAugmentedAssignment")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
+// getTypeOfAugmentedAssignment delegates to the operations.ts function of the
+// same name, which the original reaches as a module import.
+func (e *typeEvaluator) getTypeOfAugmentedAssignment(
+	node *parser.AugmentedAssignmentNode, inferenceContext *InferenceContext,
+) *TypeResult {
+	return GetTypeOfAugmentedAssignment(e, node, inferenceContext)
 }
 
 func (e *typeEvaluator) getTypeOfSlice(_ *parser.SliceNode) *TypeResult {

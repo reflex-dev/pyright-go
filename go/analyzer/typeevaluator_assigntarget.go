@@ -163,13 +163,6 @@ func (e *typeEvaluator) checkTypeVarAssignedName(
  * The three target-shape handlers this reaches.
  */
 
-// assignTypeToMemberAccessNode corresponds to the function of the same name.
-func (e *typeEvaluator) assignTypeToMemberAccessNode(
-	_ *parser.MemberAccessNode, _ *TypeResult, _ parser.ExpressionNode, _ *common.DiagnosticAddendum,
-) {
-	e.unported("assignTypeToMemberAccessNode")
-}
-
 // assignTypeToTupleOrListNode corresponds to the function of the same name: the
 // destructuring case, which matches the source's elements against the targets
 // and handles a starred target absorbing the remainder.
@@ -177,4 +170,12 @@ func (e *typeEvaluator) assignTypeToTupleOrListNode(
 	_ parser.ExpressionNode, _ *TypeResult, _ parser.ExpressionNode,
 ) {
 	e.unported("assignTypeToTupleOrListNode")
+}
+
+// AssignTypeToExpression corresponds to assignTypeToExpression with the
+// original's default arguments applied.
+func (e *typeEvaluator) AssignTypeToExpression(
+	target parser.ExpressionNode, typeResult *TypeResult, srcExpr parser.ExpressionNode,
+) {
+	e.assignTypeToExpression(target, typeResult, srcExpr, false, false, nil)
 }
