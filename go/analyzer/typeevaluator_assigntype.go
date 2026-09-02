@@ -614,16 +614,6 @@ func (e *typeEvaluator) assignToUnionType(
 	return false
 }
 
-// assignClass corresponds to the function of the same name: nominal and
-// structural compatibility between two classes.
-func (e *typeEvaluator) assignClass(
-	_ *ClassType, _ *ClassType, _ *common.DiagnosticAddendum, _ *ConstraintTracker,
-	_ AssignTypeFlags, _ int, _ bool,
-) bool {
-	e.unported("assignClass")
-	return false
-}
-
 // assignFunction corresponds to the function of the same name: parameter and
 // return type compatibility between two callables.
 func (e *typeEvaluator) assignFunction(
