@@ -29,11 +29,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (e *typeEvaluator) GetCachedType(node parser.ExpressionNode) Type {
-	e.unported("GetCachedType")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) CreateSubclass(errorNode parser.ExpressionNode, type1 *ClassType, type2 *ClassType) *ClassType {
 	e.unported("CreateSubclass")
 	return nil
@@ -45,36 +40,6 @@ func (e *typeEvaluator) EvaluateTypesForMatchStatement(node *parser.MatchNode) {
 
 func (e *typeEvaluator) EvaluateTypesForCaseStatement(node *parser.CaseNode) {
 	e.unported("EvaluateTypesForCaseStatement")
-}
-
-func (e *typeEvaluator) CanBeTruthy(t Type) bool {
-	e.unported("CanBeTruthy")
-	return false
-}
-
-func (e *typeEvaluator) CanBeFalsy(t Type) bool {
-	e.unported("CanBeFalsy")
-	return false
-}
-
-func (e *typeEvaluator) RemoveTruthinessFromType(t Type) Type {
-	e.unported("RemoveTruthinessFromType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) RemoveFalsinessFromType(t Type) Type {
-	e.unported("RemoveFalsinessFromType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) StripTypeGuard(t Type) Type {
-	e.unported("StripTypeGuard")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) SolveAndApplyConstraints(t Type, constraints *ConstraintTracker, applyOptions *ApplyTypeVarOptions, solveOptions *SolveConstraintsOptions) Type {
-	e.unported("SolveAndApplyConstraints")
-	return UnknownTypeCreate(false)
 }
 
 func (e *typeEvaluator) GetExpectedType(node parser.ExpressionNode) *ExpectedTypeResult {
@@ -97,11 +62,6 @@ func (e *typeEvaluator) ValidateOverloadedArgTypes(errorNode parser.ExpressionNo
 
 func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classType *ClassType) {
 	e.unported("ValidateInitSubclassArgs")
-}
-
-func (e *typeEvaluator) IsSpecialFormClass(classType *ClassType, flags AssignTypeFlags) bool {
-	e.unported("IsSpecialFormClass")
-	return false
 }
 
 func (e *typeEvaluator) GetDeclInfoForStringNode(node *parser.StringNode) *SymbolDeclInfo {
@@ -129,11 +89,6 @@ func (e *typeEvaluator) GetTypeOfIterator(typeResult *TypeResult, isAsync bool, 
 	return nil
 }
 
-func (e *typeEvaluator) GetGetterTypeFromProperty(propertyClass *ClassType) Type {
-	e.unported("GetGetterTypeFromProperty")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) ConvertNodeToArg(node *parser.ArgumentNode) *Arg {
 	e.unported("ConvertNodeToArg")
 	return nil
@@ -156,11 +111,6 @@ func (e *typeEvaluator) IsTypeSubsumedByOtherType(t Type, otherType Type, allowA
 
 func (e *typeEvaluator) GetInferredTypeOfDeclaration(symbol *Symbol, decl Declaration) Type {
 	e.unported("GetInferredTypeOfDeclaration")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetDeclaredReturnType(node *parser.FunctionNode) Type {
-	e.unported("GetDeclaredReturnType")
 	return UnknownTypeCreate(false)
 }
 
@@ -223,23 +173,8 @@ func (e *typeEvaluator) AssignClassToSelf(destType *ClassType, srcType *ClassTyp
 	return false
 }
 
-func (e *typeEvaluator) GetTypingType(node parser.ParseNode, symbolName string) Type {
-	e.unported("GetTypingType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetTypeCheckerInternalsType(node parser.ParseNode, symbolName string) Type {
-	e.unported("GetTypeCheckerInternalsType")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) AssignTypeArgs(destType *ClassType, srcType *ClassType, diag *common.DiagnosticAddendum, constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int) bool {
 	e.unported("AssignTypeArgs")
-	return false
-}
-
-func (e *typeEvaluator) IsFinalVariable(symbol *Symbol) bool {
-	e.unported("IsFinalVariable")
 	return false
 }
 
