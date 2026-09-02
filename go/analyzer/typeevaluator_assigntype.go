@@ -613,18 +613,21 @@ func (e *typeEvaluator) getCallbackProtocolType(_ *ClassType, _ int) Type {
 	return nil
 }
 
+// assignModuleToProtocol delegates to the protocols.ts function of the same
+// name, which the original reaches as a module import.
 func (e *typeEvaluator) assignModuleToProtocol(
-	_ *ClassType, _ *ModuleType, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
+	destType *ClassType, srcType *ModuleType, diag *common.DiagnosticAddendum,
+	constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int,
 ) bool {
-	e.unported("protocols.assignModuleToProtocol")
-	return false
+	return AssignModuleToProtocol(e, destType, srcType, diag, constraints, flags, recursionCount)
 }
 
+// assignClassToProtocol delegates to the protocols.ts function of the same name.
 func (e *typeEvaluator) assignClassToProtocol(
-	_ *ClassType, _ *ClassType, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
+	destType *ClassType, srcType *ClassType, diag *common.DiagnosticAddendum,
+	constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int,
 ) bool {
-	e.unported("protocols.assignClassToProtocol")
-	return false
+	return AssignClassToProtocol(e, destType, srcType, diag, constraints, flags, recursionCount)
 }
 
 func (e *typeEvaluator) createFunctionFromConstructor(_ *ClassType, _ Type, _ int) Type {
