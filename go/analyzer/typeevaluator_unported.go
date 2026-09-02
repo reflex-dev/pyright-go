@@ -99,16 +99,6 @@ func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classTy
 	e.unported("ValidateInitSubclassArgs")
 }
 
-func (e *typeEvaluator) IsAfterNodeReachable(node parser.ParseNode) bool {
-	e.unported("IsAfterNodeReachable")
-	return false
-}
-
-func (e *typeEvaluator) GetAfterNodeReachability(node parser.ParseNode) Reachability {
-	e.unported("GetAfterNodeReachability")
-	return ReachabilityReachable
-}
-
 func (e *typeEvaluator) SuppressDiagnostics(node parser.ParseNode, callback func()) {
 	e.unported("SuppressDiagnostics")
 }

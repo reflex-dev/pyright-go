@@ -312,3 +312,60 @@ func referenceKeyWithSymbolID(referenceKey string, options *flowTypeOptions) str
 	}
 	return fmt.Sprintf("%s.%d", referenceKey, options.TargetSymbolID)
 }
+
+// GetAfterNodeReachability corresponds to getAfterNodeReachability: is the point
+// AFTER this node reachable, which is how a function that always raises is
+// distinguished from one that can fall off its end.
+//
+// It asks twice. The plain graph walk answers first; only if that says reachable
+// does it re-ask with never narrowing, which is the more expensive question of
+// whether any conditional along the way narrows the flow to Never.
+func (e *typeEvaluator) GetAfterNodeReachability(node parser.ParseNode) Reachability {
+	returnFlowNode := GetAfterFlowNode(node)
+	if returnFlowNode == nil {
+		return ReachabilityUnreachableStructural
+	}
+
+	if e.checkCodeFlowTooComplex(node) {
+		return ReachabilityReachable
+	}
+
+	reachability := e.codeFlowReachability.GetFlowNodeReachability(e, returnFlowNode, nil, false)
+	if reachability != ReachabilityReachable {
+		return reachability
+	}
+
+	executionScopeNode := GetExecutionScopeNode(node)
+	if !e.isFlowNodeReachableUsingNeverNarrowing(executionScopeNode, returnFlowNode) {
+		return ReachabilityUnreachableByAnalysis
+	}
+
+	return ReachabilityReachable
+}
+
+// IsAfterNodeReachable corresponds to isAfterNodeReachable.
+func (e *typeEvaluator) IsAfterNodeReachable(node parser.ParseNode) bool {
+	return e.GetAfterNodeReachability(node) == ReachabilityReachable
+}
+
+// isFlowNodeReachableUsingNeverNarrowing corresponds to the function of the same
+// name: run the narrowing walk with no reference, which puts it in reachability
+// mode, and treat an absent or Never answer as unreachable.
+//
+// typeAtStart is Unbound rather than nil so the Start node produces a type at
+// all; the walk only cares whether something non-Never survives to the end.
+func (e *typeEvaluator) isFlowNodeReachableUsingNeverNarrowing(
+	node parser.ExecutionScopeNode, flowNode FlowNode,
+) bool {
+	analyzer := e.getCodeFlowAnalyzerForNode(node, nil)
+
+	if e.checkCodeFlowTooComplex(node) {
+		return true
+	}
+
+	codeFlowResult := analyzer.GetTypeFromCodeFlow(flowNode, nil, &flowTypeOptions{
+		TypeAtStart: &TypeResult{Type: UnboundTypeCreate()},
+	})
+
+	return codeFlowResult.Type != nil && !IsNever(codeFlowResult.Type)
+}

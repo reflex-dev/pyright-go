@@ -244,16 +244,6 @@ func (e *typeEvaluator) disableSpeculativeMode(callback func()) {
  * The two things this reaches.
  */
 
-// inferFunctionReturnType corresponds to the function of the same name, which
-// unions the types of every reachable return statement, folding in a generator's
-// yields and an implicit None where the end of the body is reachable.
-func (e *typeEvaluator) inferFunctionReturnType(
-	_ *parser.FunctionNode, _ bool, _ parser.ExpressionNode,
-) *TypeResult {
-	e.unported("inferFunctionReturnType")
-	return nil
-}
-
 // inferReturnTypeForCallSite corresponds to the function of the same name, which
 // re-analyzes the function body with the call site's argument types substituted
 // for its unannotated parameters.
