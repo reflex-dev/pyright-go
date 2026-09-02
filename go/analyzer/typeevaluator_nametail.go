@@ -280,43 +280,10 @@ func (e *typeEvaluator) ReportMissingTypeArgs(node parser.ExpressionNode, t Type
  * The four things these reach that are separate units of work.
  */
 
-// createTypeFormType corresponds to the function of the same name.
-func (e *typeEvaluator) createTypeFormType(
-	classType *ClassType,
-	_ parser.ExpressionNode,
-	_ []*TypeResultWithNode,
-) Type {
-	e.unported("createTypeFormType")
-	return classType
-}
-
 // rejectBareSpecialFormInTypeForm corresponds to the function of the same name.
 // It returns nil where the original returns undefined, which is the "not
 // rejected" answer.
 func (e *typeEvaluator) rejectBareSpecialFormInTypeForm(_ *ClassType, _ parser.ExpressionNode) Type {
 	e.unported("rejectBareSpecialFormInTypeForm")
 	return nil
-}
-
-// createSelfType corresponds to the function of the same name.
-func (e *typeEvaluator) createSelfType(
-	classType *ClassType,
-	_ parser.ExpressionNode,
-	_ []*TypeResultWithNode,
-	_ EvalFlags,
-) Type {
-	e.unported("createSelfType")
-	return classType
-}
-
-// createSpecializedClassType corresponds to the function of the same name. It
-// returns nil where the original returns undefined.
-func (e *typeEvaluator) createSpecializedClassType(
-	classType *ClassType,
-	_ []*TypeResultWithNode,
-	_ EvalFlags,
-	_ parser.ExpressionNode,
-) *TypeResult {
-	e.unported("createSpecializedClassType")
-	return &TypeResult{Type: classType}
 }

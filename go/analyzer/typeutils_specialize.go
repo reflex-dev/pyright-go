@@ -146,3 +146,21 @@ func SelfSpecializeClass(t *ClassType, options *SelfSpecializeOptions) *ClassTyp
 	// take their defaults.
 	return ClassTypeSpecialize(t, typeParams, nil, false, nil, nil)
 }
+
+// GetTypeVarScopeIds corresponds to getTypeVarScopeIds. A function carries a
+// second scope id for the constructor it was synthesized from.
+func GetTypeVarScopeIds(t Type) []TypeVarScopeId {
+	scopeIds := []TypeVarScopeId{}
+
+	if scopeId := GetTypeVarScopeID(t); scopeId != "" {
+		scopeIds = append(scopeIds, scopeId)
+	}
+
+	if IsFunction(t) {
+		if constructorScopeID := t.(*FunctionType).Priv.ConstructorTypeVarScopeID; constructorScopeID != "" {
+			scopeIds = append(scopeIds, constructorScopeID)
+		}
+	}
+
+	return scopeIds
+}
