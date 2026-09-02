@@ -756,3 +756,33 @@ here, `kwargsIndex!` — is the original stating outright that it can.
 Neither this nor the sibling bug in the same batch (`&common.OrderedSet[T]{}`
 leaves the inner map nil; the constructor exists for a reason) appeared in the
 60-file sample. The whole-corpus sweep found both.
+
+## Concrete pointer return types are themselves the hazard
+
+The typed-nil entry above says `x === undefined` fails for a nil pointer boxed in
+an interface, and prescribes `IsNilType` at the reading end. That is necessary but
+it is not where the bug is introduced, and a later commit demonstrated the
+difference.
+
+`createNewType` upstream returns `ClassType | undefined`. Ported faithfully, that
+becomes `*ClassType`. Both call sites do what the original does:
+
+```go
+return &CallResult{ReturnType: e.createNewType(errorNode, argList)}
+```
+
+which is correct in TypeScript and a trap in Go: when the function declines, a
+nil `*ClassType` is boxed into the `Type` field, the interface value is non-nil,
+and the first `IsNever(t)` downstream dereferences it. Two corpus files panicked.
+
+So the rule is not only "check with IsNilType when reading". It is:
+
+**A ported function whose original returns `T | undefined` should return the
+interface type, not the concrete pointer** -- unless every call site is checked.
+Returning `*ClassType` turns each `return nil` into a defect at every call site
+that widens the result, and the compiler reports none of them. The pre-existing
+stub returned `Type` and was safe precisely because of this; making the real
+function's type more specific is what introduced the bug.
+
+Where the concrete type is genuinely wanted, widen through an explicit helper at
+the call site rather than relying on assignment.
