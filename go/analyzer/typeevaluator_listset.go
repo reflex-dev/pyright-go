@@ -156,7 +156,7 @@ func (e *typeEvaluator) getTypeOfListOrSetWithContext(
 
 		if comprehension, ok := entry.(*parser.ComprehensionNode); ok {
 			entryTypeResult = e.getElementTypeFromComprehension(comprehension,
-				flags|EvalFlagsStripTupleLiterals, expectedEntryType)
+				flags|EvalFlagsStripTupleLiterals, expectedEntryType, nil)
 		} else {
 			entryTypeResult = e.GetTypeOfExpression(entry, flags|EvalFlagsStripTupleLiterals,
 				MakeInferenceContext(expectedEntryType, false, nil))
@@ -276,7 +276,7 @@ func (e *typeEvaluator) getTypeOfListOrSetInferred(
 
 		if comprehension, ok := entry.(*parser.ComprehensionNode); ok && !comprehension.D.IsGenerator {
 			entryTypeResult = e.getElementTypeFromComprehension(comprehension,
-				flags|EvalFlagsStripTupleLiterals, nil)
+				flags|EvalFlagsStripTupleLiterals, nil, nil)
 		} else {
 			entryTypeResult = e.GetTypeOfExpression(entry, flags|EvalFlagsStripTupleLiterals, nil)
 		}
@@ -507,9 +507,3 @@ func (e *typeEvaluator) inferTypeArgFromExpectedEntryType(
 // getElementTypeFromComprehension corresponds to the comprehensions.ts function
 // of the same name, which produces the type of the expression a comprehension
 // yields per iteration.
-func (e *typeEvaluator) getElementTypeFromComprehension(
-	_ *parser.ComprehensionNode, _ EvalFlags, _ Type,
-) *TypeResult {
-	e.unported("getElementTypeFromComprehension")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}

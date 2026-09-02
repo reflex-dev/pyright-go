@@ -335,6 +335,7 @@ func (c *codeFlowReachability) conditionNarrowsToNever(evaluator TypeEvaluator, 
 		conditionalFlowNode.Reference,
 		conditionalFlowNode.Expression,
 		isPositiveTest,
+		0,
 	)
 
 	if typeNarrowingCallback == nil {
@@ -383,34 +384,12 @@ func labelOf(node FlowNode) *FlowLabel {
 	return nil
 }
 
-/*
- * The two call-backs into parts of the engine that are not ported.
- *
- * These are separate functions rather than inline stubs so that each records
- * itself distinctly: the work-remaining map should name them separately,
- * because they are separate pieces of work living in different files.
- */
-
 // isExceptionContextManager corresponds to the function of the same name in
-// codeFlowEngine.ts, which is not ported.
+// codeFlowEngine.ts, which is not ported. It is a separate function rather than
+// an inline stub so that it records itself distinctly in the work-remaining map.
 func isExceptionContextManager(evaluator TypeEvaluator, _ parser.ExpressionNode, _ bool) bool {
 	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
 		reporter.noteUnported("codeFlowEngine.isExceptionContextManager")
 	}
 	return false
-}
-
-// getTypeNarrowingCallback corresponds to the function of the same name in
-// typeGuards.ts, which is not ported. Answering nil means "no narrowing
-// applies", so the condition cannot make the branch unreachable.
-func getTypeNarrowingCallback(
-	evaluator TypeEvaluator,
-	_ parser.ExpressionNode,
-	_ parser.ExpressionNode,
-	_ bool,
-) func(Type) *TypeResult {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported("typeGuards.getTypeNarrowingCallback")
-	}
-	return nil
 }

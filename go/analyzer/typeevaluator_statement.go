@@ -174,10 +174,6 @@ func (e *typeEvaluator) evaluateTypesForWithStatement(_ *parser.WithItemNode) {
 // evaluateComprehensionForIf corresponds to the function of the same name. Its
 // parameter is the `ComprehensionForNode | ComprehensionIfNode` union, which is
 // ComprehensionForIfNode here.
-func (e *typeEvaluator) evaluateComprehensionForIf(_ parser.ParseNode) {
-	e.unported("evaluateComprehensionForIf")
-}
-
 // evaluateTypesForImportFrom corresponds to the function of the same name. The
 // other two import arms already had stubs from the context walk; this one is
 // reached only from here.

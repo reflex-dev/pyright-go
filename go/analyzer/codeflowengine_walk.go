@@ -752,6 +752,7 @@ func (w *codeFlowWalk) narrowForCondition(conditionalFlowNode *FlowCondition) *F
 			w.reference,
 			conditionalFlowNode.Expression,
 			conditionalFlowNode.Flags&(FlowFlagsTrueCondition|FlowFlagsTrueNeverCondition) != 0,
+			0,
 		)
 
 		if typeNarrowingCallback == nil {
@@ -807,6 +808,7 @@ func (w *codeFlowWalk) narrowForNeverCondition(conditionalFlowNode *FlowConditio
 			conditionalFlowNode.Reference,
 			conditionalFlowNode.Expression,
 			conditionalFlowNode.Flags&(FlowFlagsTrueCondition|FlowFlagsTrueNeverCondition) != 0,
+			0,
 		)
 
 		if typeNarrowingCallback == nil {

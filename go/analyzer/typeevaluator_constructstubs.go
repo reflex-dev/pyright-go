@@ -103,11 +103,3 @@ func (e *typeEvaluator) createClassFromMetaclass(
 	e.unported("createClassFromMetaclass")
 	return nil
 }
-
-// getAbstractSymbols corresponds to the function of the same name. The original's
-// comment: returns a list of unimplemented abstract symbols (methods or
-// variables) for the specified class.
-func (e *typeEvaluator) getAbstractSymbols(_ *ClassType) []*AbstractSymbol {
-	e.unported("getAbstractSymbols")
-	return nil
-}

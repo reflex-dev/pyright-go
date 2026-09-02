@@ -287,7 +287,7 @@ func (e *typeEvaluator) reportAbstractInstantiation(
 		return
 	}
 
-	abstractSymbols := e.getAbstractSymbols(expandedCallType)
+	abstractSymbols := e.GetAbstractSymbols(expandedCallType)
 
 	// includeSubclasses means the value may be a concrete subclass, and a TypeVar
 	// may be solved as one; neither can be proven abstract here.

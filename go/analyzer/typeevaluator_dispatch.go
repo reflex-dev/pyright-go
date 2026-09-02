@@ -285,11 +285,6 @@ func (e *typeEvaluator) getTypeOfExpressionCoreRest(
  * the corpus actually needs, in order.
  */
 
-func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfTuple")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // getTypeOfUnaryOperation delegates to the operations.ts function of the same
 // name, which the original reaches as a module import.
 func (e *typeEvaluator) getTypeOfUnaryOperation(
@@ -306,28 +301,8 @@ func (e *typeEvaluator) getTypeOfAugmentedAssignment(
 	return GetTypeOfAugmentedAssignment(e, node, inferenceContext)
 }
 
-func (e *typeEvaluator) getTypeOfSlice(_ *parser.SliceNode) *TypeResult {
-	e.unported("getTypeOfSlice")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfAwaitOperator(_ *parser.AwaitNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfAwaitOperator")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfTernaryOperation(_ *parser.TernaryNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfTernaryOperation")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfComprehension(_ *parser.ComprehensionNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfComprehension")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfDictionary(_ *parser.DictionaryNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfDictionary")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 

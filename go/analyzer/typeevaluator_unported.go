@@ -79,21 +79,6 @@ func (e *typeEvaluator) GetTypeForDeclaration(declaration Declaration) *Declared
 	return nil
 }
 
-func (e *typeEvaluator) GetTypeOfIterable(typeResult *TypeResult, isAsync bool, errorNode parser.ExpressionNode, emitNotIterableError *bool) *TypeResult {
-	e.unported("GetTypeOfIterable")
-	return nil
-}
-
-func (e *typeEvaluator) GetTypeOfIterator(typeResult *TypeResult, isAsync bool, errorNode parser.ExpressionNode, emitNotIterableError *bool) *TypeResult {
-	e.unported("GetTypeOfIterator")
-	return nil
-}
-
-func (e *typeEvaluator) BuildTupleTypesList(entryTypeResults []*TypeResult, stripLiterals bool, convertModules bool) []*TupleTypeArg {
-	e.unported("BuildTupleTypesList")
-	return nil
-}
-
 func (e *typeEvaluator) ExpandPromotionTypes(node parser.ParseNode, t Type) Type {
 	e.unported("ExpandPromotionTypes")
 	return UnknownTypeCreate(false)
