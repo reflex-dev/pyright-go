@@ -183,11 +183,6 @@ func (e *typeEvaluator) GetTypeOfMember(member *ClassMember) Type {
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetTypeOfBoundMember(errorNode parser.ExpressionNode, objectType *ClassType, memberName string, usage *EvaluatorUsage, diag *common.DiagnosticAddendum, flags MemberAccessFlags, selfType Type) *TypeResult {
-	e.unported("GetTypeOfBoundMember")
-	return nil
-}
-
 func (e *typeEvaluator) GetBoundMagicMethod(classType *ClassType, memberName string, selfType Type, errorNode parser.ExpressionNode, diag *common.DiagnosticAddendum, recursionCount int) Type {
 	e.unported("GetBoundMagicMethod")
 	return UnknownTypeCreate(false)

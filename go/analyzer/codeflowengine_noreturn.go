@@ -91,7 +91,7 @@ func (c *codeFlowReachability) isCallNoReturn(evaluator TypeEvaluator, flowNode 
 				return
 			}
 
-			if newMethodResult := GetBoundNewMethod(evaluator, node, callSubtype.(*ClassType)); newMethodResult != nil {
+			if newMethodResult := GetBoundNewMethod(evaluator, node, callSubtype.(*ClassType), nil, MemberAccessFlagsSkipObjectBaseClass); newMethodResult != nil {
 				if IsFunctionOrOverloaded(newMethodResult.Type) {
 					callSubtype = newMethodResult.Type
 				}
@@ -264,21 +264,3 @@ func isAfterFunctionNodeReachable(evaluator TypeEvaluator, functionType *Functio
 /*
  * The two constructors.ts helpers this reaches.
  */
-
-// GetBoundCallMethod corresponds to the constructors.ts function of the same
-// name. It returns nil where the original returns undefined.
-func GetBoundCallMethod(evaluator TypeEvaluator, _ *parser.CallNode, _ *ClassType) *TypeResult {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported("constructors.getBoundCallMethod")
-	}
-	return nil
-}
-
-// GetBoundNewMethod corresponds to the constructors.ts function of the same
-// name.
-func GetBoundNewMethod(evaluator TypeEvaluator, _ *parser.CallNode, _ *ClassType) *TypeResult {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported("constructors.getBoundNewMethod")
-	}
-	return nil
-}

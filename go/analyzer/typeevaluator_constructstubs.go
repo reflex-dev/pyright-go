@@ -14,7 +14,6 @@
 package analyzer
 
 import (
-	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -33,15 +32,6 @@ func ValidateConstructorArgs(
 ) *CallResult {
 	noteEvaluatorUnported(evaluator, "constructors.validateConstructorArgs")
 	return &CallResult{ReturnType: ConvertToInstance(classType, false)}
-}
-
-// GetBoundInitMethod corresponds to the constructors.ts function of the same name.
-func GetBoundInitMethod(
-	evaluator TypeEvaluator, _ parser.ExpressionNode, _ *ClassType,
-	_ *common.DiagnosticAddendum, _ MemberAccessFlags,
-) *TypeResult {
-	noteEvaluatorUnported(evaluator, "constructors.getBoundInitMethod")
-	return nil
 }
 
 // CreateNamedTupleType corresponds to the namedTuples.ts function of the same
