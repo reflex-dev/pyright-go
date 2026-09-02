@@ -23,17 +23,6 @@ func noteEvaluatorUnported(evaluator TypeEvaluator, name string) {
 	}
 }
 
-// ValidateConstructorArgs corresponds to the constructors.ts function of the same
-// name: the __call__ / __new__ / __init__ sequence that a class call goes
-// through. It is the whole of the ordinary construction path.
-func ValidateConstructorArgs(
-	evaluator TypeEvaluator,
-	_ parser.ExpressionNode, _ []*Arg, classType *ClassType, _ bool, _ *InferenceContext,
-) *CallResult {
-	noteEvaluatorUnported(evaluator, "constructors.validateConstructorArgs")
-	return &CallResult{ReturnType: ConvertToInstance(classType, false)}
-}
-
 // CreateNamedTupleType corresponds to the namedTuples.ts function of the same
 // name, which synthesizes a class from a NamedTuple(...) call.
 func CreateNamedTupleType(
