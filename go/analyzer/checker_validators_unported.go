@@ -114,3 +114,74 @@ func (c *Checker) validateOverloadConsistency(
 func (c *Checker) validateOverloadAttributeConsistency(_ *parser.FunctionNode, _ *OverloadedType) {
 	c.noteUnported("checker.validateOverloadAttributeConsistency")
 }
+
+/*
+ * The per-expression reporters the second batch of visits reaches.
+ */
+
+func (c *Checker) validateIsInstanceCall(_ *parser.CallNode) {
+	c.noteUnported("checker.validateIsInstanceCall")
+}
+
+func (c *Checker) validateIllegalDefaultParamInitializer(_ parser.ParseNode) {
+	c.noteUnported("checker.validateIllegalDefaultParamInitializer")
+}
+
+func (c *Checker) validateStandardCollectionInstantiation(_ *parser.CallNode) {
+	c.noteUnported("checker.validateStandardCollectionInstantiation")
+}
+
+func (c *Checker) isTypeValidForUnusedValueTest(_ Type) bool {
+	c.noteUnported("checker.isTypeValidForUnusedValueTest")
+	return false
+}
+
+func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool) {
+	c.noteUnported("checker.validateExceptionType")
+}
+
+func (c *Checker) reportTupleIndexOutOfRange(_ *parser.IndexNode) {
+	c.noteUnported("checker.reportTupleIndexOutOfRange")
+}
+
+func (c *Checker) checkBinaryOperation(_ *parser.BinaryOperationNode) {
+	c.noteUnported("checker.checkBinaryOperation")
+}
+
+func (c *Checker) validateConditionalIsBool(_ parser.ExpressionNode) {
+	c.noteUnported("checker.validateConditionalIsBool")
+}
+
+func (c *Checker) reportUnnecessaryConditionExpression(_ parser.ExpressionNode) {
+	c.noteUnported("checker.reportUnnecessaryConditionExpression")
+}
+
+func (c *Checker) conditionallyReportPrivateUsage(_ *parser.NameNode) {
+	c.noteUnported("checker.conditionallyReportPrivateUsage")
+}
+
+func (c *Checker) reportUnboundName(_ *parser.NameNode) {
+	c.noteUnported("checker.reportUnboundName")
+}
+
+func (c *Checker) reportDeprecatedUseForType(_ *parser.NameNode, _ Type, _ bool) {
+	c.noteUnported("checker.reportDeprecatedUseForType")
+}
+
+func (c *Checker) reportDeprecatedUseForOperation(_ parser.ExpressionNode, _ *TypeResult) {
+	c.noteUnported("checker.reportDeprecatedUseForOperation")
+}
+
+func (c *Checker) reportDeprecatedUseForMemberAccess(
+	_ *parser.NameNode, _ *MemberAccessDeprecationInfo,
+) {
+	c.noteUnported("checker.reportDeprecatedUseForMemberAccess")
+}
+
+func (c *Checker) validateNonlocalTypeParam(_ *parser.NameNode) {
+	c.noteUnported("checker.validateNonlocalTypeParam")
+}
+
+func (c *Checker) reportUnusedExceptStatements(_ *parser.TryNode) {
+	c.noteUnported("checker.reportUnusedExceptStatements")
+}
