@@ -253,11 +253,6 @@ func (e *typeEvaluator) IsTypeComparable(leftType Type, rightType Type, assumeIs
 	return false
 }
 
-func (e *typeEvaluator) AssignType(destType Type, srcType Type, diag *common.DiagnosticAddendum, constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int) bool {
-	e.unported("AssignType")
-	return false
-}
-
 func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod Type, baseClass *ClassType, diag *common.DiagnosticAddendum, enforceParamNames *bool) bool {
 	e.unported("ValidateOverrideMethod")
 	return false
