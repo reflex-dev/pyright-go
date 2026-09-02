@@ -34,11 +34,6 @@ func (e *typeEvaluator) GetCachedType(node parser.ExpressionNode) Type {
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetTypeOfExpression(node parser.ExpressionNode, flags EvalFlags, context *InferenceContext) *TypeResult {
-	e.unported("GetTypeOfExpression")
-	return nil
-}
-
 func (e *typeEvaluator) GetTypeOfAnnotation(node parser.ExpressionNode, options *ExpectedTypeOptions) Type {
 	e.unported("GetTypeOfAnnotation")
 	return UnknownTypeCreate(false)

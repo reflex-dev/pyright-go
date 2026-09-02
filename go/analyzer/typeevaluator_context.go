@@ -147,13 +147,6 @@ func (e *typeEvaluator) readContextualTypeCacheEntryForNode(node parser.ParseNod
 	return nil
 }
 
-// evaluateTypesForExpressionInContext walks up from an expression to the
-// nearest construct that can be evaluated without context, and evaluates that.
-// It is not ported; see the file header for why this layer landed first.
-func (e *typeEvaluator) evaluateTypesForExpressionInContext(node parser.ExpressionNode) {
-	e.unported("evaluateTypesForExpressionInContext")
-}
-
 // initializePrefetchedTypes corresponds to the function of the same name. Every
 // type it fetches goes through getBuiltInType or getTypeOfModule, both of which
 // end at getEffectiveTypeOfSymbol, so none of it can run yet.

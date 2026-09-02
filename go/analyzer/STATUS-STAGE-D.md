@@ -130,6 +130,12 @@ Over the whole corpus:
 | no evaluator | 1280 of 1343 | 0 of 88,487 |
 | evaluator installed, reachability ported | 1280 of 1343 | **158** of 88,487 |
 
+On the 60-file sample the same sequence reads 0 → 3 → 74 as the contextual
+layer, the context walk and the dispatch land. The 74 are the nodes both sides
+agree have no type at all — a module name, a pattern, a name the walk returns
+from without evaluating — which is a real agreement rather than two Unknowns
+meeting.
+
 All 158 were computed rather than inherited from an Unknown that happened to
 agree. 88,487 is the denominator Stage D climbs. The 63 files whose node sets
 disagree are the ones below.
@@ -207,11 +213,31 @@ It is a **frontier**, not a full map. The first stub a name touches
 short-circuits the rest, so before reachability landed the whole corpus reported
 one entry, `IsNodeReachable`. Each thing ported reveals the next layer:
 
-| after | frontier, ranked |
+| after | frontier |
 | --- | --- |
-| nothing | `IsNodeReachable` |
-| reachability | `isCallNoReturn`, `GetType`, `LookUpSymbolRecursive`, `EvaluateTypeForSubnode`, `isExceptionContextManager` |
-| symbol lookup | `isCallNoReturn`, `GetType`, `getTypeNarrowingCallback`, `isExceptionContextManager`, `EvaluateTypeForSubnode` |
+| nothing | 1 entry: `IsNodeReachable` |
+| reachability | 5 entries, led by `isCallNoReturn` and `GetType` |
+| symbol lookup | 5 entries; `LookUpSymbolRecursive` gone, `getTypeNarrowingCallback` appears behind it |
+| the contextual layer | 5 entries; `GetType` resolves into `evaluateTypesForExpressionInContext` |
+| the context walk and the dispatch | **30 entries** |
+
+The last step is the one that pays. `evaluateTypesForExpressionInContext` and
+`getTypeOfExpressionCore` are both pure dispatch — every arm hands off to
+something that lives elsewhere — so porting the two of them turned one name into
+a ranked list of the actual remaining units of work:
+
+    unported evaluator paths reached: 30 distinct
+         4096  codeFlowEngine.isCallNoReturn
+          569  evaluateTypesForAssignmentStatement
+          433  evaluateTypesForTypeAnnotationNode
+          380  ensureSignatureIsUnique
+          335  getTypeOfName
+          308  GetTypeOfAnnotation
+          272  GetTypeOfFunction
+          246  EvaluateTypeOfParam
+          215  GetTypeOfClass
+           82  getTypeOfCall
+             ... and 20 more
 
 That is the right shape for the work: it always names the thing to port next,
 ranked by how much of the corpus is waiting on it. And it is a *ranking*, which
