@@ -164,7 +164,7 @@ func (e *typeEvaluator) createSpecialFormType(
 	case "Type":
 		typeType := e.createSpecialType(classType, typeArgs, intPtr(1), nil, boolPtr(false))
 		if IsInstantiableClass(typeType) {
-			typeType = e.explodeGenericClass(typeType.(*ClassType))
+			typeType = ExplodeGenericClass(typeType.(*ClassType))
 		}
 		typeType = CloneWithTypeForm(typeType, ConvertToInstance(typeType, false))
 		return &TypeResult{Type: typeType}, true
@@ -293,7 +293,7 @@ func (e *typeEvaluator) createPy39BuiltinType(
 		if e.prefetched != nil && e.prefetched.TypeClass != nil && IsInstantiableClass(e.prefetched.TypeClass) {
 			typeType := e.createSpecialType(e.prefetched.TypeClass.(*ClassType), typeArgs, intPtr(1), nil, boolPtr(false))
 			if IsInstantiableClass(typeType) {
-				typeType = e.explodeGenericClass(typeType.(*ClassType))
+				typeType = ExplodeGenericClass(typeType.(*ClassType))
 			}
 			typeType = CloneWithTypeForm(typeType, ConvertToInstance(typeType, false))
 			return &TypeResult{Type: typeType}
@@ -658,7 +658,22 @@ func (e *typeEvaluator) createUnionType(c *ClassType, _ parser.ExpressionNode, _
 	return c
 }
 
-func (e *typeEvaluator) createGenericType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
+// createGenericType corresponds to the function of the same name: `Generic[T]`
+// in a base class list, whose arguments declare the class's type parameters
+// rather than supplying values for them.
+//
+// HELD BACK. The transliteration is written and checks out against the original,
+// but landing it drops the per-node differential from 538 computed matches to
+// 448. The cause is downstream rather than here: with this stubbed, a class
+// deriving from Generic[T] reaches buildTypeParamsFromTypeArgs with no type
+// arguments and ends up with an EMPTY type parameter list; with it ported, the
+// class gets its real parameters and something that consumes them is wrong. The
+// stub was hiding that defect, so the next step is to find the consumer -- start
+// at typeevaluator_class.go's genericTypeParams handling and
+// verifyGenericTypeParams -- not to re-land this.
+func (e *typeEvaluator) createGenericType(
+	c *ClassType, _ parser.ParseNode, _ []*TypeResultWithNode, _ EvalFlags,
+) Type {
 	e.unported("createGenericType")
 	return c
 }
@@ -706,7 +721,3 @@ func (e *typeEvaluator) createTypeFormType(c *ClassType, _ parser.ExpressionNode
 }
 
 // explodeGenericClass corresponds to the function of the same name.
-func (e *typeEvaluator) explodeGenericClass(c *ClassType) Type {
-	e.unported("explodeGenericClass")
-	return c
-}

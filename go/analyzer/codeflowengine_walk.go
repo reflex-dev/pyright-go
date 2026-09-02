@@ -398,14 +398,23 @@ func (w *codeFlowWalk) getTypeFromFlowNode(flowNode FlowNode) *FlowNodeTypeResul
 		}
 
 		if flags&FlowFlagsBranchLabel != 0 {
-			branchFlowNode := curFlowNode.(*FlowBranchLabel)
-			if result, next, done := w.handleBranchLabel(branchFlowNode); done {
+			// A FlowPostContextManagerLabel also carries the BranchLabel flag but
+			// embeds FlowLabel directly rather than FlowBranchLabel. The original
+			// casts to FlowBranchLabel unconditionally and reads preBranchAntecedent
+			// off it as undefined; Go cannot, so the two are distinguished here.
+			label, branchLabel := asFlowLabel(curFlowNode)
+			if label == nil {
+				common.Fail("BranchLabel flag on a node that is not a flow label")
+				return NewFlowNodeTypeResult(nil, false, nil, nil)
+			}
+
+			if result, next, done := w.handleBranchLabel(curFlowNode, label, branchLabel); done {
 				return result
 			} else if next != nil {
 				curFlowNode = next
 				continue
 			}
-			return w.getTypeFromBranchFlowNode(&branchFlowNode.FlowLabel)
+			return w.getTypeFromBranchFlowNode(label)
 		}
 
 		if flags&FlowFlagsLoopLabel != 0 {
@@ -680,14 +689,12 @@ func simpleStringSubscript(targetNode *parser.IndexNode) (string, bool) {
 // returns (result, nil, true) to finish, (nil, next, false) to step, or
 // (nil, nil, false) to fall through to getTypeFromBranchFlowNode.
 func (w *codeFlowWalk) handleBranchLabel(
-	branchFlowNode *FlowBranchLabel,
+	flowNode FlowNode, label *FlowLabel, branchLabel *FlowBranchLabel,
 ) (*FlowNodeTypeResult, FlowNode, bool) {
-	if branchFlowNode.Flags&FlowFlagsPostContextManager != 0 {
+	if contextMgrNode, ok := flowNode.(*FlowPostContextManagerLabel); ok {
 		// The original's comment: determine whether any of the context managers
 		// support exception suppression. If not, none of its antecedents are
 		// reachable.
-		contextMgrNode := any(branchFlowNode).(*FlowPostContextManagerLabel)
-
 		contextManagerSwallowsExceptions := false
 		for _, expr := range contextMgrNode.Expressions {
 			if isExceptionContextManager(w.evaluator, expr, contextMgrNode.IsAsync) {
@@ -699,23 +706,41 @@ func (w *codeFlowWalk) handleBranchLabel(
 		if contextManagerSwallowsExceptions == contextMgrNode.BlockIfSwallowsExceptions {
 			// The original's comment: do not explore any further along this code
 			// flow path.
-			return w.setCacheEntry(branchFlowNode, nil, false), nil, true
+			return w.setCacheEntry(flowNode, nil, false), nil, true
 		}
 	}
 
 	// The original's comment: is the current symbol modified in any way within the
 	// scope of the branch? If not, we can skip all processing within the branch
 	// scope.
-	if w.hasReference && branchFlowNode.PreBranchAntecedent != nil && branchFlowNode.AffectedExpressions != nil {
-		if !w.referenceAffectedBy(branchFlowNode.AffectedExpressions) &&
+	if branchLabel == nil {
+		return nil, nil, false
+	}
+
+	if w.hasReference && branchLabel.PreBranchAntecedent != nil && label.AffectedExpressions != nil {
+		if !w.referenceAffectedBy(label.AffectedExpressions) &&
 			w.evaluator.codeFlowReachability.GetFlowNodeReachability(
-				w.evaluator, branchFlowNode, branchFlowNode.PreBranchAntecedent, false) ==
+				w.evaluator, flowNode, branchLabel.PreBranchAntecedent, false) ==
 				ReachabilityReachable {
-			return nil, branchFlowNode.PreBranchAntecedent, false
+			return nil, branchLabel.PreBranchAntecedent, false
 		}
 	}
 
 	return nil, nil, false
+}
+
+// asFlowLabel narrows a flow node carrying the BranchLabel or LoopLabel flag to
+// its embedded FlowLabel, and to FlowBranchLabel where it has one.
+func asFlowLabel(flowNode FlowNode) (*FlowLabel, *FlowBranchLabel) {
+	switch typed := flowNode.(type) {
+	case *FlowBranchLabel:
+		return &typed.FlowLabel, typed
+	case *FlowPostContextManagerLabel:
+		return &typed.FlowLabel, nil
+	case *FlowLabel:
+		return typed, nil
+	}
+	return nil, nil
 }
 
 // narrowForCondition is the TrueCondition/FalseCondition arm. A nil answer means
