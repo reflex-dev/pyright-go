@@ -129,11 +129,6 @@ func (e *typeEvaluator) GetCallSignatureInfo(node *parser.CallNode, activeIndex 
 	return nil
 }
 
-func (e *typeEvaluator) GetAbstractSymbols(classType *ClassType) []*AbstractSymbol {
-	e.unported("GetAbstractSymbols")
-	return nil
-}
-
 func (e *typeEvaluator) NarrowConstrainedTypeVar(node parser.ParseNode, typeVar *TypeVarType) Type {
 	e.unported("NarrowConstrainedTypeVar")
 	return UnknownTypeCreate(false)

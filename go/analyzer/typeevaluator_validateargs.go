@@ -1396,15 +1396,6 @@ func effectiveRangeOrNil(diag *common.DiagnosticAddendum, node parser.ParseNode)
 	return &textRange
 }
 
-// getAbstractSymbolInfo corresponds to the function of the same name, which
-// decides whether a symbol is an unimplemented abstract method. In an ABC the
-// rule is the @abstractmethod decorator; in a protocol it is more involved and
-// depends on whether the declaration is in a stub file.
-func (e *typeEvaluator) getAbstractSymbolInfo(classType *ClassType, symbolName string) *AbstractSymbol {
-	e.unported("getAbstractSymbolInfo")
-	return nil
-}
-
 // refConditions is the inverse of derefConditions: the evaluator's options and
 // ArgResult carry conditions by pointer while types.ts carries them by value.
 func refConditions(conditions []TypeCondition) []*TypeCondition {
@@ -1416,19 +1407,4 @@ func refConditions(conditions []TypeCondition) []*TypeCondition {
 		out = append(out, &conditions[i])
 	}
 	return out
-}
-
-// ApplyFunctionTransform corresponds to the functionTransform.ts function of the
-// same name, which rewrites the result of a call to one of the handful of
-// functions whose return type cannot be expressed in the type system --
-// `functools.total_ordering` and the `dataclass_transform` family.
-func ApplyFunctionTransform(
-	evaluator TypeEvaluator,
-	_ parser.ExpressionNode,
-	_ []*Arg,
-	_ *FunctionType,
-	result *CallResult,
-) *CallResult {
-	noteEvaluatorUnported(evaluator, "functionTransform.applyFunctionTransform")
-	return result
 }
