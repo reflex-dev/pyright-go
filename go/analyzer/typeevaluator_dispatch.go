@@ -225,7 +225,7 @@ func (e *typeEvaluator) getTypeOfExpressionCore(
 			effectiveFlags &^= EvalFlagsInstantiableType
 		}
 
-		return e.getTypeOfBinaryOperation(n, effectiveFlags, inferenceContext)
+		return GetTypeOfBinaryOperation(e, n, effectiveFlags, inferenceContext)
 
 	case *parser.AugmentedAssignmentNode:
 		return e.getTypeOfAugmentedAssignment(n, inferenceContext)
@@ -292,11 +292,6 @@ func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *Infe
 
 func (e *typeEvaluator) getTypeOfUnaryOperation(_ *parser.UnaryOperationNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfUnaryOperation")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfBinaryOperation(_ *parser.BinaryOperationNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfBinaryOperation")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
