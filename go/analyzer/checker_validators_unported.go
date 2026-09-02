@@ -36,14 +36,6 @@ func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ 
 	c.noteUnported("checker.validateInstanceVariableInitialization")
 }
 
-func (c *Checker) validateDataClassPostInit(_ *ClassType) {
-	c.noteUnported("checker.validateDataClassPostInit")
-}
-
-func (c *Checker) validateEnumMembers(_ *ClassType, _ *parser.ClassNode) {
-	c.noteUnported("checker.validateEnumMembers")
-}
-
 /*
  * The per-function validators.
  */
