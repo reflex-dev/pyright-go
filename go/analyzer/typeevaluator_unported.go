@@ -85,11 +85,6 @@ func (e *typeEvaluator) ExpandPromotionTypes(node parser.ParseNode, t Type) Type
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) IsTypeSubsumedByOtherType(t Type, otherType Type, allowAnyToSubsume bool) bool {
-	e.unported("IsTypeSubsumedByOtherType")
-	return false
-}
-
 // GetInferredTypeOfDeclaration is the interface method for
 // getInferredTypeOfDeclaration.
 func (e *typeEvaluator) GetInferredTypeOfDeclaration(symbol *Symbol, decl Declaration) Type {

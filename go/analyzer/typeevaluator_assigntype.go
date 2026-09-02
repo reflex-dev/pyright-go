@@ -601,13 +601,6 @@ func (e *typeEvaluator) setConstraintsForFreeTypeVars(
 	}
 }
 
-func (e *typeEvaluator) assignFromUnionType(
-	_ Type, _ *UnionType, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
-) bool {
-	e.unported("assignFromUnionType")
-	return false
-}
-
 // getCallbackProtocolType corresponds to the function of the same name.
 //
 // Its comment at the call site: if the class is a protocol and it has a
