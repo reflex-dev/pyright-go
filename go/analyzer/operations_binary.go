@@ -375,22 +375,6 @@ type BinaryOperationOptions struct {
 	IsTupleAddAllowed    bool
 }
 
-// ValidateBinaryOperation corresponds to the operations.ts function of the same
-// name: the magic-method dispatch, union expansion and literal math that decide
-// what an operator actually produces.
-func ValidateBinaryOperation(
-	evaluator TypeEvaluator,
-	_ parser.OperatorType,
-	_ *TypeResult, _ *TypeResult,
-	_ parser.ExpressionNode,
-	_ *InferenceContext,
-	_ *common.DiagnosticAddendum,
-	_ *BinaryOperationOptions,
-) *TypeResult {
-	noteEvaluatorUnported(evaluator, "operations.validateBinaryOperation")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // CreateUnionTypeFromOperands corresponds to the operations.ts createUnionType,
 // renamed because the evaluator already has a createUnionType for `Union[...]`.
 //
