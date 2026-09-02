@@ -72,14 +72,6 @@ func (c *Checker) validateEnumMembers(_ *ClassType, _ *parser.ClassNode) {
 	c.noteUnported("checker.validateEnumMembers")
 }
 
-func (c *Checker) validateTypedDictClassSuite(_ *parser.SuiteNode) {
-	c.noteUnported("checker.validateTypedDictClassSuite")
-}
-
-func (c *Checker) validateEnumClassOverride(_ *parser.ClassNode, _ *ClassType) {
-	c.noteUnported("checker.validateEnumClassOverride")
-}
-
 /*
  * The per-function validators.
  */
@@ -147,26 +139,8 @@ func (c *Checker) reportUnnecessaryConditionExpression(_ parser.ExpressionNode) 
 	c.noteUnported("checker.reportUnnecessaryConditionExpression")
 }
 
-func (c *Checker) conditionallyReportPrivateUsage(_ *parser.NameNode) {
-	c.noteUnported("checker.conditionallyReportPrivateUsage")
-}
-
-func (c *Checker) reportUnboundName(_ *parser.NameNode) {
-	c.noteUnported("checker.reportUnboundName")
-}
-
 func (c *Checker) reportDeprecatedUseForType(_ *parser.NameNode, _ Type, _ bool) {
 	c.noteUnported("checker.reportDeprecatedUseForType")
-}
-
-func (c *Checker) reportDeprecatedUseForOperation(_ parser.ExpressionNode, _ *TypeResult) {
-	c.noteUnported("checker.reportDeprecatedUseForOperation")
-}
-
-func (c *Checker) reportDeprecatedUseForMemberAccess(
-	_ *parser.NameNode, _ *MemberAccessDeprecationInfo,
-) {
-	c.noteUnported("checker.reportDeprecatedUseForMemberAccess")
 }
 
 func (c *Checker) validateNonlocalTypeParam(_ *parser.NameNode) {

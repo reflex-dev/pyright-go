@@ -56,12 +56,31 @@ func CreateEnumType(
 	return nil
 }
 
-// IsEnumClassWithMembers corresponds to the enums.ts function of the same name.
-// Answering false routes a genuine enum class into the functional-form path, so
-// this stub is deliberately conservative in the direction that reports nothing.
-func IsEnumClassWithMembers(evaluator TypeEvaluator, _ *ClassType) bool {
-	noteEvaluatorUnported(evaluator, "enums.isEnumClassWithMembers")
-	return true
+// IsEnumClassWithMembers corresponds to the enums.ts function of the same name:
+// is this an enum class that actually declares at least one member?
+//
+// "Declares a member" is not the same as "has a class-level assignment". A name
+// in an enum body becomes a member only if transformTypeForEnumMember says so,
+// and the test that it did is that the resulting type is an instance of the enum
+// class itself -- which is exactly what distinguishes `RED = 1` from a method or
+// an annotated-but-unassigned name.
+func IsEnumClassWithMembers(evaluator TypeEvaluator, classType *ClassType) bool {
+	if classType == nil || !ClassTypeIsEnumClass(classType) {
+		return false
+	}
+
+	// The original's comment: determine whether the enum class defines a member.
+	symbolTable := ClassTypeGetSymbolTable(classType)
+	for _, name := range symbolTable.Keys() {
+		symbolType := TransformTypeForEnumMember(evaluator, classType, name)
+		if symbolType != nil && IsClassInstance(symbolType) &&
+			ClassTypeIsSameGenericClass(symbolType.(*ClassType),
+				ClassTypeCloneAsInstance(classType, true), 0) {
+			return true
+		}
+	}
+
+	return false
 }
 
 /*
