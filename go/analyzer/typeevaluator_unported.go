@@ -183,11 +183,6 @@ func (e *typeEvaluator) GetInferredTypeOfDeclaration(symbol *Symbol, decl Declar
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetDeclaredTypeForExpression(expression parser.ExpressionNode, usage *EvaluatorUsage) Type {
-	e.unported("GetDeclaredTypeForExpression")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) GetDeclaredReturnType(node *parser.FunctionNode) Type {
 	e.unported("GetDeclaredReturnType")
 	return UnknownTypeCreate(false)
