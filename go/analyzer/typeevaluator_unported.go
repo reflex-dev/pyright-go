@@ -99,10 +99,6 @@ func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classTy
 	e.unported("ValidateInitSubclassArgs")
 }
 
-func (e *typeEvaluator) SuppressDiagnostics(node parser.ParseNode, callback func()) {
-	e.unported("SuppressDiagnostics")
-}
-
 func (e *typeEvaluator) IsSpecialFormClass(classType *ClassType, flags AssignTypeFlags) bool {
 	e.unported("IsSpecialFormClass")
 	return false
@@ -178,11 +174,6 @@ func (e *typeEvaluator) GetBestOverloadForArgs(errorNode parser.ExpressionNode, 
 	return nil
 }
 
-func (e *typeEvaluator) GetTypeOfMember(member *ClassMember) Type {
-	e.unported("GetTypeOfMember")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) GetBoundMagicMethod(classType *ClassType, memberName string, selfType Type, errorNode parser.ExpressionNode, diag *common.DiagnosticAddendum, recursionCount int) Type {
 	e.unported("GetBoundMagicMethod")
 	return UnknownTypeCreate(false)
@@ -191,11 +182,6 @@ func (e *typeEvaluator) GetBoundMagicMethod(classType *ClassType, memberName str
 func (e *typeEvaluator) GetTypeOfMagicMethodCall(objType Type, methodName string, argList []*TypeResult, errorNode parser.ExpressionNode, inferenceContext *InferenceContext) *TypeResult {
 	e.unported("GetTypeOfMagicMethodCall")
 	return nil
-}
-
-func (e *typeEvaluator) BindFunctionToClassOrObject(baseType *ClassType, memberType Type, memberClass *ClassType, treatConstructorAsClassMethod bool, selfType Type, diag *common.DiagnosticAddendum, recursionCount int) Type {
-	e.unported("BindFunctionToClassOrObject")
-	return UnknownTypeCreate(false)
 }
 
 func (e *typeEvaluator) GetCallbackProtocolType(objType *ClassType, recursionCount int) Type {

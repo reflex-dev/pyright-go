@@ -247,16 +247,6 @@ func (e *typeEvaluator) metaclassDescriptorSatisfiesLookup(
 	return IsDescriptorInstance(descMemberInfo.Type, true) || isProperty
 }
 
-// getTypeOfClassMemberName corresponds to the function of the same name, which
-// walks the MRO, applies the descriptor protocol and binds the result.
-func (e *typeEvaluator) getTypeOfClassMemberName(
-	_ parser.ExpressionNode, _ *ClassType, _ string, _ *EvaluatorUsage,
-	_ *common.DiagnosticAddendum, _ MemberAccessFlags, _ Type, _ int,
-) *ClassMemberLookup {
-	e.unported("getTypeOfClassMemberName")
-	return nil
-}
-
 /*
  * The three constructors.ts wrappers, which differ only in their flags.
  */

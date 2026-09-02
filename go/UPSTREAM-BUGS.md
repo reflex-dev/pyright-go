@@ -416,6 +416,51 @@ here because the *fix* would be a divergence: it changes how often the file
 system is touched, which the import logger records and which the resolver's
 parent-directory cache is layered on top of.
 
+## 14. `??` and `?:` precedence makes a `selfClass` computation always discard `selfType`
+
+`analyzer/typeEvaluator.ts:6632`, inside `getTypeOfClassMemberName`.
+
+```ts
+const selfClass = selfType ?? memberName === '__new__' ? undefined : classType;
+```
+
+`===` binds tighter than `??`, and `??` binds tighter than the conditional, so
+this parses as
+
+```ts
+const selfClass = (selfType ?? (memberName === '__new__')) ? undefined : classType;
+```
+
+`selfType` is a `ClassType | TypeVarType | undefined`, so whenever it is defined
+it is a truthy object and the conditional takes the `undefined` branch. The
+result is that `selfClass` is `undefined` whenever a `selfType` was supplied --
+the exact case where the caller wanted it used.
+
+The shape everywhere else in the same function is
+
+```ts
+selfType ? convertToInstantiable(selfType) : (memberName !== '__new__' ? classType : undefined)
+```
+
+so the intent was almost certainly
+
+```ts
+const selfClass = selfType ?? (memberName === '__new__' ? undefined : classType);
+```
+
+which differs whenever `selfType` is defined.
+
+The reach is narrow: this line is only evaluated on a `set` through an object,
+inside the declaring class body, to a symbol that is effectively a `ClassVar` --
+and its result feeds a `getTypeOfMemberInternal` call whose only use is an
+`isDescriptorInstance` test. So the practical effect is that a descriptor stored
+in a `ClassVar` is specialized against the wrong self class in that one check.
+
+The Go port reproduces the parsed behavior, with a comment at
+`analyzer/typeevaluator_classmembername.go` pointing here.
+
+---
+
 ---
 
 ## Non-bugs worth knowing about
