@@ -255,14 +255,6 @@ func (e *typeEvaluator) getTypeArg(
  * The two satellites this reaches.
  */
 
-// applyUnpackToTupleLike corresponds to the function of the same name. It
-// returns nil where the original returns undefined, meaning "this type cannot be
-// unpacked".
-func (e *typeEvaluator) applyUnpackToTupleLike(_ Type) Type {
-	e.unported("applyUnpackToTupleLike")
-	return nil
-}
-
 // createTypedDictTypeInlined corresponds to the typedDicts.ts function of the
 // same name, which builds a TypedDict from an inline `{...}` type argument.
 func (e *typeEvaluator) createTypedDictTypeInlined(_ *parser.DictionaryNode, _ *ClassType) *ClassType {

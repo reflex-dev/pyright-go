@@ -634,24 +634,11 @@ func intPtr(v int) *int    { return &v }
 func boolPtr(v bool) *bool { return &v }
 
 /*
- * The special-form creators and the three helpers. Each is a separate unit of
- * work and records itself.
+ * The three special-form creators whose arguments are not ordinary type
+ * arguments: Generic declares type parameters, Annotated carries uninterpreted
+ * metadata, and Self names the enclosing class. The rest of the family lives in
+ * typeevaluator_specialforms.go.
  */
-
-func (e *typeEvaluator) createOptionalType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createOptionalType")
-	return c
-}
-
-func (e *typeEvaluator) createClassVarType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createClassVarType")
-	return c
-}
-
-func (e *typeEvaluator) createUnionType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createUnionType")
-	return c
-}
 
 // createGenericType corresponds to the function of the same name: `Generic[T]`
 // in a base class list, whose arguments declare the class's type parameters
@@ -713,11 +700,6 @@ func (e *typeEvaluator) createGenericType(
 	}
 
 	return e.createSpecialType(classType, typeArgs, nil, boolPtr(true), nil)
-}
-
-func (e *typeEvaluator) createFinalType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createFinalType")
-	return c
 }
 
 // createAnnotatedType corresponds to the function of the same name: `Annotated[T, ...]`,
@@ -783,26 +765,6 @@ func (e *typeEvaluator) validateAnnotatedMetadata(
 	_ parser.ExpressionNode, baseType Type, _ []*TypeResultWithNode,
 ) Type {
 	return baseType
-}
-
-func (e *typeEvaluator) createConcatenateType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createConcatenateType")
-	return c
-}
-
-func (e *typeEvaluator) createTypeGuardType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createTypeGuardType")
-	return c
-}
-
-func (e *typeEvaluator) createUnpackType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createUnpackType")
-	return c
-}
-
-func (e *typeEvaluator) createRequiredOrReadOnlyType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) *TypeResult {
-	e.unported("createRequiredOrReadOnlyType")
-	return &TypeResult{Type: c}
 }
 
 // createSelfType corresponds to the function of the same name: the `Self` type,
@@ -924,12 +886,6 @@ func (e *typeEvaluator) checkSelfTypeInFunction(
 	}
 
 	return true
-}
-
-// createTypeFormType corresponds to the function of the same name.
-func (e *typeEvaluator) createTypeFormType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode) Type {
-	e.unported("createTypeFormType")
-	return c
 }
 
 // explodeGenericClass corresponds to the function of the same name.

@@ -697,9 +697,9 @@ func (e *typeEvaluator) createFunctionFromConstructor(_ *ClassType, _ Type, _ in
 	return nil
 }
 
-func (e *typeEvaluator) combineTupleTypeArgs(_ []*TupleTypeArg) Type {
-	e.unported("combineTupleTypeArgs")
-	return UnknownTypeCreate(false)
+// combineTupleTypeArgs reaches the typeUtils.ts function of the same name.
+func (e *typeEvaluator) combineTupleTypeArgs(typeArgs []*TupleTypeArg) Type {
+	return CombineTupleTypeArgs(typeArgs)
 }
 
 func (e *typeEvaluator) classGetItemReturnsGenericAlias(_ *ClassType) bool {

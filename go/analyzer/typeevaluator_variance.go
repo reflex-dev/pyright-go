@@ -297,15 +297,17 @@ func baseClassVarianceHolds(specializedDest, specializedSrc *ClassType) bool {
 	return true
 }
 
-// assignProperty corresponds to the properties.ts function of the same name,
-// which compares a property's fget, fset and fdel individually rather than
-// comparing the property objects.
+// assignProperty reaches the properties.ts function of the same name, which
+// compares a property's fget, fset and fdel individually rather than comparing
+// the property objects.
 //
 // The original also takes diag, constraints and selfConstraints; every one of
 // them is undefined at this call site, the only one that exists so far.
 func (e *typeEvaluator) assignProperty(
-	_ *ClassType, _ *ClassType, _ *ClassType, _ *ClassType, _ int,
+	destPropertyType *ClassType, srcPropertyType *ClassType,
+	destClass *ClassType, srcClass *ClassType, recursionCount int,
 ) bool {
-	e.unported("properties.assignProperty")
-	return true
+	return AssignProperty(
+		e, destPropertyType, srcPropertyType, destClass, srcClass,
+		nil, nil, nil, recursionCount)
 }
