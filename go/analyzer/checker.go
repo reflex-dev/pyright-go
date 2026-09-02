@@ -263,8 +263,93 @@ func (c *Checker) validateStubStatement(statement parser.StatementNode) {
  * records itself, so the frontier ranks them alongside the evaluator's.
  */
 
-func (c *Checker) reportUnusedExpression(_ parser.ExpressionNode) {
-	c.noteUnported("checker.reportUnusedExpression")
+// reportUnusedExpression corresponds to _reportUnusedExpression: a statement
+// whose expression has no effect.
+//
+// The list is deliberately narrow. A call, an await, a yield and a string all
+// have plausible reasons to stand alone -- side effects, a docstring, a type
+// comment -- so only expression kinds that cannot possibly do anything are
+// reported. A list, set or dict display qualifies too, except when it contains a
+// comprehension, which can have side effects through its iterable.
+func (c *Checker) reportUnusedExpression(node parser.ExpressionNode) {
+	if c.fileInfo.DiagnosticRuleSet.ReportUnusedExpression == DiagnosticLevelNone {
+		return
+	}
+
+	reportAsUnused := false
+
+	switch node.GetNodeType() {
+	case parser.ParseNodeTypeUnaryOperation,
+		parser.ParseNodeTypeBinaryOperation,
+		parser.ParseNodeTypeNumber,
+		parser.ParseNodeTypeConstant,
+		parser.ParseNodeTypeName,
+		parser.ParseNodeTypeTuple:
+		reportAsUnused = true
+
+	case parser.ParseNodeTypeList, parser.ParseNodeTypeSet, parser.ParseNodeTypeDictionary:
+		// The original's comment: exclude comprehensions.
+		if !displayContainsComprehension(node) {
+			reportAsUnused = true
+		}
+	}
+
+	if reportAsUnused && c.fileInfo.IPythonMode == IPythonModeCellDocs &&
+		isLastStatementOfModule(node) {
+		// The original's comment: exclude an expression at the end of a notebook
+		// cell, as that is treated as the cell's value.
+		reportAsUnused = false
+	}
+
+	if reportAsUnused {
+		c.evaluator.AddDiagnostic(DiagnosticRuleReportUnusedExpression,
+			localization.LocMessage.UnusedExpression(), node, nil)
+	}
+}
+
+// displayContainsComprehension reads `.d.items` from the list/set/dict union and
+// asks whether any entry is a comprehension.
+func displayContainsComprehension(node parser.ExpressionNode) bool {
+	var items []parser.ExpressionNode
+
+	switch typed := node.(type) {
+	case *parser.ListNode:
+		items = typed.D.Items
+	case *parser.SetNode:
+		items = typed.D.Items
+	case *parser.DictionaryNode:
+		for _, entry := range typed.D.Items {
+			if entry.GetNodeType() == parser.ParseNodeTypeComprehension {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, item := range items {
+		if item.GetNodeType() == parser.ParseNodeTypeComprehension {
+			return true
+		}
+	}
+	return false
+}
+
+// isLastStatementOfModule is the original's four-way parent chain: the node is
+// the last statement of the last statement list of the module.
+func isLastStatementOfModule(node parser.ExpressionNode) bool {
+	statementList, ok := node.NodeBase().Parent.(*parser.StatementListNode)
+	if !ok || len(statementList.D.Statements) == 0 ||
+		parser.ParseNode(statementList.D.Statements[len(statementList.D.Statements)-1]) != parser.ParseNode(node) {
+		return false
+	}
+
+	moduleNode, ok := statementList.NodeBase().Parent.(*parser.ModuleNode)
+	if !ok || len(moduleNode.D.Statements) == 0 {
+		return false
+	}
+
+	return parser.ParseNode(moduleNode.D.Statements[len(moduleNode.D.Statements)-1]) ==
+		parser.ParseNode(statementList)
 }
 
 func (c *Checker) reportUnusedDunderAllSymbols(_ []*parser.StringNode) {
