@@ -581,8 +581,24 @@ func (e *typeEvaluator) assignRecursiveTypeAliasToSelf(
 	return false
 }
 
-func (e *typeEvaluator) setConstraintsForFreeTypeVars(_ Type, _ Type, _ *ConstraintTracker) {
-	e.unported("setConstraintsForFreeTypeVars")
+// setConstraintsForFreeTypeVars corresponds to the function of the same name.
+//
+// Its comment: finds unsolved type variables in the destType and establishes
+// constraints in the constraint tracker for them based on the srcType.
+func (e *typeEvaluator) setConstraintsForFreeTypeVars(
+	destType Type, srcType Type, constraints *ConstraintTracker,
+) {
+	for _, typeVar := range GetTypeVarArgsRecursive(destType, 0) {
+		if TypeVarTypeIsBound(typeVar) ||
+			constraints.GetMainConstraintSet().GetTypeVar(typeVar) != nil {
+			continue
+		}
+
+		// The original's comment: don't set ParamSpecs or TypeVarTuples.
+		if !IsParamSpec(srcType) && !IsTypeVarTuple(srcType) {
+			constraints.SetBounds(typeVar, srcType, nil, false)
+		}
+	}
 }
 
 func (e *typeEvaluator) assignFromUnionType(

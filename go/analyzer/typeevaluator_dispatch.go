@@ -290,9 +290,12 @@ func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *Infe
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-func (e *typeEvaluator) getTypeOfUnaryOperation(_ *parser.UnaryOperationNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfUnaryOperation")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
+// getTypeOfUnaryOperation delegates to the operations.ts function of the same
+// name, which the original reaches as a module import.
+func (e *typeEvaluator) getTypeOfUnaryOperation(
+	node *parser.UnaryOperationNode, flags EvalFlags, inferenceContext *InferenceContext,
+) *TypeResult {
+	return GetTypeOfUnaryOperation(e, node, flags, inferenceContext)
 }
 
 func (e *typeEvaluator) getTypeOfAugmentedAssignment(_ *parser.AugmentedAssignmentNode, _ *InferenceContext) *TypeResult {

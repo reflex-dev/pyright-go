@@ -720,9 +720,69 @@ func (e *typeEvaluator) createFinalType(c *ClassType, _ parser.ExpressionNode, _
 	return c
 }
 
-func (e *typeEvaluator) createAnnotatedType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) *TypeResult {
-	e.unported("createAnnotatedType")
-	return &TypeResult{Type: c}
+// createAnnotatedType corresponds to the function of the same name: `Annotated[T, ...]`,
+// whose first argument is the real type and whose remaining arguments are metadata
+// the type system carries but does not interpret.
+func (e *typeEvaluator) createAnnotatedType(
+	classType *ClassType,
+	errorNode parser.ExpressionNode,
+	typeArgs []*TypeResultWithNode,
+	flags EvalFlags,
+) *TypeResult {
+	var t Type
+
+	// Outside a type expression, `Annotated` is an ordinary runtime object.
+	typeExprFlags := EvalFlagsTypeExpression | EvalFlagsNoConvertSpecialForm
+	if (flags & typeExprFlags) == 0 {
+		t = ClassTypeCloneAsInstance(classType, false)
+
+		if len(typeArgs) >= 1 {
+			if props := typeArgs[0].Type.Base().Props; props != nil && props.TypeForm != nil {
+				t = CloneWithTypeForm(t, props.TypeForm)
+			}
+		}
+
+		return &TypeResult{Type: t}
+	}
+
+	if len(typeArgs) > 0 {
+		t = typeArgs[0].Type
+
+		if len(typeArgs) < 2 {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.AnnotatedTypeArgMissing(), errorNode, nil)
+		} else {
+			t = e.validateAnnotatedMetadata(errorNode, typeArgs[0].Type, typeArgs[1:])
+		}
+	}
+
+	if t == nil || len(typeArgs) == 0 {
+		return &TypeResult{Type: AnyTypeCreate(false)}
+	}
+
+	if typeArgs[0].TypeList != nil {
+		e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+			localization.LocMessage.TypeArgListNotAllowed(), typeArgs[0].Node, nil)
+	}
+
+	return &TypeResult{
+		Type:          CloneAsSpecialForm(t, ClassTypeCloneAsInstance(classType, false)),
+		IsReadOnly:    typeArgs[0].IsReadOnly,
+		IsRequired:    typeArgs[0].IsRequired,
+		IsNotRequired: typeArgs[0].IsNotRequired,
+	}
+}
+
+// validateAnnotatedMetadata corresponds to the function of the same name.
+//
+// Its comment: enforces metadata consistency as specified in PEP 746. The
+// original's per-argument check was added for a draft of that PEP and its
+// functionality has since been removed while the PEP is revised, so every
+// argument is accepted.
+func (e *typeEvaluator) validateAnnotatedMetadata(
+	_ parser.ExpressionNode, baseType Type, _ []*TypeResultWithNode,
+) Type {
+	return baseType
 }
 
 func (e *typeEvaluator) createConcatenateType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
@@ -745,10 +805,125 @@ func (e *typeEvaluator) createRequiredOrReadOnlyType(c *ClassType, _ parser.Expr
 	return &TypeResult{Type: c}
 }
 
-// createSelfType corresponds to the function of the same name.
-func (e *typeEvaluator) createSelfType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
-	e.unported("createSelfType")
-	return c
+// createSelfType corresponds to the function of the same name: the `Self` type,
+// which stands for the class it appears in.
+//
+// Most of the function is about where `Self` is NOT allowed. It needs an
+// enclosing class, and one reached through the class BODY rather than through a
+// decorator, base-class list, metaclass argument or type parameter list -- all
+// of which are lexically inside the class statement but evaluated outside it. A
+// metaclass cannot use it at all, and neither can a static method, which has no
+// self to refer to. An enclosing method that annotates its own first parameter
+// with something other than Self contradicts it.
+func (e *typeEvaluator) createSelfType(
+	classType *ClassType,
+	errorNode parser.ExpressionNode,
+	typeArgs []*TypeResultWithNode,
+	flags EvalFlags,
+) Type {
+	// The original's comment: Self doesn't support any type arguments.
+	if len(typeArgs) > 0 {
+		var reportNode parser.ParseNode = errorNode
+		if typeArgs[0].Node != nil {
+			reportNode = typeArgs[0].Node
+		}
+		e.AddDiagnostic(DiagnosticRuleReportInvalidTypeArguments,
+			localization.LocMessage.TypeArgsExpectingNone().Format(classType.Shared.Name),
+			reportNode, nil)
+	}
+
+	enclosingClass := GetEnclosingClass(errorNode, false)
+
+	// The original's comment: if `Self` appears anywhere outside of the class body
+	// (e.g. a decorator, base class list, metaclass argument, type parameter list),
+	// it is considered illegal.
+	if enclosingClass != nil && !IsNodeContainedWithin(errorNode, enclosingClass.D.Suite) {
+		enclosingClass = nil
+	}
+
+	var enclosingClassTypeResult *ClassTypeResult
+	if enclosingClass != nil {
+		enclosingClassTypeResult = e.GetTypeOfClass(enclosingClass)
+	}
+
+	if enclosingClassTypeResult == nil {
+		if (flags & (EvalFlagsTypeExpression | EvalFlagsInstantiableType | EvalFlagsTypeFormArg)) != 0 {
+			e.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+				localization.LocMessage.SelfTypeContext(), errorNode, nil)
+		}
+
+		return UnknownTypeCreate(false)
+	}
+
+	if IsInstantiableMetaclass(enclosingClassTypeResult.ClassType) {
+		// The original's comment: if `Self` appears within a metaclass, it is
+		// considered illegal.
+		e.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+			localization.LocMessage.SelfTypeMetaclass(), errorNode, nil)
+
+		return UnknownTypeCreate(false)
+	}
+
+	if enclosingFunction := GetEnclosingFunction(errorNode); enclosingFunction != nil {
+		if !e.checkSelfTypeInFunction(enclosingFunction, errorNode) {
+			return UnknownTypeCreate(false)
+		}
+	}
+
+	result := SynthesizeTypeVarForSelfCls(enclosingClassTypeResult.ClassType, true)
+
+	if enclosingClass != nil {
+		// The original's comment: if "Self" is used as a type expression within a
+		// function suite, it needs to be marked as bound.
+		enclosingSuite := GetEnclosingClassOrFunctionSuite(errorNode)
+
+		if enclosingSuite != nil && IsNodeContainedWithin(enclosingSuite, enclosingClass) {
+			if enclosingClass.D.Suite != enclosingSuite {
+				result = TypeVarTypeCloneAsBound(result)
+			}
+		}
+	}
+
+	return result
+}
+
+// checkSelfTypeInFunction is the original's enclosing-function block. It reports
+// whether `Self` is legal here.
+func (e *typeEvaluator) checkSelfTypeInFunction(
+	enclosingFunction *parser.FunctionNode, errorNode parser.ExpressionNode,
+) bool {
+	functionInfo := GetFunctionInfoFromDecorators(e, enclosingFunction, true)
+
+	isInnerFunction := GetEnclosingFunction(enclosingFunction) != nil
+	if isInnerFunction {
+		return true
+	}
+
+	// The original's comment: check for static methods.
+	if (functionInfo.Flags & FunctionTypeFlagsStaticMethod) != 0 {
+		e.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+			localization.LocMessage.SelfTypeContext(), errorNode, nil)
+		return false
+	}
+
+	if len(enclosingFunction.D.Params) == 0 {
+		return true
+	}
+
+	firstParamTypeAnnotation := GetTypeAnnotationForParam(enclosingFunction, 0)
+	if firstParamTypeAnnotation == nil || IsNodeContainedWithin(errorNode, firstParamTypeAnnotation) {
+		return true
+	}
+
+	annotationType := e.GetTypeOfAnnotation(firstParamTypeAnnotation,
+		&ExpectedTypeOptions{TypeVarGetsCurScope: true})
+	tv, isTypeVar := annotationType.(*TypeVarType)
+	if !isTypeVar || !IsTypeVar(annotationType) || !TypeVarTypeIsSelf(tv) {
+		e.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+			localization.LocMessage.SelfTypeWithTypedSelfOrCls(), errorNode, nil)
+	}
+
+	return true
 }
 
 // createTypeFormType corresponds to the function of the same name.
