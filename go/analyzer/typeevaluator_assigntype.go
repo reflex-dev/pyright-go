@@ -592,15 +592,6 @@ func (e *typeEvaluator) assignFromUnionType(
 	return false
 }
 
-// assignFunction corresponds to the function of the same name: parameter and
-// return type compatibility between two callables.
-func (e *typeEvaluator) assignFunction(
-	_ *FunctionType, _ *FunctionType, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
-) bool {
-	e.unported("assignFunction")
-	return false
-}
-
 func (e *typeEvaluator) getCallbackProtocolType(_ *ClassType, _ int) Type {
 	e.unported("getCallbackProtocolType")
 	return nil
