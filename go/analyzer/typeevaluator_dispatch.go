@@ -278,11 +278,6 @@ func (e *typeEvaluator) getTypeOfMemberAccess(_ *parser.MemberAccessNode, _ Eval
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-func (e *typeEvaluator) getTypeOfIndex(_ *parser.IndexNode, _ EvalFlags) *TypeResult {
-	e.unported("getTypeOfIndex")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfTuple")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
