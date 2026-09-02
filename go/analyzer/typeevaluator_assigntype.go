@@ -581,16 +581,6 @@ func (e *typeEvaluator) assignRecursiveTypeAliasToSelf(
 	return false
 }
 
-func (e *typeEvaluator) isTypeVarSame(_ *TypeVarType, _ Type) bool {
-	e.unported("isTypeVarSame")
-	return false
-}
-
-func (e *typeEvaluator) assignConditionalTypeToTypeVar(_ *TypeVarType, _ Type, _ int) bool {
-	e.unported("assignConditionalTypeToTypeVar")
-	return false
-}
-
 func (e *typeEvaluator) setConstraintsForFreeTypeVars(_ Type, _ Type, _ *ConstraintTracker) {
 	e.unported("setConstraintsForFreeTypeVars")
 }

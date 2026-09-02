@@ -638,11 +638,6 @@ func boolPtr(v bool) *bool { return &v }
  * work and records itself.
  */
 
-func (e *typeEvaluator) createCallableType(c *ClassType, _ []*TypeResultWithNode, _ parser.ExpressionNode) Type {
-	e.unported("createCallableType")
-	return c
-}
-
 func (e *typeEvaluator) createOptionalType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
 	e.unported("createOptionalType")
 	return c

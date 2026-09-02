@@ -266,11 +266,3 @@ func (e *typeEvaluator) getBooleanValue(node parser.ExpressionNode) bool {
 		localization.LocMessage.ExpectedBoolLiteral(), node, nil)
 	return false
 }
-
-// verifyTypeVarDefaultIsCompatible corresponds to the function of the same name,
-// which checks a PEP 696 default against the TypeVar's bound or constraints.
-func (e *typeEvaluator) verifyTypeVarDefaultIsCompatible(
-	_ *TypeVarType, _ parser.ExpressionNode,
-) {
-	e.unported("verifyTypeVarDefaultIsCompatible")
-}

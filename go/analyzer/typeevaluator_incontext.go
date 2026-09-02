@@ -437,11 +437,6 @@ func (e *typeEvaluator) getTypeOfTypeAlias(_ *parser.TypeAliasNode) Type {
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) getTypeOfTypeParam(_ *parser.TypeParameterNode) Type {
-	e.unported("getTypeOfTypeParam")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) evaluateTypesForAugmentedAssignment(_ *parser.AugmentedAssignmentNode) {
 	e.unported("evaluateTypesForAugmentedAssignment")
 }
