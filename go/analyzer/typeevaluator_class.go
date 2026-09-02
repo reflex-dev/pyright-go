@@ -1626,20 +1626,21 @@ func (e *typeEvaluator) synthesizeTypedDictClassMethods(_ *parser.ClassNode, _ *
 // synthesizeDataClassMethods corresponds to the dataClasses.ts function of the
 // same name.
 func (e *typeEvaluator) synthesizeDataClassMethods(
-	_ *parser.ClassNode,
-	_ *ClassType,
-	_ bool,
-	_ bool,
-	_ bool,
-	_ bool,
+	node *parser.ClassNode,
+	classType *ClassType,
+	isNamedTuple bool,
+	skipSynthesizeInit bool,
+	hasExistingInitMethod bool,
+	skipSynthesizeHash bool,
 ) {
-	e.unported("synthesizeDataClassMethods")
+	SynthesizeDataClassMethods(
+		e, node, classType, isNamedTuple, skipSynthesizeInit, hasExistingInitMethod, skipSynthesizeHash)
 }
 
 // synthesizeDataClassSlots corresponds to the dataClasses.ts function of the
 // same name.
-func (e *typeEvaluator) synthesizeDataClassSlots(_ *ClassType) {
-	e.unported("synthesizeDataClassSlots")
+func (e *typeEvaluator) synthesizeDataClassSlots(classType *ClassType) {
+	SynthesizeDataClassSlots(e, classType)
 }
 
 // applyDataClassClassBehaviorOverrides reaches the dataClasses.ts function of

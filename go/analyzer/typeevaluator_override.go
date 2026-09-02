@@ -589,9 +589,16 @@ func (e *typeEvaluator) checkOverrideVariadicAndKeywordParams(
 			continue
 		}
 
-		targetParamType := overrideParamDetails.Params[*overrideParamDetails.KwargsIndex].Type
+		// The original reads `overrideParamInfo?.type` first and only falls back
+		// to the **kwargs entry when that is absent. Computing the fallback
+		// unconditionally dereferences KwargsIndex, which is legitimately nil
+		// whenever the override names the parameter explicitly.
+		var targetParamType Type
 		if overrideParamInfo != nil {
 			targetParamType = overrideParamInfo.Type
+		}
+		if IsNilType(targetParamType) {
+			targetParamType = overrideParamDetails.Params[*overrideParamDetails.KwargsIndex].Type
 		}
 
 		if !e.AssignType(targetParamType, paramInfo.Type,

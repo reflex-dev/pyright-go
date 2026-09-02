@@ -42,15 +42,6 @@ func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool)
 	c.noteUnported("checker.validateExceptionType")
 }
 
-// validateBaseClassOverride stands in for _validateBaseClassOverride, the
-// per-member comparison of a single override against a single base declaration.
-// It is 396 lines in the original and the last large piece of checker.ts.
-func (c *Checker) validateBaseClassOverride(
-	_ *ClassMember, _ *Symbol, _ Type, _ *ClassType, _ string,
-) {
-	c.noteUnported("checker.validateBaseClassOverride")
-}
-
 // validateInstanceVariableInitialization is ported but parked under wip/: it
 // depends on ClassType.Shared.NamedTupleEntries, which only
 // dataClasses.synthesizeDataClassMethods populates, and that is still a stub.
