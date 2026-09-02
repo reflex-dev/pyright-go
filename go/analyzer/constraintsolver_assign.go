@@ -810,6 +810,30 @@ func typeVarOccursIn(typeVar *TypeVarType, t Type) bool {
 		return false
 	}
 
+	// An overloaded type has to be opened by hand. getTypeVarArgsRecursive is a
+	// faithful transliteration and, like the original, has no OverloadedType
+	// branch -- it answers "no type variables" for an overload. That is harmless
+	// for its own callers but blinds this occurs check to a whole family of
+	// cycles: a TypeVar solved to an overloaded function that mentions the same
+	// TypeVar reads as acyclic and is left in place. It is the same defect as
+	// upstream bug #16, reached through an overload instead of a plain function,
+	// and it presents the same way -- an exponential blowup in
+	// applySolvedTypeVars rather than a stack overflow. See
+	// tests/samples/solverHigherOrder5.py.
+	if overloaded, ok := AsOverloaded(t); ok {
+		for _, overload := range OverloadedTypeGetOverloads(overloaded) {
+			if typeVarOccursIn(typeVar, overload) {
+				return true
+			}
+		}
+		if impl := OverloadedTypeGetImplementation(overloaded); impl != nil {
+			if typeVarOccursIn(typeVar, impl) {
+				return true
+			}
+		}
+		return false
+	}
+
 	for _, tv := range GetTypeVarArgsRecursive(t, 0) {
 		if tv.Shared.Name == typeVar.Shared.Name && tv.Priv.ScopeID == typeVar.Priv.ScopeID {
 			return true

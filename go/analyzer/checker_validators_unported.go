@@ -76,10 +76,6 @@ func (c *Checker) validateEnumMembers(_ *ClassType, _ *parser.ClassNode) {
  * The per-function validators.
  */
 
-func (c *Checker) validateFunctionTypeVarUsage(_ *parser.FunctionNode, _ *FunctionTypeResult) {
-	c.noteUnported("checker.validateFunctionTypeVarUsage")
-}
-
 func (c *Checker) validateOverloadConsistency(
 	_ *parser.FunctionNode, _ *FunctionType, _ []*FunctionType,
 ) {

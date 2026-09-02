@@ -204,6 +204,7 @@ func (e *typeEvaluator) buildFunctionShape(
 	// The original's comment: if this function uses PEP 695 syntax for type
 	// parameters, accumulate the list of type parameters upfront.
 	typeParamsSeen := []*TypeVarType{}
+	typeParamsSeenPtr := &typeParamsSeen
 	if node.D.TypeParams != nil {
 		evaluated := e.evaluateTypeParamList(node.D.TypeParams)
 		converted := make([]*TypeVarType, 0, len(evaluated))
@@ -213,15 +214,27 @@ func (e *typeEvaluator) buildFunctionShape(
 			}
 		}
 		functionType.Shared.TypeParams = converted
+
+		// The original still creates typeParamsSeen in this branch and keeps
+		// appending to it, but never reads it back into shared.typeParams, so the
+		// accumulator is an orphan. Preserved.
 	} else {
+		// DIVERGENCE forced by Go's value semantics. The original writes
+		// `functionType.shared.typeParams = typeParamsSeen`, which aliases the same
+		// JavaScript array -- every later append is visible through
+		// shared.typeParams. A Go slice header is a value, so assigning it once
+		// froze shared.typeParams at empty, and findScopedTypeVar could never match
+		// a legacy-syntax TypeVar against the function that owns it. The
+		// accumulator therefore points at the field itself.
 		functionType.Shared.TypeParams = typeParamsSeen
+		typeParamsSeenPtr = &functionType.Shared.TypeParams
 	}
 
 	state := &functionParamState{
 		paramsArePositionOnly:       true,
 		firstCommentAnnotationIndex: firstCommentAnnotationIndex,
 		addGenericParamTypes:        addGenericParamTypes,
-		typeParamsSeen:              &typeParamsSeen,
+		typeParamsSeen:              typeParamsSeenPtr,
 		paramTypes:                  &paramTypes,
 	}
 
@@ -261,7 +274,7 @@ func (e *typeEvaluator) buildFunctionShape(
 	}
 
 	e.applyGradualCallableForm(functionType, paramTypes)
-	e.evaluateDeclaredReturnType(node, functionType, fileInfo, &typeParamsSeen)
+	e.evaluateDeclaredReturnType(node, functionType, fileInfo, typeParamsSeenPtr)
 
 	// The original's comment: validate the default types for all type
 	// parameters.
