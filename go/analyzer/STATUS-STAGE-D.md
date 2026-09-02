@@ -170,13 +170,39 @@ had any reason to assume.
 
 ## Order
 
-| step | files | lines |
-| --- | --- | --- |
-| 1 | `typeEvaluatorTypes.ts` — the 88-method interface | 900 |
-| 2 | evaluator core: name / member-access / call / index / binary-op | ~12k |
-| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 |
-| 4 | the class-shape satellites, lit one at a time | ~11k |
-| 5 | `checker.ts` | 7,859 |
+| step | files | lines | state |
+| --- | --- | --- | --- |
+| 1 | `typeEvaluatorTypes.ts` — the 88-method interface | 900 | done |
+| 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | state layer done |
+| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker done |
+| 4 | the class-shape satellites, lit one at a time | ~11k | |
+| 5 | `checker.ts` | 7,859 | |
+
+### What "state layer done" means
+
+`typeevaluator.go` has the evaluator's constants, its state and the type-cache
+layer: `createTypeEvaluator`'s two dozen closure locals as struct fields, the
+ordinary and TypeForm caches, the shared incomplete-generation counter, the
+symbol-resolution stack, the return-type-inference context stack, and the
+speculative-mode interaction.
+
+**None of it is reachable yet.** No factory is installed, so `Program` still runs
+with a nil evaluator, and this code has never executed. That is the honest state
+of it: it compiles and vets, and nothing more is claimed. The gate is still at 30
+substantive passes because nothing about behaviour has changed.
+
+The next milestone is bigger than it looks. `getTypeOfExpression`'s dispatch is
+easy, but the first case that produces a real answer -- an integer literal -- goes
+`getTypeOfNumber` → `getBuiltInObject` → `getBuiltInType` → `lookUpSymbolRecursive`
+→ `getEffectiveTypeOfSymbol` → declaration resolution, which is most of the
+evaluator's name-resolution half. There is no smaller vertical slice that returns
+a type rather than `Unknown`; that is the all-or-nothing property
+ANALYZER-PLAN.md predicted for this stage, met in practice.
+
+The two tuning-constant blocks and the flag-mismatch debug path are ported
+verbatim even though both debug switches are off in the original. The constants
+change *which* type comes out, not merely how fast, so a plausible-looking Go
+value would be a silent behaviour change.
 
 Step 1 is the decision that matters, the way `Type`'s representation was in
 Stage A. `createTypeEvaluator` is a closure over locals returning an interface;
