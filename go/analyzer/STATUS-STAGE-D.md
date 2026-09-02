@@ -661,3 +661,34 @@ The general form of this, which the earlier field-write rule only half caught:
 reader at once, including ones already reviewed and committed.** Auditing
 `grep -c '\.Field = '` across the whole `Shared`/`Priv` surface is worth doing
 once, rather than per-validator.
+
+### The whole-surface audit, run
+
+Sweeping every `Shared`/`Priv` field for "read somewhere, assigned nowhere"
+returned five candidates. Two are false positives worth naming so the check is
+not re-run naively: `LiteralInstances` and `LiteralClasses` *are* populated in
+`UnionTypeAddType`, but through a pointer alias --
+
+```go
+literalMaps := &unionType.Priv.LiteralInstances
+literalMaps.LiteralStrMap = ...
+```
+
+-- so a `grep '\.Field ='` never sees the field name on the left of the
+assignment. Any such audit under-reports writes through an alias and
+over-reports gaps; treat its output as candidates, not findings.
+
+The three real gaps are `DataClassBehaviors`, `DataClassEntries` and
+`NamedTupleEntries`, and all three are populated by the same unported file:
+
+| field | written upstream by |
+| --- | --- |
+| `DataClassEntries` | `dataClasses.synthesizeDataClassMethods` |
+| `NamedTupleEntries` | same, plus `namedTuples.createNamedTupleType` |
+| `DataClassBehaviors` | `dataClasses.applyDataClassClassBehaviorOverrides` |
+
+So `dataClasses.ts` is not merely the largest unported file -- it is the one
+whose absence silently degrades the most already-landed code, across member
+lookup, protocol matching, multiple-inheritance variance and dataclass entry
+inheritance. Everything it feeds is currently answering from empty data without
+reporting anything unusual.
