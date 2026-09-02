@@ -255,11 +255,6 @@ func (e *typeEvaluator) IsTypeSubsumedByOtherType(t Type, otherType Type, allowA
 	return false
 }
 
-func (e *typeEvaluator) LookUpSymbolRecursive(node parser.ParseNode, name string, honorCodeFlow bool) *SymbolWithScope {
-	e.unported("LookUpSymbolRecursive")
-	return nil
-}
-
 func (e *typeEvaluator) GetDeclaredTypeOfSymbol(symbol *Symbol) *DeclaredSymbolTypeInfo {
 	e.unported("GetDeclaredTypeOfSymbol")
 	return nil

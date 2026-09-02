@@ -9,7 +9,7 @@ REF ?= /tmp/pyright-ref/packages/pyright-internal/src
 ESBUILD ?= $(shell ls -d $$(npm root 2>/dev/null)/@esbuild/*/bin/esbuild 2>/dev/null | head -1)
 SERVER := $(CURDIR)/bin/tokenserver
 
-.PHONY: all build test fmt vet ref bridge-types bridge-types-oracle bridge-evaluator-tests bridge-evaluator-oracle bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
+.PHONY: all build test fmt vet ref bridge-types bridge-types-full bridge-types-oracle bridge-evaluator-tests bridge-evaluator-oracle bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
 
 all: fmt vet test
 
@@ -113,14 +113,25 @@ bridge-evaluator-tests: $(SERVER)
 bridge-evaluator-oracle:
 	PYRIGHT_GO_BRIDGE_MODE=oracle node --max-old-space-size=8192 tools/ts-bridge/run-ts-tests.js --ref $(REF) --server /bin/true --esbuild $(ESBUILD) --test $(EVALUATOR_TESTS)
 
-# Per-node type differential: the printed type of every name in the corpus,
-# diffed one name at a time. This is what localizes an evaluator failure to a
-# single expression instead of an error count; see compare-types.js.
+# Per-node type differential: the printed type of every name, diffed one name at
+# a time. This is what localizes an evaluator failure to a single expression
+# instead of an error count; see compare-types.js.
+#
+# The oracle builds a fresh Program per file and so runs at about three files a
+# second -- ten minutes for the full corpus, which is too slow to sit in the
+# edit loop. bridge-types takes a sample, and the frontier it reports is stable
+# across sample sizes because it is a ranking rather than a count. Use
+# bridge-types-full for the number that goes in a commit message.
+TYPES_SAMPLE ?= 150
+
 bridge-types: $(SERVER)
+	node --max-old-space-size=8192 tools/ts-bridge/compare-types.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --limit $(TYPES_SAMPLE)
+
+bridge-types-full: $(SERVER)
 	node --max-old-space-size=8192 tools/ts-bridge/compare-types.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
 
 bridge-types-oracle:
-	node --max-old-space-size=8192 tools/ts-bridge/compare-types.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
+	node --max-old-space-size=8192 tools/ts-bridge/compare-types.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1 --limit $(TYPES_SAMPLE)
 
 bridge-config-oracle:
 	node tools/ts-bridge/compare-config.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1

@@ -205,17 +205,20 @@ interface members the sample files actually reach, and how often.
 
 It is a **frontier**, not a full map. The first stub a name touches
 short-circuits the rest, so before reachability landed the whole corpus reported
-one entry, `IsNodeReachable`. Porting it revealed the next layer:
+one entry, `IsNodeReachable`. Each thing ported reveals the next layer:
 
-    unported evaluator paths reached: 5 distinct, 235235 hits
-         124978  codeFlowEngine.isCallNoReturn
-          87827  GetType
-          21602  LookUpSymbolRecursive
-            758  EvaluateTypeForSubnode
-             70  codeFlowEngine.isExceptionContextManager
+| after | frontier, ranked |
+| --- | --- |
+| nothing | `IsNodeReachable` |
+| reachability | `isCallNoReturn`, `GetType`, `LookUpSymbolRecursive`, `EvaluateTypeForSubnode`, `isExceptionContextManager` |
+| symbol lookup | `isCallNoReturn`, `GetType`, `getTypeNarrowingCallback`, `isExceptionContextManager`, `EvaluateTypeForSubnode` |
 
 That is the right shape for the work: it always names the thing to port next,
-ranked by how much of the corpus is waiting on it.
+ranked by how much of the corpus is waiting on it. And it is a *ranking*, which
+is why a sample of the corpus answers the same question as the whole of it —
+`make bridge-types` runs 150 files in under a minute, `bridge-types-full` runs
+all 1,343 in about ten. The first belongs in the edit loop; the second belongs
+in a commit message.
 
 This also closed a hazard the moment it opened. The unported `IsNodeReachable`
 answers `false`, which renders as `<unreachable>` — a marker the TypeScript side
@@ -249,6 +252,15 @@ it is. It looks like a slip, but changing it changes which results get reused
 and therefore which answers come out, so it is preserved with a comment. It is
 not in UPSTREAM-BUGS.md: without tracing pyright's behaviour on a case where the
 two differ, "looks wrong" is not a defect report.
+
+### Symbol lookup
+
+`lookUpSymbolRecursive` and `isFlowPathBetweenNodes` are ported, and portable in
+full: name resolution is a walk over the scope chain the binder built, filtered
+by the reachability walk. No type evaluation is involved.
+
+That resolves *which symbol* a name refers to. Saying what that symbol's type is
+is `getEffectiveTypeOfSymbol`, and it is still the wall.
 
 ### Why there is no smaller step
 
