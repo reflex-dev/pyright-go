@@ -134,17 +134,6 @@ func (e *typeEvaluator) getEffectiveReturnTypeResult(
 	return e.getInferredReturnTypeResult(t, callSiteInfo)
 }
 
-// getInferredReturnTypeResult corresponds to the function of the same name. It
-// is the return-type inference path, which needs the code flow engine to walk
-// the function's return statements.
-func (e *typeEvaluator) getInferredReturnTypeResult(
-	_ *FunctionType,
-	_ *CallSiteEvaluationInfo,
-) *TypeResult {
-	e.unported("getInferredReturnTypeResult")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // inferReturnTypeIfNecessary corresponds to the function of the same name.
 func (e *typeEvaluator) InferReturnTypeIfNecessary(t Type) {
 	if IsFunction(t) {
