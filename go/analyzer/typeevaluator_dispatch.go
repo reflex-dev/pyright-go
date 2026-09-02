@@ -290,11 +290,6 @@ func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *Infe
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-func (e *typeEvaluator) getTypeOfStringList(_ *parser.StringListNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfStringList")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfUnaryOperation(_ *parser.UnaryOperationNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfUnaryOperation")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
