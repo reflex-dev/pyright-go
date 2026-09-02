@@ -94,7 +94,7 @@ func (e *typeEvaluator) GetTypeOfFunction(node *parser.FunctionNode) *FunctionTy
 		}
 	}
 
-	decoratedType = e.addOverloadsToFunctionType(node, decoratedType)
+	decoratedType = AddOverloadsToFunctionType(e, node, decoratedType)
 
 	e.writeTypeCache(node, &TypeResult{Type: decoratedType}, evalFlagsNonePtr(), nil, false)
 
@@ -180,12 +180,4 @@ func (e *typeEvaluator) applyFunctionDecorator(
 ) Type {
 	e.unported("applyFunctionDecorator")
 	return inputFunctionType
-}
-
-// addOverloadsToFunctionType corresponds to the decorators.ts function of the
-// same name, which merges this `def` with any earlier overloads of the same
-// name.
-func (e *typeEvaluator) addOverloadsToFunctionType(_ *parser.FunctionNode, t Type) Type {
-	e.unported("addOverloadsToFunctionType")
-	return t
 }
