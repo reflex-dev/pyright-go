@@ -373,29 +373,6 @@ func (e *typeEvaluator) IsExplicitTypeAliasDeclaration(decl Declaration) bool {
 	return false
 }
 
-func (e *typeEvaluator) AddInformation(message string, node parser.ParseNode, textRange *common.TextRange) *common.Diagnostic {
-	e.unported("AddInformation")
-	return nil
-}
-
-func (e *typeEvaluator) AddUnreachableCode(node parser.ParseNode, reachability Reachability, textRange common.TextRange) {
-	e.unported("AddUnreachableCode")
-}
-
-func (e *typeEvaluator) AddDeprecated(message string, node parser.ParseNode) {
-	e.unported("AddDeprecated")
-}
-
-func (e *typeEvaluator) AddDiagnostic(rule DiagnosticRule, message string, node parser.ParseNode, textRange *common.TextRange) *common.Diagnostic {
-	e.unported("AddDiagnostic")
-	return nil
-}
-
-func (e *typeEvaluator) AddDiagnosticForTextRange(fileInfo *AnalyzerFileInfo, rule DiagnosticRule, message string, textRange common.TextRange) *common.Diagnostic {
-	e.unported("AddDiagnosticForTextRange")
-	return nil
-}
-
 func (e *typeEvaluator) UseSpeculativeMode(speculativeNode parser.ParseNode, callback func(), options *SpeculativeModeOptions) {
 	e.unported("UseSpeculativeMode")
 }
