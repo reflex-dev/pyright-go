@@ -284,7 +284,9 @@ func handleAnalyze(payload json.RawMessage) (result any, errMsg string) {
 		results = append(results, fileResult)
 	}
 
+	unported := evaluatorUnportedCounts(program)
+
 	program.Dispose()
 
-	return map[string]any{"results": results}, ""
+	return map[string]any{"results": results, "unported": unported}, ""
 }

@@ -7,7 +7,7 @@
  * the abstract interface and helper types for the type evaluator module.
  *
  * This file is the Stage D seam. It replaces `type TypeEvaluator any` in
- * sourcefile.go with the real 88-method interface, so everything the evaluator
+ * sourcefile.go with the real 109-member interface, so everything the evaluator
  * and its satellites need is declared before any of them is written.
  *
  * Three transliteration decisions apply throughout, and getting them wrong
@@ -720,7 +720,9 @@ type SrcDestTypes struct {
 	DestType   string
 }
 
-// TypeEvaluator corresponds to the interface of the same name.
+// TypeEvaluator corresponds to the interface of the same name. It has 109
+// members; earlier notes in this tree said 88, which was an estimate rather
+// than a count.
 //
 // The order below is the original's. Where a method took optional arguments
 // they are all present here; see the file header for which ones are pointers

@@ -54,7 +54,7 @@ type resolveImportResult struct {
 // file IDs.
 var nextUniqueFileId = 1
 
-// TypeEvaluator is analyzer/typeEvaluatorTypes.ts's 88-method interface; see
+// TypeEvaluator is analyzer/typeEvaluatorTypes.ts's 109-member interface; see
 // typeevaluatortypes.go. Nothing in the program loop calls a method on it -- it
 // is only created, stored and handed to the checker -- so a nil evaluator
 // factory still leaves the loop working.

@@ -270,6 +270,10 @@ type typeEvaluator struct {
 	// prefetched is nil until initializePrefetchedTypes runs; the original's is
 	// a Partial<PrefetchedTypes>, so individual fields may still be unset.
 	prefetched *PrefetchedTypes
+
+	// unportedCounts has no counterpart in the original; see unported below.
+	unportedCounts *common.OrderedMap[string, int]
+	unportedTotal  int
 }
 
 // AssignClassToSelfInfo, CodeFlowAnalyzerCacheEntry and
@@ -298,7 +302,7 @@ type SignatureTrackerStackEntry struct {
 // NewTypeEvaluator corresponds to createTypeEvaluator. The original's third
 // parameter, wrapWithLogger, wraps each returned method in the log tracker; it
 // is a reporting facility rather than an evaluation one and is not carried.
-func NewTypeEvaluator(importLookup ImportLookup, evaluatorOptions EvaluatorOptions) *typeEvaluator {
+func NewTypeEvaluator(importLookup ImportLookup, evaluatorOptions EvaluatorOptions) TypeEvaluator {
 	e := &typeEvaluator{
 		importLookup:           importLookup,
 		evaluatorOptions:       evaluatorOptions,
@@ -695,3 +699,49 @@ func expectedTypeRequiresTypeForm(expectedType Type) bool {
 func expectedTypeWantsTypeForm(expectedType Type) bool {
 	return SomeSubtypes(expectedType, isTypeFormType)
 }
+
+/*
+ * Accounting for what is not ported yet.
+ *
+ * The evaluator is installed and reachable, so every gate exercises it. That is
+ * only defensible if the parts that do not exist say so. Each unported path
+ * records itself here, and the counts come back through the bridge, so "what is
+ * left" is a measurement over the corpus rather than an impression from reading
+ * the source. See typeevaluator_unported.go.
+ */
+
+// unported records that evaluation reached a path typeEvaluator.ts takes and
+// this port does not implement yet.
+func (e *typeEvaluator) unported(what string) {
+	if e.unportedCounts == nil {
+		e.unportedCounts = common.NewOrderedMap[string, int]()
+	}
+	count, _ := e.unportedCounts.Get(what)
+	e.unportedCounts.Set(what, count+1)
+	e.unportedTotal++
+}
+
+// UnportedReporter is how a caller asks an evaluator what it could not do. It
+// has no counterpart in the original; it exists so the incompleteness of this
+// port is measurable from outside the package while it is being built, and it
+// goes away with the last stub.
+type UnportedReporter interface {
+	UnportedCounts() *common.OrderedMap[string, int]
+	UnportedTotal() int
+}
+
+// UnportedCounts reports how many times each unported path was reached, in
+// first-hit order.
+func (e *typeEvaluator) UnportedCounts() *common.OrderedMap[string, int] {
+	if e.unportedCounts == nil {
+		return common.NewOrderedMap[string, int]()
+	}
+	return e.unportedCounts
+}
+
+// UnportedTotal is the sum of UnportedCounts' values.
+func (e *typeEvaluator) UnportedTotal() int { return e.unportedTotal }
+
+// Compile-time check that the evaluator satisfies the interface it is handed
+// through. Nothing constructs this value.
+var _ TypeEvaluator = (*typeEvaluator)(nil)

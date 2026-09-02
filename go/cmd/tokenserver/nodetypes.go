@@ -59,6 +59,12 @@ type nodeTypeJSON struct {
 // collide with it and be counted as a match.
 const noEvaluatorMarker = "<no evaluator>"
 
+// unportedMarker is what a name reports when answering it reached a path that
+// is not ported. Like noEvaluatorMarker it is deliberately not a type name and
+// not one of the TypeScript side's markers, so it can never be counted as a
+// match.
+const unportedMarker = "<unported>"
+
 func handleNodeTypes(payload json.RawMessage) (result any, errMsg string) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -129,9 +135,11 @@ func handleNodeTypes(payload json.RawMessage) (result any, errMsg string) {
 		}
 	}
 
+	unported := evaluatorUnportedCounts(program)
+
 	program.Dispose()
 
-	return map[string]any{"nodes": nodes}, ""
+	return map[string]any{"nodes": nodes, "unported": unported}, ""
 }
 
 // isEvaluatableName is NameTypeWalker's filter: the names in `import x as y` and
@@ -145,21 +153,47 @@ func isEvaluatableName(node *parser.NameNode) bool {
 	return nodeType != parser.ParseNodeTypeImportFromAs && nodeType != parser.ParseNodeTypeImportAs
 }
 
+// typeOfName asks the evaluator for one name's type, and refuses to report an
+// answer that came from a stub.
+//
+// This matters more than it looks. The unported IsNodeReachable answers false,
+// which renders as "<unreachable>" -- a marker the TypeScript side also
+// produces, for genuinely unreachable code. Left alone, the port would score
+// matches on names it never evaluated. So every evaluator call is bracketed by
+// the unported counter, and any answer that touched a stub is reported as such
+// instead of as a type.
 func typeOfName(evaluator analyzer.TypeEvaluator, node *parser.NameNode) string {
 	if evaluator == nil {
 		return noEvaluatorMarker
 	}
 
+	reporter, _ := evaluator.(analyzer.UnportedReporter)
+	before := 0
+	if reporter != nil {
+		before = reporter.UnportedTotal()
+	}
+	touchedStub := func() bool { return reporter != nil && reporter.UnportedTotal() != before }
+
 	if !evaluator.IsNodeReachable(node, nil) {
+		if touchedStub() {
+			return unportedMarker
+		}
 		return "<unreachable>"
 	}
 
 	t := evaluator.GetType(node)
+	if touchedStub() {
+		return unportedMarker
+	}
 	if t == nil {
 		return "<none>"
 	}
 
-	return evaluator.PrintType(t, &analyzer.PrintTypeOptions{})
+	printed := evaluator.PrintType(t, &analyzer.PrintTypeOptions{})
+	if touchedStub() {
+		return unportedMarker
+	}
+	return printed
 }
 
 // rootDirectoryForSample walks up from a corpus file to the directory holding

@@ -291,6 +291,14 @@ if (goLines.length !== files.length) {
     process.exit(1);
 }
 
+// Matches are split by whether the port actually produced a type. An
+// implementation that answers Unknown everywhere matches pyright wherever
+// pyright also says Unknown, which is a real match for a wrong reason -- the
+// same hazard as a test that passes by reporting nothing.
+const trivialTypes = new Set(['Unknown', '<unported>', '<no evaluator>']);
+let nodesMatchedReal = 0;
+let nodesMatchedTrivial = 0;
+const unportedTotals = new Map();
 let nodesMatched = 0;
 let nodesDiffered = 0;
 let filesWithDifferentNodeSets = 0;
@@ -313,6 +321,10 @@ for (let i = 0; i < files.length; i++) {
             );
         }
         continue;
+    }
+
+    for (const [what, count] of Object.entries(goEnvelope.result.unported ?? {})) {
+        unportedTotals.set(what, (unportedTotals.get(what) ?? 0) + count);
     }
 
     const goNodes = goEnvelope.result.nodes;
@@ -338,6 +350,11 @@ for (let i = 0; i < files.length; i++) {
     for (let n = 0; n < tsNodes.length; n++) {
         if (goNodes[n].type === tsNodes[n].type) {
             nodesMatched++;
+            if (trivialTypes.has(goNodes[n].type)) {
+                nodesMatchedTrivial++;
+            } else {
+                nodesMatchedReal++;
+            }
         } else {
             nodesDiffered++;
             if (examples.length < 25) {
@@ -374,6 +391,27 @@ console.log(
     `node sets: ${files.length - filesWithDifferentNodeSets} of ${files.length} files agree on which names to type`
 );
 console.log(`types: ${nodesMatched} of ${total} names match`);
+if (nodesMatched > 0) {
+    console.log(
+        `  of those, ${nodesMatchedReal} are a real type and ${nodesMatchedTrivial} are Unknown or a marker`
+    );
+}
+
+// The work-remaining map: which unported evaluator paths the corpus actually
+// reaches, and how often. Reading typeEvaluator.ts says what exists; this says
+// what matters.
+if (unportedTotals.size > 0) {
+    const ranked = [...unportedTotals.entries()].sort((a, b) => b[1] - a[1]);
+    const sum = ranked.reduce((acc, [, n]) => acc + n, 0);
+    console.log('');
+    console.log(`unported evaluator paths reached: ${ranked.length} distinct, ${sum} hits`);
+    for (const [what, count] of ranked.slice(0, 15)) {
+        console.log(`  ${String(count).padStart(9)}  ${what}`);
+    }
+    if (ranked.length > 15) {
+        console.log(`  ${' '.repeat(9)}  ... and ${ranked.length - 15} more`);
+    }
+}
 
 if (!process.env.KEEP_OUT) fs.rmSync(outDir, { recursive: true, force: true });
 else console.log('kept: ' + outDir);

@@ -52,7 +52,7 @@ Two consequences:
 `typedDicts`, `protocols`, `operations`, `constructors`, `enums`, `properties`,
 `tuples`, `decorators`, `namedTuples`, `functionTransform`,
 `constructorTransform` — are mutually recursive with it through a closure
-exposing the 88-method `TypeEvaluator` interface in `typeEvaluatorTypes.ts`.
+exposing the 109-member `TypeEvaluator` interface in `typeEvaluatorTypes.ts`.
 
 This is the same all-or-nothing property `parser.ts` had, six times larger.
 There is no subset that compiles and does something useful. The mitigation is

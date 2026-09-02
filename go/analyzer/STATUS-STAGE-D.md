@@ -5,7 +5,9 @@ method on, and `Checker` comes from a factory that may be nil. Stage D fills
 them. It is 59,031 lines of TypeScript across 21 files, `typeEvaluator.ts` alone
 being 30,245 — larger than everything already ported, several times over.
 
-Nothing of the evaluator is written yet. What exists is the gate.
+The gate, the differential and the evaluator's state layer exist. The evaluator
+is installed and reachable; almost all of what it does is still unported, and it
+says so rather than guessing.
 
 ## The gate
 
@@ -172,7 +174,7 @@ had any reason to assume.
 
 | step | files | lines | state |
 | --- | --- | --- | --- |
-| 1 | `typeEvaluatorTypes.ts` — the 88-method interface | 900 | done |
+| 1 | `typeEvaluatorTypes.ts` — the 109-member interface | 900 | done |
 | 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | state layer done |
 | 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker done |
 | 4 | the class-shape satellites, lit one at a time | ~11k | |
@@ -186,18 +188,42 @@ ordinary and TypeForm caches, the shared incomplete-generation counter, the
 symbol-resolution stack, the return-type-inference context stack, and the
 speculative-mode interaction.
 
-**None of it is reachable yet.** No factory is installed, so `Program` still runs
-with a nil evaluator, and this code has never executed. That is the honest state
-of it: it compiles and vets, and nothing more is claimed. The gate is still at 30
-substantive passes because nothing about behaviour has changed.
+The evaluator is **installed** — `stagedfactories.go` builds one, so the gate and
+the differential exercise it for real. What it cannot do yet is 103 of the 109
+interface members, each a stub in `typeevaluator_unported.go`.
 
-The next milestone is bigger than it looks. `getTypeOfExpression`'s dispatch is
-easy, but the first case that produces a real answer -- an integer literal -- goes
-`getTypeOfNumber` → `getBuiltInObject` → `getBuiltInType` → `lookUpSymbolRecursive`
-→ `getEffectiveTypeOfSymbol` → declaration resolution, which is most of the
-evaluator's name-resolution half. There is no smaller vertical slice that returns
-a type rather than `Unknown`; that is the all-or-nothing property
-ANALYZER-PLAN.md predicted for this stage, met in practice.
+### The stubs count themselves
+
+Installing an evaluator that does almost nothing is only defensible if the
+nothing is visible. Each stub records itself, the counts come back through the
+bridge, and the differential prints them. The result is a work-remaining map
+measured over the corpus rather than guessed at from reading the source: which
+interface members the sample files actually reach, and how often.
+
+It is a **frontier**, not a full map. The first stub a name touches
+short-circuits the rest, so today every name reports one entry —
+`IsNodeReachable`, 2,965 hits over 60 files — and the next layer appears when
+that one lands. That is the right shape for the work: it always names the thing
+to port next.
+
+This also closed a hazard the moment it opened. The unported `IsNodeReachable`
+answers `false`, which renders as `<unreachable>` — a marker the TypeScript side
+also produces for genuinely unreachable code. Left alone the port would have
+scored matches on names it never evaluated. Every evaluator call in the
+differential is now bracketed by the counter, and an answer that touched a stub
+is reported as `<unported>`, which can never match. The type scoreboard is split
+the same way the gate's is: matches that are a real type, against matches that
+are `Unknown` or a marker.
+
+### Why there is no smaller step
+
+`getTypeOfExpression`'s dispatch is easy, but the first case that produces a real
+answer — an integer literal — goes `getTypeOfNumber` → `getBuiltInObject` →
+`getBuiltInType` → `lookUpSymbolRecursive` → `getEffectiveTypeOfSymbol` →
+declaration resolution → and, because `int`'s declaration is a class, the whole
+class-creation path. There is no vertical slice that returns a type rather than
+`Unknown`. That is the all-or-nothing property ANALYZER-PLAN.md predicted for
+this stage, met in practice and now measured.
 
 The two tuning-constant blocks and the flag-mismatch debug path are ported
 verbatim even though both debug switches are off in the original. The constants
