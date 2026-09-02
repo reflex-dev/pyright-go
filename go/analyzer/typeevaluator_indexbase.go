@@ -408,19 +408,6 @@ type getTypeArgsOptions struct {
 	SupportsTypedDictTypeArg bool
 }
 
-// createSpecializedTypeAlias corresponds to the function of the same name. The
-// original's comment: handles index expressions that are providing type
-// arguments for a generic type alias. It returns nil where the original returns
-// undefined, which means "this is not a type alias specialization".
-func (e *typeEvaluator) createSpecializedTypeAlias(
-	_ *parser.IndexNode,
-	_ Type,
-	_ EvalFlags,
-) *TypeResultWithNode {
-	e.unported("createSpecializedTypeAlias")
-	return nil
-}
-
 // createLiteralType corresponds to the function of the same name.
 func (e *typeEvaluator) createLiteralType(classType *ClassType, _ *parser.IndexNode, _ EvalFlags) Type {
 	e.unported("createLiteralType")
