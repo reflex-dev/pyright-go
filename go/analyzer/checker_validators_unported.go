@@ -56,10 +56,6 @@ func (c *Checker) validateConstructorConsistency(_ *ClassType, _ *parser.NameNod
 	c.noteUnported("checker.validateConstructorConsistency")
 }
 
-func (c *Checker) validateFinalMemberOverrides(_ *ClassType) {
-	c.noteUnported("checker.validateFinalMemberOverrides")
-}
-
 func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {
 	c.noteUnported("checker.validateInstanceVariableInitialization")
 }
@@ -95,18 +91,6 @@ func (c *Checker) validateFunctionParams(
 	_ *parser.FunctionNode, _ *FunctionTypeResult, _ parser.ParseNode,
 ) {
 	c.noteUnported("checker.validateFunctionParams")
-}
-
-func (c *Checker) validateFunctionReturn(_ *parser.FunctionNode, _ *FunctionType) {
-	c.noteUnported("checker.validateFunctionReturn")
-}
-
-func (c *Checker) validateDunderSignatures(_ *parser.FunctionNode, _ *FunctionType, _ bool) {
-	c.noteUnported("checker.validateDunderSignatures")
-}
-
-func (c *Checker) validateTypeGuardFunction(_ *parser.FunctionNode, _ *FunctionType, _ bool) {
-	c.noteUnported("checker.validateTypeGuardFunction")
 }
 
 func (c *Checker) validateFunctionTypeVarUsage(_ *parser.FunctionNode, _ *FunctionTypeResult) {
