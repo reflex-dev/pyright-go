@@ -272,11 +272,6 @@ func (e *typeEvaluator) getTypeOfExpressionCoreRest(
  * the corpus actually needs, in order.
  */
 
-func (e *typeEvaluator) getTypeOfName(_ *parser.NameNode, _ EvalFlags) *TypeResult {
-	e.unported("getTypeOfName")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfMemberAccess(_ *parser.MemberAccessNode, _ EvalFlags) *TypeResult {
 	e.unported("getTypeOfMemberAccess")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
