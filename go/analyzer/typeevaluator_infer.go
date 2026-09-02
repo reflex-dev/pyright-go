@@ -522,16 +522,9 @@ func (e *typeEvaluator) isPossibleTypeDictFactoryCall(decl Declaration) bool {
 }
 
 /*
- * The two satellites this layer reaches.
+ * The satellite this layer reaches. getInferredTypeOfDeclaration is in
+ * typeevaluator_inferdecl.go.
  */
-
-// getInferredTypeOfDeclaration corresponds to the function of the same name. It
-// is the point where a declaration's inferred type is computed, which for a
-// variable means evaluating its assignment.
-func (e *typeEvaluator) getInferredTypeOfDeclaration(_ *Symbol, _ Declaration) Type {
-	e.unported("getInferredTypeOfDeclaration")
-	return nil
-}
 
 // isDeclInEnumClass corresponds to the enums.ts function of the same name.
 func (e *typeEvaluator) isDeclInEnumClass(_ Declaration) bool {
