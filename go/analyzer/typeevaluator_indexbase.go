@@ -421,17 +421,6 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 	return nil
 }
 
-// getTypeArgs corresponds to the function of the same name: it evaluates the
-// subscript expressions as type arguments.
-func (e *typeEvaluator) getTypeArgs(
-	_ *parser.IndexNode,
-	_ EvalFlags,
-	_ *getTypeArgsOptions,
-) []*TypeResultWithNode {
-	e.unported("getTypeArgs")
-	return nil
-}
-
 // adjustTypeArgsForTypeVarTuple corresponds to the function of the same name.
 // The original's comment: if the list of type parameters includes a
 // TypeVarTuple, we may need to adjust the supplied type arguments to map to the
