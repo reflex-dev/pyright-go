@@ -213,3 +213,16 @@ func tupleArgTypes(tupleTypeArgs []*TupleTypeArg) []Type {
 	}
 	return out
 }
+
+// AssignTypeArgs is the interface method; the original exposes assignTypeArgs
+// on the evaluator interface under the same name.
+func (e *typeEvaluator) AssignTypeArgs(
+	destType *ClassType,
+	srcType *ClassType,
+	diag *common.DiagnosticAddendum,
+	constraints *ConstraintTracker,
+	flags AssignTypeFlags,
+	recursionCount int,
+) bool {
+	return e.assignTypeArgs(destType, srcType, diag, constraints, flags, recursionCount)
+}

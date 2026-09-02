@@ -55,9 +55,10 @@ func (e *typeEvaluator) VerifyDeleteExpression(node parser.ExpressionNode) {
 	e.unported("VerifyDeleteExpression")
 }
 
+// ValidateOverloadedArgTypes is the interface method; the original exposes
+// validateOverloadedArgTypes under the same name.
 func (e *typeEvaluator) ValidateOverloadedArgTypes(errorNode parser.ExpressionNode, argList []*Arg, typeResult *TypeResult, constraints *ConstraintTracker, skipUnknownArgCheck bool, inferenceContext *InferenceContext) *CallResult {
-	e.unported("ValidateOverloadedArgTypes")
-	return nil
+	return e.validateOverloadedArgTypes(errorNode, argList, typeResult, constraints, skipUnknownArgCheck, inferenceContext)
 }
 
 func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classType *ClassType) {
@@ -74,9 +75,9 @@ func (e *typeEvaluator) GetDeclInfoForNameNode(node *parser.NameNode, skipUnreac
 	return nil
 }
 
+// GetTypeForDeclaration is the interface method for getTypeForDeclaration.
 func (e *typeEvaluator) GetTypeForDeclaration(declaration Declaration) *DeclaredSymbolTypeInfo {
-	e.unported("GetTypeForDeclaration")
-	return nil
+	return e.getTypeForDeclaration(declaration)
 }
 
 func (e *typeEvaluator) ExpandPromotionTypes(node parser.ParseNode, t Type) Type {
@@ -89,9 +90,10 @@ func (e *typeEvaluator) IsTypeSubsumedByOtherType(t Type, otherType Type, allowA
 	return false
 }
 
+// GetInferredTypeOfDeclaration is the interface method for
+// getInferredTypeOfDeclaration.
 func (e *typeEvaluator) GetInferredTypeOfDeclaration(symbol *Symbol, decl Declaration) Type {
-	e.unported("GetInferredTypeOfDeclaration")
-	return UnknownTypeCreate(false)
+	return e.getInferredTypeOfDeclaration(symbol, decl)
 }
 
 func (e *typeEvaluator) GetInferredReturnType(t *FunctionType, callSiteInfo *CallSiteEvaluationInfo) Type {
@@ -99,9 +101,9 @@ func (e *typeEvaluator) GetInferredReturnType(t *FunctionType, callSiteInfo *Cal
 	return UnknownTypeCreate(false)
 }
 
+// GetCallbackProtocolType is the interface method for getCallbackProtocolType.
 func (e *typeEvaluator) GetCallbackProtocolType(objType *ClassType, recursionCount int) Type {
-	e.unported("GetCallbackProtocolType")
-	return UnknownTypeCreate(false)
+	return e.getCallbackProtocolType(objType, recursionCount)
 }
 
 func (e *typeEvaluator) GetCallSignatureInfo(node *parser.CallNode, activeIndex int, activeOrFake bool) *CallSignatureInfo {
@@ -124,14 +126,10 @@ func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod T
 	return false
 }
 
+// AssignClassToSelf is the interface method for assignClassToSelf. The original
+// defaults ignoreBaseClassVariance to true and recursionCount to 0.
 func (e *typeEvaluator) AssignClassToSelf(destType *ClassType, srcType *ClassType, assumedVariance Variance) bool {
-	e.unported("AssignClassToSelf")
-	return false
-}
-
-func (e *typeEvaluator) AssignTypeArgs(destType *ClassType, srcType *ClassType, diag *common.DiagnosticAddendum, constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int) bool {
-	e.unported("AssignTypeArgs")
-	return false
+	return e.assignClassToSelf(destType, srcType, assumedVariance, true, 0)
 }
 
 func (e *typeEvaluator) PrintControlFlowGraph(flowNode FlowNode, reference CodeFlowReferenceExpressionNode, callName string, logger common.ConsoleInterface) {

@@ -21,6 +21,7 @@ package analyzer
 
 import (
 	"github.com/microsoft/pyright/go/common"
+	"github.com/microsoft/pyright/go/localization"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -175,26 +176,28 @@ func (e *typeEvaluator) getTypeOfExpressionCore(
 ) *TypeResult {
 	expectingInstantiable := (flags & EvalFlagsInstantiableType) != 0
 
+	var typeResult *TypeResult
+
 	switch n := node.(type) {
 	case *parser.NameNode:
-		return e.getTypeOfName(n, flags)
+		typeResult = e.getTypeOfName(n, flags)
 
 	case *parser.MemberAccessNode:
-		return e.getTypeOfMemberAccess(n, flags)
+		typeResult = e.getTypeOfMemberAccess(n, flags)
 
 	case *parser.IndexNode:
-		return e.getTypeOfIndex(n, flags)
+		typeResult = e.getTypeOfIndex(n, flags)
 
 	case *parser.CallNode:
-		return e.useSignatureTracker(n, func() *TypeResult {
+		typeResult = e.useSignatureTracker(n, func() *TypeResult {
 			return e.getTypeOfCall(n, flags, inferenceContext)
 		})
 
 	case *parser.TupleNode:
-		return e.getTypeOfTuple(n, flags, inferenceContext)
+		typeResult = e.getTypeOfTuple(n, flags, inferenceContext)
 
 	case *parser.ConstantNode:
-		return e.getTypeOfConstant(n, flags)
+		typeResult = e.getTypeOfConstant(n, flags)
 
 	case *parser.StringListNode:
 		if (flags & EvalFlagsStrLiteralAsType) != 0 {
@@ -203,17 +206,16 @@ func (e *typeEvaluator) getTypeOfExpressionCore(
 			// the string.
 			expectingInstantiable = false
 		}
-		_ = expectingInstantiable
-		return e.getTypeOfStringList(n, flags, inferenceContext)
+		typeResult = e.getTypeOfStringList(n, flags, inferenceContext)
 
 	case *parser.NumberNode:
-		return e.getTypeOfNumber(n)
+		typeResult = e.getTypeOfNumber(n)
 
 	case *parser.EllipsisNode:
-		return e.getTypeOfEllipsis(flags, n)
+		typeResult = e.getTypeOfEllipsis(flags, n)
 
 	case *parser.UnaryOperationNode:
-		return e.getTypeOfUnaryOperation(n, flags, inferenceContext)
+		typeResult = e.getTypeOfUnaryOperation(n, flags, inferenceContext)
 
 	case *parser.BinaryOperationNode:
 		effectiveFlags := flags
@@ -225,55 +227,163 @@ func (e *typeEvaluator) getTypeOfExpressionCore(
 			effectiveFlags &^= EvalFlagsInstantiableType
 		}
 
-		return GetTypeOfBinaryOperation(e, n, effectiveFlags, inferenceContext)
+		typeResult = GetTypeOfBinaryOperation(e, n, effectiveFlags, inferenceContext)
 
 	case *parser.AugmentedAssignmentNode:
-		return e.getTypeOfAugmentedAssignment(n, inferenceContext)
+		typeResult = e.getTypeOfAugmentedAssignment(n, inferenceContext)
 
 	case *parser.ListNode:
-		return e.getTypeOfListOrSet(node, flags, inferenceContext)
+		typeResult = e.getTypeOfListOrSet(node, flags, inferenceContext)
 
 	case *parser.SetNode:
-		return e.getTypeOfListOrSet(node, flags, inferenceContext)
+		typeResult = e.getTypeOfListOrSet(node, flags, inferenceContext)
 
 	case *parser.SliceNode:
-		return e.getTypeOfSlice(n)
+		typeResult = e.getTypeOfSlice(n)
 
 	case *parser.AwaitNode:
-		return e.getTypeOfAwaitOperator(n, flags, inferenceContext)
+		typeResult = e.getTypeOfAwaitOperator(n, flags, inferenceContext)
 
 	case *parser.TernaryNode:
-		return e.getTypeOfTernaryOperation(n, flags, inferenceContext)
+		typeResult = e.getTypeOfTernaryOperation(n, flags, inferenceContext)
 
 	case *parser.ComprehensionNode:
-		return e.getTypeOfComprehension(n, flags, inferenceContext)
+		typeResult = e.getTypeOfComprehension(n, flags, inferenceContext)
 
 	case *parser.DictionaryNode:
-		return e.getTypeOfDictionary(n, flags, inferenceContext)
+		typeResult = e.getTypeOfDictionary(n, flags, inferenceContext)
 
 	case *parser.LambdaNode:
-		return e.getTypeOfLambda(n, inferenceContext)
+		typeResult = e.getTypeOfLambda(n, inferenceContext)
 
 	case *parser.AssignmentNode:
-		typeResult := e.getTypeOfExpression(n.D.RightExpr, flags, inferenceContext)
+		typeResult = e.getTypeOfExpression(n.D.RightExpr, flags, inferenceContext)
 		e.assignTypeToExpression(n.D.LeftExpr, typeResult, n.D.RightExpr, true, true, nil)
-		return typeResult
+
+	case *parser.AssignmentExpressionNode:
+		if (flags & EvalFlagsTypeExpression) != 0 {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.WalrusNotAllowed(), node, nil)
+		}
+
+		typeResult = e.getTypeOfExpression(n.D.RightExpr, flags, inferenceContext)
+		e.assignTypeToExpression(n.D.Name, typeResult, n.D.RightExpr, true, false, nil)
+
+	case *parser.YieldNode:
+		typeResult = e.getTypeOfYield(n)
+
+	case *parser.YieldFromNode:
+		typeResult = e.getTypeOfYieldFrom(n)
+
+	case *parser.UnpackNode:
+		typeResult = e.getTypeOfUnpackOperator(n, flags, inferenceContext)
+
+	case *parser.TypeAnnotationNode:
+		typeResult = e.getTypeOfExpression(
+			n.D.Annotation,
+			EvalFlagsInstantiableType|
+				EvalFlagsTypeExpression|
+				EvalFlagsStrLiteralAsType|
+				EvalFlagsNoParamSpec|
+				EvalFlagsNoTypeVarTuple|
+				EvalFlagsVarTypeAnnotation,
+			nil)
+
+	case *parser.StringNode:
+		typeResult = e.getTypeOfString(n)
+
+	case *parser.FormatStringNode:
+		typeResult = e.getTypeOfString(n)
+
+	case *parser.ErrorNode:
+		// The original's comment: evaluate the child expression as best we can so
+		// the type information is cached for the completion handler.
+		e.suppressDiagnostics(node, func() {
+			if n.D.Child != nil {
+				e.getTypeOfExpression(n.D.Child, EvalFlagsNone, nil)
+			}
+		}, nil)
+		typeResult = &TypeResult{Type: UnknownTypeCreate(false)}
+
+	default:
+		common.Fail("Illegal node type: " + parseNodeTypeLabel(node.GetNodeType()))
 	}
 
-	return e.getTypeOfExpressionCoreRest(node, flags, inferenceContext)
+	if typeResult == nil {
+		// The original's comment: we shouldn't get here. If we do, report an error.
+		common.Fail("Unhandled expression type '" + PrintExpression(node, PrintExpressionFlagsNone) + "'")
+	}
+
+	// The original's comment: do we need to validate that the type is
+	// instantiable?
+	if expectingInstantiable {
+		e.validateTypeIsInstantiable(typeResult, flags, node)
+	}
+
+	// The original's comment: if this is a PEP 695 type alias, remove the special
+	// form so the type printer prints it as its aliased type rather than
+	// TypeAliasType.
+	if (flags&EvalFlagsTypeExpression) != 0 &&
+		(typeResult.Type.Base().Props == nil || typeResult.Type.Base().Props.TypeForm == nil) {
+		if typeResult.Type.Base().Props != nil {
+			specialForm := typeResult.Type.Base().Props.SpecialForm
+			if specialForm != nil && ClassTypeIsBuiltInNamed(specialForm, "TypeAliasType") {
+				typeResult.Type = CloneAsSpecialForm(typeResult.Type, nil)
+			}
+		}
+	}
+
+	return typeResult
 }
 
-// getTypeOfExpressionCoreRest holds the arms of the switch below Assignment,
-// which are not ported. Splitting them out keeps the ported arms above legible
-// and lets the remainder record the node kind it was asked for, so the frontier
-// ranks the missing expression kinds rather than lumping them together.
-func (e *typeEvaluator) getTypeOfExpressionCoreRest(
-	node parser.ExpressionNode,
-	_ EvalFlags,
-	_ *InferenceContext,
-) *TypeResult {
-	e.unported("getTypeOfExpressionCore." + parseNodeTypeLabel(node.GetNodeType()))
-	return &TypeResult{Type: UnknownTypeCreate(false)}
+// validateTypeIsInstantiable corresponds to the function of the same name.
+func (e *typeEvaluator) validateTypeIsInstantiable(
+	typeResult *TypeResult, flags EvalFlags, node parser.ExpressionNode,
+) {
+	// The original's comment: if the type is incomplete, don't log any diagnostics
+	// yet.
+	if typeResult.IsIncomplete {
+		return
+	}
+
+	if (flags & EvalFlagsNoTypeVarTuple) != 0 {
+		if IsTypeVarTuple(typeResult.Type) && !typeResult.Type.(*TypeVarType).Priv.IsInUnion {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.TypeVarTupleContext(), node, nil)
+			typeResult.Type = UnknownTypeCreate(false)
+		}
+	}
+
+	if IsEffectivelyInstantiable(typeResult.Type, &IsInstantiableOptions{HonorTypeVarBounds: true}, 0) {
+		return
+	}
+
+	// The original's comment: exempt ellipses.
+	if IsClassInstance(typeResult.Type) &&
+		ClassTypeIsBuiltInNamed(typeResult.Type.(*ClassType), "EllipsisType", "ellipsis") {
+		return
+	}
+
+	// The original's comment: emit these errors only if we know we're evaluating a
+	// type expression.
+	if (flags & EvalFlagsTypeExpression) != 0 {
+		diag := common.NewDiagnosticAddendum()
+		if IsUnion(typeResult.Type) {
+			DoForEachSubtype(typeResult.Type, func(subtype Type, _ int, _ []Type) {
+				if !IsEffectivelyInstantiable(subtype, &IsInstantiableOptions{HonorTypeVarBounds: true}, 0) {
+					diag.AddMessage(localization.LocAddendum.TypeNotClass().Format(e.PrintType(subtype, nil)))
+				}
+			})
+		}
+
+		e.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+			localization.LocMessage.TypeExpectedClass().Format(e.PrintType(typeResult.Type, nil))+diag.GetString(),
+			node, nil)
+
+		typeResult.Type = UnknownTypeCreate(false)
+	}
+
+	typeResult.TypeErrors = true
 }
 
 /*
@@ -303,11 +413,6 @@ func (e *typeEvaluator) getTypeOfAugmentedAssignment(
 
 func (e *typeEvaluator) getTypeOfTernaryOperation(_ *parser.TernaryNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfTernaryOperation")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfLambda(_ *parser.LambdaNode, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfLambda")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
