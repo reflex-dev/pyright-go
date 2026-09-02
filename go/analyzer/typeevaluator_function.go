@@ -128,7 +128,7 @@ func (e *typeEvaluator) applyFunctionDecorators(
 		var newDecoratedType Type
 		e.withSignatureTracker(trackerNode, func() {
 			// The original asserts decoratedType is defined here.
-			newDecoratedType = e.applyFunctionDecorator(captured, functionType, decorator, node)
+			newDecoratedType = ApplyFunctionDecorator(e, captured, functionType, decorator, node)
 		})
 
 		unknownOrAny := ContainsAnyOrUnknown(newDecoratedType, false)
@@ -166,18 +166,4 @@ func (e *typeEvaluator) applyFunctionDecorators(
 func (e *typeEvaluator) createAsyncFunction(_ *parser.FunctionNode, functionType *FunctionType) Type {
 	e.unported("createAsyncFunction")
 	return functionType
-}
-
-// applyFunctionDecorator corresponds to the decorators.ts function of the same
-// name. Returning the input type unchanged is what the original does when the
-// decorator's own type is unknown, so an undecorated function is a shape the
-// caller already handles.
-func (e *typeEvaluator) applyFunctionDecorator(
-	inputFunctionType Type,
-	_ *FunctionType,
-	_ *parser.DecoratorNode,
-	_ *parser.FunctionNode,
-) Type {
-	e.unported("applyFunctionDecorator")
-	return inputFunctionType
 }
