@@ -348,11 +348,6 @@ func (e *typeEvaluator) AssignTypeArgs(destType *ClassType, srcType *ClassType, 
 	return false
 }
 
-func (e *typeEvaluator) ReportMissingTypeArgs(node parser.ExpressionNode, t Type, flags EvalFlags) Type {
-	e.unported("ReportMissingTypeArgs")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) IsFinalVariable(symbol *Symbol) bool {
 	e.unported("IsFinalVariable")
 	return false

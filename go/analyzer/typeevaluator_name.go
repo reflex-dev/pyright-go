@@ -255,12 +255,6 @@ func (e *typeEvaluator) getAliasFromImport(_ *parser.NameNode) *parser.NameNode 
 	return nil
 }
 
-// setSymbolAccessed corresponds to the function of the same name. It records
-// that a symbol was read, which drives the unaccessed-symbol diagnostics.
-func (e *typeEvaluator) setSymbolAccessed(_ *AnalyzerFileInfo, _ *Symbol, _ parser.ParseNode) {
-	e.unported("setSymbolAccessed")
-}
-
 // getCodeFlowTypeForCapturedVariable corresponds to the function of the same
 // name.
 func (e *typeEvaluator) getCodeFlowTypeForCapturedVariable(
@@ -295,21 +289,7 @@ func (e *typeEvaluator) validateTypeVarUsage(_ *parser.NameNode, t Type, _ EvalF
 	return t
 }
 
-func (e *typeEvaluator) addTypeFormForSymbol(_ *parser.NameNode, t Type, _ EvalFlags, _ bool) Type {
-	e.unported("addTypeFormForSymbol")
-	return t
-}
-
 func (e *typeEvaluator) isSentinelLiteral(_ Type) bool {
 	e.unported("isSentinelLiteral")
 	return false
-}
-
-func (e *typeEvaluator) convertSpecialFormToRuntimeValue(t Type, _ EvalFlags) Type {
-	e.unported("convertSpecialFormToRuntimeValue")
-	return t
-}
-
-func (e *typeEvaluator) reportUseOfTypeCheckOnly(_ Type, _ parser.ParseNode) {
-	e.unported("reportUseOfTypeCheckOnly")
 }
