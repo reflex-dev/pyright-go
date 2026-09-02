@@ -405,6 +405,8 @@ func main() {
 			result, errMsg = handleConfig(req.Payload)
 		case "analyze":
 			result, errMsg = handleAnalyze(req.Payload)
+		case "nodetypes":
+			result, errMsg = handleNodeTypes(req.Payload)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}

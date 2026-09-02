@@ -235,8 +235,14 @@ and checker tests — 1,279 cases across nine files — run unmodified. It is no
 `analyzer/STATUS-STAGE-D.md` for what it currently reports and why the headline
 pass count is split in two.
 
-`make bridge-binder-oracle`, `make bridge-config-oracle` and
-`make bridge-evaluator-oracle` run those checks' TypeScript side alone and
+`make bridge-types` is the per-node type differential: the printed type of every
+name in the corpus, diffed one name at a time, which is what localizes an
+evaluator failure to a single expression rather than an error count. Also not in
+`make bridge` yet.
+
+`make bridge-binder-oracle`, `make bridge-config-oracle`,
+`make bridge-evaluator-oracle` and `make bridge-types-oracle` run those checks'
+TypeScript side alone and
 report what it produced. They need no Go server, so they validate the harness
 independently of the port — which is how two defects in the config oracle were
 caught before anything was compared against it.

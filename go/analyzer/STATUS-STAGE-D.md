@@ -101,18 +101,72 @@ substantive. No sample in this corpus resolves an import through site-packages.
 If one ever did, it would show up as an unresolved-import error in Go and a
 clean run in the oracle.
 
+## The per-node type differential
+
+    make bridge-types
+
+The gate says a file reported three errors instead of two. That is nearly
+useless for finding out which of the expressions in it went wrong, in a file
+that has hundreds and an evaluator that has 30,000 lines. So this asks both
+implementations for the type of every name in the corpus and diffs them one name
+at a time: name `x`, pre-order index 412, pyright says `list[int]`, the port says
+`list[Unknown]`.
+
+The walk is pyright's own — `NameTypeWalker` from `analyzer/testWalker.ts`,
+which `typeAnalyzeSampleFiles` already runs over every file before checking it.
+Both sides apply the identical filter.
+
+`make bridge-types-oracle` runs the TypeScript side alone. Over 300 files it
+types 19,652 names into 1,835 distinct types, with all three non-type outcomes
+exercised (15 unreachable, 921 untyped, 0 thrown) — so no branch of the dump is
+dead code.
+
+Over the whole corpus the baseline is:
+
+    node sets: 1280 of 1343 files agree on which names to type
+    types: 0 of 88487 names match
+
+88,487 names is the denominator Stage D climbs. The 63 files whose node sets
+disagree are the ones below.
+
+### It found something on the first run
+
+Node-set agreement — do both sides pick out the same names — was supposed to be
+green from day one. It is a syntactic question, and `bridge-ast` already shows
+the parse trees agree over the whole corpus.
+
+It is not green, because **the evaluator mutates the parse tree**.
+`typeEvaluator.ts:30085` parses a string annotation on demand and grafts the
+result onto the `StringListNode`:
+
+    node.d.annotation = parseResults.parseTree;
+
+In `a: Annotated[Annotated[int, "hi"], "hi"]` the TypeScript side finishes
+analysis with two extra `NameNode`s for `hi` that were not in the tree the
+parser produced, and every pre-order index after them shifts by two. Forward
+references do the same thing all over the corpus.
+
+The parser's own share of this is already ported — `parser.ts:5217` is
+`parser_strings.go:302`. It is the evaluator's share that is missing. So
+node-set agreement is not a fixed property of the two parsers: it is a measure
+of how much of the evaluator's tree-grafting has landed, and it reaches every
+file when the string-annotation path does. 63 of 1,343 files are affected —
+every one of them a file with a forward reference or a string type argument.
+
+Worth knowing before writing the evaluator rather than after: it means parse
+trees are not immutable during analysis, which is not what the front-end port
+had any reason to assume.
+
 ## Still to build
 
 - **`expected_text`** — 3,330 `reveal_type(x, expected_text="...")` assertions
   across 503 sample files. `internalTestMode` turns a mismatch into an error
   diagnostic inside the evaluator itself, so this needs no TypeScript side at
-  all and starts counting the first day `getType` returns anything.
-- **The per-node type differential** — walk every `NameNode` and diff
-  `printType(getType(node))` against the TypeScript. This is the binder
-  differential's trick again, and it is what localizes a failure to a single
-  expression instead of "3 errors instead of 2". Pyright hands over the walk:
-  `typeAnalyzeSampleFiles` already installs a pre-check callback that runs
-  `NameTypeWalker` over every name before checking.
+  all. It is deliberately deferred until the evaluator core: the honest
+  numerator is a counter at the evaluator's own comparison site, because
+  counting mismatch diagnostics alone scores 3,330 of 3,330 when the evaluator
+  does nothing, and re-extracting the assertions syntactically would duplicate
+  logic that lives inside the evaluator and could drift from it.
 
 ## Order
 

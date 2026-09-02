@@ -9,7 +9,7 @@ REF ?= /tmp/pyright-ref/packages/pyright-internal/src
 ESBUILD ?= $(shell ls -d $$(npm root 2>/dev/null)/@esbuild/*/bin/esbuild 2>/dev/null | head -1)
 SERVER := $(CURDIR)/bin/tokenserver
 
-.PHONY: all build test fmt vet ref bridge-evaluator-tests bridge-evaluator-oracle bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
+.PHONY: all build test fmt vet ref bridge-types bridge-types-oracle bridge-evaluator-tests bridge-evaluator-oracle bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
 
 all: fmt vet test
 
@@ -112,6 +112,15 @@ bridge-evaluator-tests: $(SERVER)
 # anything the serialization loses shows up here, with no port in the picture.
 bridge-evaluator-oracle:
 	PYRIGHT_GO_BRIDGE_MODE=oracle node --max-old-space-size=8192 tools/ts-bridge/run-ts-tests.js --ref $(REF) --server /bin/true --esbuild $(ESBUILD) --test $(EVALUATOR_TESTS)
+
+# Per-node type differential: the printed type of every name in the corpus,
+# diffed one name at a time. This is what localizes an evaluator failure to a
+# single expression instead of an error count; see compare-types.js.
+bridge-types: $(SERVER)
+	node --max-old-space-size=8192 tools/ts-bridge/compare-types.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
+
+bridge-types-oracle:
+	node --max-old-space-size=8192 tools/ts-bridge/compare-types.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
 
 bridge-config-oracle:
 	node tools/ts-bridge/compare-config.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
