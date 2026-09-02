@@ -20,7 +20,6 @@
 package analyzer
 
 import (
-	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -346,17 +345,6 @@ func (e *typeEvaluator) useSignatureTracker(node *parser.CallNode, callback func
 	var result *TypeResult
 	e.withSignatureTracker(node, func() { result = callback() })
 	return result
-}
-
-func (e *typeEvaluator) assignTypeToExpression(
-	_ parser.ExpressionNode,
-	_ *TypeResult,
-	_ parser.ExpressionNode,
-	_ bool,
-	_ bool,
-	_ *common.DiagnosticAddendum,
-) {
-	e.unported("assignTypeToExpression")
 }
 
 func (e *typeEvaluator) addExpectedTypeCacheEntry(_ parser.ParseNode, _ Type) {
