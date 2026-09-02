@@ -263,6 +263,25 @@ not of how much of it is wrong, and they retire as the frontier does.
 | 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker, reachability, `isCallNoReturn`, the narrowing walk and return-type inference done; `typeGuards.getTypeNarrowingCallback` and the solver's four `assign*` arms remain |
 | 4 | the class-shape satellites, lit one at a time | ~11k | `getTypeOfClass`, variance inference and the enum literal expansion done; decorators, dataClasses, typedDicts, protocols, properties remain |
 
+### A stub can hide a bug, and porting it reveals one
+
+Three times this session a *duplicate stub shadowed an already-ported function*
+— `isVarianceOfTypeArgCompatible`, `evaluateTypeForSubnodeWithCache` and
+`explodeGenericClass` were all fully implemented in the `typeutils_*` files
+while the evaluator carried a second copy that called `unported()`. The call
+sites reached the stub. Grep for a name in both places before writing it.
+
+More interesting is the opposite case. Porting `createGenericType` faithfully
+DROPPED computed matches from 538 to 448. The transliteration is right; the
+stub had been hiding a downstream defect. With `createGenericType` stubbed, a
+class deriving from `Generic[T]` reaches `buildTypeParamsFromTypeArgs` with no
+type arguments and ends up with an empty type parameter list. With it ported,
+the class gets its real parameters, and something that consumes them is wrong.
+
+It is held back in the tree with that reasoning recorded at the stub. The rule
+it illustrates: **a port that lowers computed matches is reporting a bug
+somewhere else, and re-landing it is not the fix.**
+
 ### The frontier, and what it is not
 
 Every unported evaluator member records itself through `e.unported(name)`, and
