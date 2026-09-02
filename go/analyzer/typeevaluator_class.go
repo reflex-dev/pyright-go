@@ -1642,13 +1642,13 @@ func (e *typeEvaluator) synthesizeDataClassSlots(_ *ClassType) {
 	e.unported("synthesizeDataClassSlots")
 }
 
-// applyDataClassClassBehaviorOverrides corresponds to the dataClasses.ts
-// function of the same name.
+// applyDataClassClassBehaviorOverrides reaches the dataClasses.ts function of
+// the same name.
 func (e *typeEvaluator) applyDataClassClassBehaviorOverrides(
-	_ *parser.NameNode,
-	_ *ClassType,
-	_ []*Arg,
-	_ *DataClassBehaviors,
+	errorNode *parser.NameNode,
+	classType *ClassType,
+	args []*Arg,
+	defaultBehaviors *DataClassBehaviors,
 ) {
-	e.unported("applyDataClassClassBehaviorOverrides")
+	ApplyDataClassClassBehaviorOverrides(e, errorNode, classType, args, defaultBehaviors)
 }

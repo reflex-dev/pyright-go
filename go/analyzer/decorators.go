@@ -159,7 +159,7 @@ func ApplyClassDecorator(
 		}
 
 		if dataclassBehaviors != nil {
-			applyDataClassDecorator(evaluator, decoratorNode, originalClassType, dataclassBehaviors, callNode)
+			ApplyDataClassDecorator(evaluator, decoratorNode, originalClassType, dataclassBehaviors, callNode)
 			return true
 		}
 
@@ -169,7 +169,7 @@ func ApplyClassDecorator(
 	switch {
 	case IsOverloaded(decoratorType):
 		if dataclassBehaviors := getDataclassDecoratorBehaviors(evaluator, decoratorType); dataclassBehaviors != nil {
-			applyDataClassDecorator(evaluator, decoratorNode, originalClassType, dataclassBehaviors, nil)
+			ApplyDataClassDecorator(evaluator, decoratorNode, originalClassType, dataclassBehaviors, nil)
 			return inputClassType
 		}
 
@@ -395,12 +395,6 @@ func getDataclassDecoratorBehaviors(evaluator TypeEvaluator, t Type) *DataClassB
 	}
 
 	return nil
-}
-
-func applyDataClassDecorator(
-	evaluator TypeEvaluator, _ *parser.DecoratorNode, _ *ClassType, _ *DataClassBehaviors, _ *parser.CallNode,
-) {
-	noteDecoratorUnported(evaluator, "dataClasses.applyDataClassDecorator")
 }
 
 func validateDataClassTransformDecorator(evaluator TypeEvaluator, _ *parser.CallNode) *DataClassBehaviors {
