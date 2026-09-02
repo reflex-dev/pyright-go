@@ -27,12 +27,10 @@
  * have somewhere to hang that flag; it is written out rather than dropped so
  * the reason it does nothing is visible.
  *
- * Five satellites are still stubs and record themselves: applyClassDecorator
- * (decorators.ts), synthesizeTypedDictClassMethods (typedDicts.ts),
- * synthesizeDataClassMethods, synthesizeDataClassSlots and
- * applyDataClassClassBehaviorOverrides (dataClasses.ts). A class whose shape
- * depends on them comes out with the right identity and MRO but without the
- * synthesized members.
+ * The five satellites this reaches -- applyClassDecorator (decorators.ts),
+ * synthesizeTypedDictClassMethods (typedDicts.ts), synthesizeDataClassMethods,
+ * synthesizeDataClassSlots and applyDataClassClassBehaviorOverrides
+ * (dataClasses.ts) -- are all ported; each is a thin delegation below.
  */
 
 package analyzer
@@ -1619,8 +1617,8 @@ func (e *typeEvaluator) applyClassDecorator(
 
 // synthesizeTypedDictClassMethods corresponds to the typedDicts.ts function of
 // the same name.
-func (e *typeEvaluator) synthesizeTypedDictClassMethods(_ *parser.ClassNode, _ *ClassType) {
-	e.unported("synthesizeTypedDictClassMethods")
+func (e *typeEvaluator) synthesizeTypedDictClassMethods(node *parser.ClassNode, classType *ClassType) {
+	SynthesizeTypedDictClassMethods(e, node, classType)
 }
 
 // synthesizeDataClassMethods corresponds to the dataClasses.ts function of the

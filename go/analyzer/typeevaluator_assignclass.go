@@ -286,24 +286,21 @@ func (e *typeEvaluator) reportClassIncompatible(
 // assignTypedDictToTypedDict corresponds to the typedDicts.ts function of the
 // same name.
 func (e *typeEvaluator) assignTypedDictToTypedDict(
-	_ *ClassType, _ *ClassType, _ *common.DiagnosticAddendum,
-	_ *ConstraintTracker, _ AssignTypeFlags, _ int,
+	destType *ClassType, srcType *ClassType, diag *common.DiagnosticAddendum,
+	constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int,
 ) bool {
-	e.unported("typedDicts.assignTypedDictToTypedDict")
-	return false
+	return AssignTypedDictToTypedDict(e, destType, srcType, diag, constraints, flags, recursionCount)
 }
 
 // getTypedDictMappingEquivalent corresponds to the typedDicts.ts function of the
 // same name. It returns nil where the original returns undefined, meaning the
 // TypedDict cannot act as a Mapping.
-func (e *typeEvaluator) getTypedDictMappingEquivalent(_ *ClassType) Type {
-	e.unported("typedDicts.getTypedDictMappingEquivalent")
-	return nil
+func (e *typeEvaluator) getTypedDictMappingEquivalent(classType *ClassType) Type {
+	return GetTypedDictMappingEquivalent(e, classType)
 }
 
 // getTypedDictDictEquivalent corresponds to the typedDicts.ts function of the
 // same name.
-func (e *typeEvaluator) getTypedDictDictEquivalent(_ *ClassType, _ int) Type {
-	e.unported("typedDicts.getTypedDictDictEquivalent")
-	return nil
+func (e *typeEvaluator) getTypedDictDictEquivalent(classType *ClassType, recursionCount int) Type {
+	return GetTypedDictDictEquivalent(e, classType, recursionCount)
 }

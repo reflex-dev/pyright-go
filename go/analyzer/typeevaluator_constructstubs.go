@@ -23,15 +23,6 @@ func noteEvaluatorUnported(evaluator TypeEvaluator, name string) {
 	}
 }
 
-// CreateNamedTupleType corresponds to the namedTuples.ts function of the same
-// name, which synthesizes a class from a NamedTuple(...) call.
-func CreateNamedTupleType(
-	evaluator TypeEvaluator, _ parser.ExpressionNode, _ []*Arg, _ bool,
-) Type {
-	noteEvaluatorUnported(evaluator, "namedTuples.createNamedTupleType")
-	return UnknownTypeCreate(false)
-}
-
 // CreateTypedDictType corresponds to the typedDicts.ts function of the same name.
 func CreateTypedDictType(
 	evaluator TypeEvaluator, _ parser.ExpressionNode, _ *ClassType, _ []*Arg,
