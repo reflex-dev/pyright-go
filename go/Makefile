@@ -33,10 +33,14 @@ vet:
 
 # Extract the 1.1.412 sources the port was transliterated from, plus the
 # bundled typeshed stdlib stubs, which the binder differential also runs over.
+#
+# The archive entries are rooted at packages/pyright-internal, so the extraction
+# root is REF with three components stripped: src, pyright-internal, packages.
+REFROOT := $(abspath $(REF)/../../..)
 ref:
-	@mkdir -p $(dir $(REF))/../../..
-	git -C $(REPO) archive 1.1.412 packages/pyright-internal/src | tar -x -C $(dir $(REF))../../..
-	git -C $(REPO) archive 1.1.412 packages/pyright-internal/typeshed-fallback | tar -x -C $(dir $(REF))../../..
+	@mkdir -p $(REFROOT)
+	git -C $(REPO) archive 1.1.412 packages/pyright-internal/src | tar -x -C $(REFROOT)
+	git -C $(REPO) archive 1.1.412 packages/pyright-internal/typeshed-fallback | tar -x -C $(REFROOT)
 
 # Run the unmodified TypeScript tests against the Go implementation.
 bridge-tests: $(SERVER)

@@ -129,8 +129,8 @@ func (e *typeEvaluator) evaluateAnnotationInContext(annotationNode parser.Expres
 		if parser.ParseNode(annotationNode) == parser.ParseNode(assignment.D.AnnotationComment) {
 			e.GetTypeOfAnnotation(annotationNode, &ExpectedTypeOptions{
 				VarTypeAnnotation: true,
-				AllowFinal:        isFinalAllowedForAssignmentTarget(assignment.D.LeftExpr),
-				AllowClassVar:     isClassVarAllowedForAssignmentTarget(assignment.D.LeftExpr),
+				AllowFinal:        e.isFinalAllowedForAssignmentTarget(assignment.D.LeftExpr),
+				AllowClassVar:     e.isClassVarAllowedForAssignmentTarget(assignment.D.LeftExpr),
 			})
 		} else {
 			e.evaluateTypesForAssignmentStatement(assignment)
@@ -375,7 +375,7 @@ func (e *typeEvaluator) evaluateResolvedNode(node parser.ExpressionNode, nodeToE
 			}
 			if declaredReturnType != nil {
 				liveScopeIds := GetTypeVarScopesForNode(node)
-				declaredReturnType = e.makeTypeVarsBound(declaredReturnType, liveScopeIds)
+				declaredReturnType = MakeTypeVarsBound(declaredReturnType, liveScopeIds, true)
 			}
 			e.getTypeOfExpression(p.D.Expr, EvalFlagsNone, makeInferenceContext(declaredReturnType))
 			return
@@ -454,18 +454,44 @@ func (e *typeEvaluator) evaluateTypesForTypeAnnotationNode(_ *parser.TypeAnnotat
 	e.unported("evaluateTypesForTypeAnnotationNode")
 }
 
-func (e *typeEvaluator) makeTypeVarsBound(t Type, _ []TypeVarScopeId) Type {
-	e.unported("makeTypeVarsBound")
-	return t
+// isClassVarAllowedForAssignmentTarget corresponds to the evaluator-local
+// function of the same name, which shadows no parseTreeUtils counterpart.
+func (e *typeEvaluator) isClassVarAllowedForAssignmentTarget(targetNode parser.ExpressionNode) bool {
+	// The original's comment: ClassVar is allowed only in a class body.
+	classNode := GetEnclosingClass(targetNode, true)
+	if classNode == nil {
+		return false
+	}
+
+	// The original's comment: ClassVar is not allowed in a TypedDict or a
+	// NamedTuple class.
+	return !e.isInTypedDictOrNamedTuple(classNode)
 }
 
-// isFinalAllowedForAssignmentTarget and isClassVarAllowedForAssignmentTarget
-// gate two annotation options. Answering false is the restrictive choice: it
-// makes `Final` and `ClassVar` illegal where they may in fact be legal, which
-// is a diagnostic that should not be reported rather than one that is missed.
-func isFinalAllowedForAssignmentTarget(_ parser.ExpressionNode) bool { return false }
+// isFinalAllowedForAssignmentTarget corresponds to the evaluator-local function
+// of the same name, which shadows the parseTreeUtils one it delegates to.
+func (e *typeEvaluator) isFinalAllowedForAssignmentTarget(targetNode parser.ExpressionNode) bool {
+	classNode := GetEnclosingClass(targetNode, true)
 
-func isClassVarAllowedForAssignmentTarget(_ parser.ExpressionNode) bool { return false }
+	// The original's comment: Final is not allowed in the body of a TypedDict
+	// or NamedTuple class.
+	if classNode != nil && e.isInTypedDictOrNamedTuple(classNode) {
+		return false
+	}
+
+	return IsFinalAllowedForAssignmentTarget(targetNode)
+}
+
+// isInTypedDictOrNamedTuple corresponds to the function of the same name.
+func (e *typeEvaluator) isInTypedDictOrNamedTuple(classNode *parser.ClassNode) bool {
+	classTypeInfo := e.GetTypeOfClass(classNode)
+	if classTypeInfo == nil || classTypeInfo.ClassType == nil {
+		return false
+	}
+
+	classType := classTypeInfo.ClassType
+	return ClassTypeIsTypedDictClass(classType) || classType.Shared.NamedTupleEntries != nil
+}
 
 // makeInferenceContext corresponds to the function of the same name in
 // typeUtils.ts, which returns undefined for an absent expected type.

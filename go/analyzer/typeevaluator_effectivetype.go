@@ -139,20 +139,9 @@ func (e *typeEvaluator) isPossibleTypeAliasDeclaration(decl Declaration) bool {
  * The two paths out.
  */
 
-// getDeclaredTypeOfSymbol corresponds to the function of the same name. It
-// resolves a symbol's typed declarations, which for a class or function means
-// creating the type, so it is the point at which name resolution meets class
-// creation.
-func (e *typeEvaluator) getDeclaredTypeOfSymbol(_ *Symbol, _ *parser.NameNode) *DeclaredSymbolTypeInfo {
-	e.unported("getDeclaredTypeOfSymbol")
-	return &DeclaredSymbolTypeInfo{}
-}
-
-// GetDeclaredTypeOfSymbol is the TypeEvaluator interface's single-argument
-// form; the original's second parameter is internal.
-func (e *typeEvaluator) GetDeclaredTypeOfSymbol(symbol *Symbol) *DeclaredSymbolTypeInfo {
-	return e.getDeclaredTypeOfSymbol(symbol, nil)
-}
+// getDeclaredTypeOfSymbol and getTypeForDeclaration are in
+// typeevaluator_decl.go; the fork above chooses between them and the inference
+// path below.
 
 // inferTypeOfSymbolForUsage corresponds to the function of the same name: the
 // path taken by a symbol with no typed declaration.
