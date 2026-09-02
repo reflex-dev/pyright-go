@@ -253,3 +253,22 @@ func (e *typeEvaluator) inferReturnTypeForCallSite(
 	e.unported("inferReturnTypeForCallSite")
 	return nil
 }
+
+// UseSpeculativeMode corresponds to useSpeculativeMode. The original is generic
+// over the callback's return type; every Go call site captures its result in a
+// closure variable instead.
+//
+// A nil speculativeNode runs the callback unwrapped, which is how the original's
+// callers ask for "the last iteration, for real this time".
+func (e *typeEvaluator) UseSpeculativeMode(
+	speculativeNode parser.ParseNode, callback func(), options *SpeculativeModeOptions,
+) {
+	if speculativeNode == nil {
+		callback()
+		return
+	}
+
+	e.speculativeTypeTracker.EnterSpeculativeContext(speculativeNode, options)
+	defer e.speculativeTypeTracker.LeaveSpeculativeContext()
+	callback()
+}

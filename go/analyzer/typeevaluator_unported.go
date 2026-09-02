@@ -233,11 +233,6 @@ func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod T
 	return false
 }
 
-func (e *typeEvaluator) ValidateCallArgs(errorNode parser.ExpressionNode, argList []*Arg, callTypeResult *TypeResult, constraints *ConstraintTracker, skipUnknownArgCheck bool, inferenceContext *InferenceContext) *CallResult {
-	e.unported("ValidateCallArgs")
-	return nil
-}
-
 func (e *typeEvaluator) AssignTypeToExpression(target parser.ExpressionNode, typeResult *TypeResult, srcExpr parser.ExpressionNode) {
 	e.unported("AssignTypeToExpression")
 }
@@ -265,10 +260,6 @@ func (e *typeEvaluator) AssignTypeArgs(destType *ClassType, srcType *ClassType, 
 func (e *typeEvaluator) IsFinalVariable(symbol *Symbol) bool {
 	e.unported("IsFinalVariable")
 	return false
-}
-
-func (e *typeEvaluator) UseSpeculativeMode(speculativeNode parser.ParseNode, callback func(), options *SpeculativeModeOptions) {
-	e.unported("UseSpeculativeMode")
 }
 
 func (e *typeEvaluator) PrintControlFlowGraph(flowNode FlowNode, reference CodeFlowReferenceExpressionNode, callName string, logger common.ConsoleInterface) {
