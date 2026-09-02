@@ -82,7 +82,7 @@ func (e *typeEvaluator) validateTypeVarUsage(
 func (e *typeEvaluator) bindTypeVarIfFromOuterScope(
 	node parser.ExpressionNode, typeVar *TypeVarType,
 ) *TypeVarType {
-	scopedNode := e.findScopedTypeVarScopeNode(node, typeVar)
+	scopedNode := e.findScopedTypeVar(node, typeVar).ScopeNode
 	if scopedNode == nil {
 		return typeVar
 	}
@@ -132,27 +132,4 @@ func (e *typeEvaluator) enforceClassTypeVarScope(node parser.ExpressionNode, typ
 	)
 
 	return false
-}
-
-/*
- * The two scope-resolution helpers this reaches.
- */
-
-// assignTypeVarScopeID corresponds to assignTypeVarScopeId, which walks outward
-// from the use looking for the generic function, class or type alias whose
-// parameter list the TypeVar belongs to.
-func (e *typeEvaluator) assignTypeVarScopeID(
-	_ parser.ExpressionNode, typeVar *TypeVarType, _ EvalFlags,
-) *TypeVarType {
-	e.unported("assignTypeVarScopeId")
-	return typeVar
-}
-
-// findScopedTypeVarScopeNode corresponds to `findScopedTypeVar(node, type)
-// ?.scopeNode`. The original returns a record; only the scope node is read here.
-func (e *typeEvaluator) findScopedTypeVarScopeNode(
-	_ parser.ExpressionNode, _ *TypeVarType,
-) parser.ParseNode {
-	e.unported("findScopedTypeVar")
-	return nil
 }
