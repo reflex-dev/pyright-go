@@ -424,14 +424,6 @@ func leftExprOf(node parser.ParseNode) parser.ExpressionNode {
  * them, not the fact that the walk reached something unported.
  */
 
-func (e *typeEvaluator) evaluateTypesForImportFromAs(_ *parser.ImportFromAsNode) {
-	e.unported("evaluateTypesForImportFromAs")
-}
-
-func (e *typeEvaluator) evaluateTypesForImportAs(_ *parser.ImportAsNode) {
-	e.unported("evaluateTypesForImportAs")
-}
-
 func (e *typeEvaluator) evaluateTypesForAugmentedAssignment(_ *parser.AugmentedAssignmentNode) {
 	e.unported("evaluateTypesForAugmentedAssignment")
 }

@@ -237,14 +237,6 @@ func (e *typeEvaluator) getTypeOfSuperCall(_ *parser.CallNode) *TypeResult {
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-// getTypeOfRevealType corresponds to the function of the same name. It is what
-// implements the `reveal_type(x, expected_text=...)` assertions the sample
-// corpus is built around, so it is the gateway to the expected_text scoreboard.
-func (e *typeEvaluator) getTypeOfRevealType(_ *parser.CallNode, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfRevealType")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // getTypeOfAssertType corresponds to the function of the same name.
 func (e *typeEvaluator) getTypeOfAssertType(_ *parser.CallNode, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfAssertType")
@@ -255,10 +247,4 @@ func (e *typeEvaluator) getTypeOfAssertType(_ *parser.CallNode, _ *InferenceCont
 func (e *typeEvaluator) getTypeOfTypeForm(_ *parser.CallNode, _ *ClassType) *TypeResult {
 	e.unported("getTypeOfTypeForm")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-// getTypeOfRevealLocals corresponds to the function of the same name.
-func (e *typeEvaluator) getTypeOfRevealLocals(_ *parser.CallNode) Type {
-	e.unported("getTypeOfRevealLocals")
-	return UnknownTypeCreate(false)
 }

@@ -249,12 +249,6 @@ type flowTypeOptions struct {
  * original, so each records itself; the point is the ranking among them.
  */
 
-// getAliasFromImport corresponds to the function of the same name.
-func (e *typeEvaluator) getAliasFromImport(_ *parser.NameNode) *parser.NameNode {
-	e.unported("getAliasFromImport")
-	return nil
-}
-
 // getCodeFlowTypeForCapturedVariable corresponds to the function of the same
 // name.
 func (e *typeEvaluator) getCodeFlowTypeForCapturedVariable(

@@ -89,11 +89,6 @@ func (e *typeEvaluator) GetTypeOfIterator(typeResult *TypeResult, isAsync bool, 
 	return nil
 }
 
-func (e *typeEvaluator) ConvertNodeToArg(node *parser.ArgumentNode) *Arg {
-	e.unported("ConvertNodeToArg")
-	return nil
-}
-
 func (e *typeEvaluator) BuildTupleTypesList(entryTypeResults []*TypeResult, stripLiterals bool, convertModules bool) []*TupleTypeArg {
 	e.unported("BuildTupleTypesList")
 	return nil
