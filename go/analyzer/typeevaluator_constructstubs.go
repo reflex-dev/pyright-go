@@ -95,15 +95,6 @@ func IsEnumClassWithMembers(evaluator TypeEvaluator, _ *ClassType) bool {
  * The evaluator's own.
  */
 
-// createTypeVarType corresponds to the function of the same name: reading the
-// name, bound, constraints, variance and default out of a TypeVar(...) call.
-func (e *typeEvaluator) createTypeVarType(
-	_ parser.ExpressionNode, _ *ClassType, _ []*Arg,
-) Type {
-	e.unported("createTypeVarType")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) createTypeVarTupleType(
 	_ parser.ExpressionNode, _ *ClassType, _ []*Arg,
 ) Type {
