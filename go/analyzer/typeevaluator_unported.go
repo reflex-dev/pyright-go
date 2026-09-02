@@ -103,11 +103,6 @@ func (e *typeEvaluator) NarrowConstrainedTypeVar(node parser.ParseNode, typeVar 
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod Type, baseClass *ClassType, diag *common.DiagnosticAddendum, enforceParamNames *bool) bool {
-	e.unported("ValidateOverrideMethod")
-	return false
-}
-
 // AssignClassToSelf is the interface method for assignClassToSelf. The original
 // defaults ignoreBaseClassVariance to true and recursionCount to 0.
 func (e *typeEvaluator) AssignClassToSelf(destType *ClassType, srcType *ClassType, assumedVariance Variance) bool {

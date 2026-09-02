@@ -28,10 +28,6 @@ func (c *Checker) validateTypedDictOverrides(_ *ClassType) {
 	c.noteUnported("checker.validateTypedDictOverrides")
 }
 
-func (c *Checker) validateMultipleInheritanceCompatibility(_ *ClassType, _ *parser.NameNode) {
-	c.noteUnported("checker.validateMultipleInheritanceCompatibility")
-}
-
 func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {
 	c.noteUnported("checker.validateInstanceVariableInitialization")
 }
