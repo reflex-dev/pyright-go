@@ -1607,17 +1607,14 @@ func combineArgRanges(args []*parser.ArgumentNode) (common.TextRange, bool) {
  * so the frontier ranks them.
  */
 
-// applyClassDecorator corresponds to the decorators.ts function of the same
-// name. Returning the input type unchanged is what the original does when the
-// decorator's own type is unknown, so an undecorated class is the shape the
-// caller already handles.
+// applyClassDecorator is the evaluator-side wrapper over the decorators.ts
+// function of the same name, which takes the evaluator as its first argument.
 func (e *typeEvaluator) applyClassDecorator(
 	inputClassType Type,
-	_ *ClassType,
-	_ *parser.DecoratorNode,
+	originalClassType *ClassType,
+	decoratorNode *parser.DecoratorNode,
 ) Type {
-	e.unported("applyClassDecorator")
-	return inputClassType
+	return ApplyClassDecorator(e, inputClassType, originalClassType, decoratorNode)
 }
 
 // synthesizeTypedDictClassMethods corresponds to the typedDicts.ts function of

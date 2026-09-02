@@ -12,14 +12,14 @@
  * evaluation deciding whether the first parameter is self or cls -- which is
  * what put it on the frontier from three separate call sites at once.
  *
- * applyFunctionDecorator and applyClassDecorator, which do transform, are still
- * stubs in typeevaluator_function.go and typeevaluator_class.go; they need call
- * evaluation.
+ * applyClassDecorator is here too. applyFunctionDecorator, which does the same
+ * job for a `def`, is still a stub in typeevaluator_function.go.
  */
 
 package analyzer
 
 import (
+	"github.com/microsoft/pyright/go/localization"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -106,4 +106,261 @@ func GetFunctionInfoFromDecorators(
 	}
 
 	return &FunctionDecoratorInfo{Flags: flags, DeprecationMessage: deprecationMessage}
+}
+
+// ApplyClassDecorator corresponds to applyClassDecorator. The original's
+// comment: transforms the input class type into an output type based on the
+// decorator function described by the decoratorNode.
+func ApplyClassDecorator(
+	evaluator TypeEvaluator,
+	inputClassType Type,
+	originalClassType *ClassType,
+	decoratorNode *parser.DecoratorNode,
+) Type {
+	fileInfo := GetFileInfo(decoratorNode)
+	flags := EvalFlagsNone
+	if fileInfo.IsStubFile {
+		flags = EvalFlagsForwardRefs
+	}
+	if decoratorNode.D.Expr.GetNodeType() != parser.ParseNodeTypeCall {
+		flags |= EvalFlagsCallBaseDefaults
+	}
+	decoratorType := evaluator.GetTypeOfExpression(decoratorNode.D.Expr, flags, nil).Type
+
+	// The `__dataclass_transform__` recognition runs before the main dispatch
+	// and mutates the class rather than returning, so a decorator can both
+	// register a transform and go on to be applied normally.
+	if callNode, ok := decoratorNode.D.Expr.(*parser.CallNode); ok {
+		decoratorCallType := evaluator.GetTypeOfExpression(callNode.D.LeftExpr, flags|EvalFlagsCallBaseDefaults, nil).Type
+
+		if IsFunction(decoratorCallType) {
+			fn := decoratorCallType.(*FunctionType)
+			if fn.Shared.Name == "__dataclass_transform__" || FunctionTypeIsBuiltIn(fn, "dataclass_transform") {
+				originalClassType.Shared.ClassDataClassTransform =
+					validateDataClassTransformDecorator(evaluator, callNode)
+			}
+		}
+	}
+
+	// applyDataclassTransform is the original's local closure. It reports
+	// whether a dataclass decorator was recognized and applied.
+	applyDataclassTransform := func() bool {
+		var dataclassBehaviors *DataClassBehaviors
+		var callNode *parser.CallNode
+
+		if asCall, ok := decoratorNode.D.Expr.(*parser.CallNode); ok {
+			callNode = asCall
+			decoratorCallType := evaluator.GetTypeOfExpression(
+				callNode.D.LeftExpr, flags|EvalFlagsCallBaseDefaults, nil).Type
+			dataclassBehaviors = getDataclassDecoratorBehaviors(evaluator, decoratorCallType)
+		} else {
+			t := evaluator.GetTypeOfExpression(decoratorNode.D.Expr, flags, nil).Type
+			dataclassBehaviors = getDataclassDecoratorBehaviors(evaluator, t)
+		}
+
+		if dataclassBehaviors != nil {
+			applyDataClassDecorator(evaluator, decoratorNode, originalClassType, dataclassBehaviors, callNode)
+			return true
+		}
+
+		return false
+	}
+
+	switch {
+	case IsOverloaded(decoratorType):
+		if dataclassBehaviors := getDataclassDecoratorBehaviors(evaluator, decoratorType); dataclassBehaviors != nil {
+			applyDataClassDecorator(evaluator, decoratorNode, originalClassType, dataclassBehaviors, nil)
+			return inputClassType
+		}
+
+	case IsFunction(decoratorType):
+		fn := decoratorType.(*FunctionType)
+
+		if FunctionTypeIsBuiltIn(fn, "disjoint_base") {
+			switch {
+			case ClassTypeIsTypedDictClass(originalClassType):
+				evaluator.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+					localization.LocMessage.DisjointBaseTypedDict(), decoratorNode.D.Expr, nil)
+			case ClassTypeIsProtocolClass(originalClassType):
+				evaluator.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+					localization.LocMessage.DisjointBaseProtocol(), decoratorNode.D.Expr, nil)
+			default:
+				originalClassType.Shared.Flags |= ClassTypeFlagsDisjointBase
+			}
+
+			return inputClassType
+		}
+
+		if FunctionTypeIsBuiltIn(fn, "final") {
+			originalClassType.Shared.Flags |= ClassTypeFlagsFinal
+
+			// The original's comment: don't call getTypeOfDecorator for final.
+			// We'll hard-code its behavior because its function definition
+			// results in a cyclical dependency between builtins, typing and
+			// _typeshed stubs.
+			return inputClassType
+		}
+
+		if FunctionTypeIsBuiltIn(fn, "type_check_only") {
+			originalClassType.Shared.Flags |= ClassTypeFlagsTypeCheckOnly
+			return inputClassType
+		}
+
+		if FunctionTypeIsBuiltIn(fn, "runtime_checkable") {
+			originalClassType.Shared.Flags |= ClassTypeFlagsRuntimeCheckable
+
+			// The original's comment: don't call getTypeOfDecorator for
+			// runtime_checkable. It appears frequently in stubs, and it's a
+			// waste of time to validate its parameters.
+			return inputClassType
+		}
+
+		if applyDataclassTransform() {
+			return inputClassType
+		}
+
+	case IsClassInstance(decoratorType):
+		cls := decoratorType.(*ClassType)
+		if ClassTypeIsBuiltInNamed(cls, "deprecated") {
+			originalClassType.Shared.DeprecatedMessage = cls.Priv.DeprecatedInstanceMessage
+			return inputClassType
+		}
+
+		if applyDataclassTransform() {
+			return inputClassType
+		}
+	}
+
+	return getTypeOfDecorator(evaluator, decoratorNode, inputClassType)
+}
+
+// getTypeOfDecorator corresponds to the function of the same name: the general
+// path, which calls the decorator with the decorated object as its argument.
+func getTypeOfDecorator(evaluator TypeEvaluator, node *parser.DecoratorNode, functionOrClassType Type) Type {
+	// The original's comment: evaluate the type of the decorator expression.
+	flags := EvalFlagsNone
+	if GetFileInfo(node).IsStubFile {
+		flags = EvalFlagsForwardRefs
+	}
+	if node.D.Expr.GetNodeType() != parser.ParseNodeTypeCall {
+		flags |= EvalFlagsCallBaseDefaults
+	}
+
+	decoratorTypeResult := evaluator.GetTypeOfExpression(node.D.Expr, flags, nil)
+
+	// The original's comment: special-case the combination of a classmethod
+	// decorator applied to a property. This is allowed in Python 3.9, but it's
+	// not reflected in the builtins.pyi stub for classmethod.
+	if IsInstantiableClass(decoratorTypeResult.Type) &&
+		ClassTypeIsBuiltInNamed(decoratorTypeResult.Type.(*ClassType), "classmethod") &&
+		IsProperty(functionOrClassType) {
+		return functionOrClassType
+	}
+
+	argList := []*Arg{
+		{
+			ArgCategory: parser.ArgCategorySimple,
+			TypeResult:  &TypeResult{Type: functionOrClassType},
+		},
+	}
+
+	callTypeResult := evaluator.ValidateCallArgs(node.D.Expr, argList, decoratorTypeResult, nil, true, nil)
+	if callTypeResult == nil {
+		return UnknownTypeCreate(false)
+	}
+
+	returnType := callTypeResult.ReturnType
+	if returnType == nil {
+		returnType = UnknownTypeCreate(false)
+	}
+
+	evaluator.SetTypeResultForNode(node, &TypeResult{
+		Type:                 returnType,
+		OverloadsUsedForCall: callTypeResult.OverloadsUsedForCall,
+		IsIncomplete:         callTypeResult.IsTypeIncomplete,
+	}, EvalFlagsNone)
+
+	// The original's comment: if the return type is a function that has no
+	// annotations and just *args and **kwargs parameters, assume that it
+	// preserves the type of the input function.
+	if IsFunction(returnType) && returnType.(*FunctionType).Shared.DeclaredReturnType == nil {
+		if !decoratorReturnHasTypedParams(returnType.(*FunctionType)) {
+			return functionOrClassType
+		}
+	}
+
+	// The original's comment: if the decorator is completely unannotated and the
+	// return type includes unknowns, assume that it preserves the type of the
+	// input function.
+	if IsPartlyUnknown(returnType, 0) {
+		if IsFunction(decoratorTypeResult.Type) {
+			decoratorFn := decoratorTypeResult.Type.(*FunctionType)
+			hasDeclared := false
+			for _, param := range decoratorFn.Shared.Parameters {
+				if FunctionParamIsTypeDeclared(param) {
+					hasDeclared = true
+					break
+				}
+			}
+			if !hasDeclared && decoratorFn.Shared.DeclaredReturnType == nil {
+				return functionOrClassType
+			}
+		}
+	}
+
+	return returnType
+}
+
+// decoratorReturnHasTypedParams is the original's `parameters.some(...)` inside
+// getTypeOfDecorator, which asks whether the decorator's return type has any
+// parameter that would stop it from being treated as identity-preserving.
+func decoratorReturnHasTypedParams(returnType *FunctionType) bool {
+	for index, param := range returnType.Shared.Parameters {
+		// The original's comment: don't allow * or / separators or params with
+		// declared types.
+		if param.Name == nil || FunctionParamIsTypeDeclared(param) {
+			return true
+		}
+
+		// The original's comment: allow *args or **kwargs parameters.
+		if param.Category != parser.ParamCategorySimple {
+			continue
+		}
+
+		// The original's comment: allow inferred "self" or "cls" parameters.
+		if index != 0 || !FunctionParamIsTypeInferred(param) {
+			return true
+		}
+	}
+
+	return false
+}
+
+/*
+ * The three dataClasses.ts helpers this reaches.
+ */
+
+func getDataclassDecoratorBehaviors(evaluator TypeEvaluator, _ Type) *DataClassBehaviors {
+	noteDecoratorUnported(evaluator, "dataClasses.getDataclassDecoratorBehaviors")
+	return nil
+}
+
+func applyDataClassDecorator(
+	evaluator TypeEvaluator, _ *parser.DecoratorNode, _ *ClassType, _ *DataClassBehaviors, _ *parser.CallNode,
+) {
+	noteDecoratorUnported(evaluator, "dataClasses.applyDataClassDecorator")
+}
+
+func validateDataClassTransformDecorator(evaluator TypeEvaluator, _ *parser.CallNode) *DataClassBehaviors {
+	noteDecoratorUnported(evaluator, "dataClasses.validateDataClassTransformDecorator")
+	return nil
+}
+
+// noteDecoratorUnported records an unported decorators.ts path on the
+// evaluator's counter; these are free functions, matching the original's module
+// shape, so they reach it through an interface assertion.
+func noteDecoratorUnported(evaluator TypeEvaluator, name string) {
+	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
+		reporter.noteUnported(name)
+	}
 }
