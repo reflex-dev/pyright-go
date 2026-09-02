@@ -345,28 +345,25 @@ func (e *typeEvaluator) assignAliasParamSpecArg(
  * reaches. All four are separate units of work.
  */
 
-// AssignTypeVar corresponds to the constraintSolver.ts function of the same
-// name, which records a type argument as a bound on a type variable.
+// AssignTypeVar and SolveConstraints are the evaluator-side wrappers over the
+// constraintSolver.ts functions of the same names, which take the evaluator as
+// their first argument.
 func (e *typeEvaluator) AssignTypeVar(
-	_ *TypeVarType,
-	_ Type,
-	_ *common.DiagnosticAddendum,
-	_ *ConstraintTracker,
-	_ AssignTypeFlags,
-	_ int,
+	destType *TypeVarType,
+	srcType Type,
+	diag *common.DiagnosticAddendum,
+	constraints *ConstraintTracker,
+	flags AssignTypeFlags,
+	recursionCount int,
 ) bool {
-	e.unported("constraintSolver.assignTypeVar")
-	return false
+	return AssignTypeVar(e, destType, srcType, diag, constraints, flags, recursionCount)
 }
 
-// SolveConstraints corresponds to the constraintSolver.ts function of the same
-// name.
 func (e *typeEvaluator) SolveConstraints(
-	_ *ConstraintTracker,
-	_ *SolveConstraintsOptions,
+	constraints *ConstraintTracker,
+	options *SolveConstraintsOptions,
 ) *ConstraintSolution {
-	e.unported("constraintSolver.solveConstraints")
-	return NewConstraintSolution(nil)
+	return SolveConstraints(e, constraints, options)
 }
 
 // inferVarianceForTypeAlias corresponds to the function of the same name. The
