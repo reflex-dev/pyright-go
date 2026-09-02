@@ -170,12 +170,11 @@ func (e *typeEvaluator) assignClassWithTypeArgs(
  * The two type-argument comparisons this reaches.
  */
 
-// assignTupleTypeArgs corresponds to the tuples.ts function of the same name,
-// which handles the variable-length matching a tuple requires.
+// assignTupleTypeArgs reaches the tuples.ts function of the same name, which
+// handles the variable-length matching a tuple requires.
 func (e *typeEvaluator) assignTupleTypeArgs(
-	_ *ClassType, _ *ClassType, _ *common.DiagnosticAddendum,
-	_ *ConstraintTracker, _ AssignTypeFlags, _ int,
+	destType *ClassType, srcType *ClassType, diag *common.DiagnosticAddendum,
+	constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int,
 ) bool {
-	e.unported("tuples.assignTupleTypeArgs")
-	return false
+	return AssignTupleTypeArgs(e, destType, srcType, diag, constraints, flags, recursionCount)
 }
