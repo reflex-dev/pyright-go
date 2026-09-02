@@ -594,3 +594,35 @@ lands at the right node under the right rule, so count-based assertions pass --
 only a text comparison sees it. The audit that found them matches each argument
 expression against the generated parameter name and is worth re-running whenever
 a batch of diagnostics lands.
+
+## Check the dependencies before porting the caller
+
+A validator built on an unported primitive is worse than no validator. The
+multiple-inheritance override checks were written, were faithful, and cost three
+gate tests, because `ValidateOverrideMethod` is still a stub returning `false` --
+so every comparison answered "incompatible" and produced 26 spurious
+diagnostics.
+
+An earlier audit in this session swept every stub for a dangerous default return
+value and found exactly one (`IsEnumClassWithMembers`, returning `true`, which
+had already cost 12 tests when a new caller inverted its safe direction). That
+audit asked the wrong question. `false` is a fine default for an unported
+predicate right up until something depends on it answering truthfully. The
+hazard is not the default -- it is a new caller.
+
+The check is free and should precede every port: grep the target's dependencies
+for `unported(`. The gate already ranks unported paths by hits, and the blocking
+primitive was in that ranking the whole time.
+
+This is the fourth member of a family that now dominates the port's real bugs,
+and all four are invisible to the compiler:
+
+- **typed nil** -- `x === undefined` silently fails for a nil pointer boxed in an
+  interface.
+- **slice-header aliasing** -- an array shared by reference in JavaScript is
+  copied by value in Go, so later appends are lost.
+- **non-zero argument defaults** -- `additionalFlags = SkipObjectBaseClass` does
+  not translate to the zero value; "the original omits it" means passing that
+  flag explicitly.
+- **stub defaults with a new caller** -- the safe answer is a property of the
+  caller, not of the stub.
