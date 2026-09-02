@@ -197,16 +197,3 @@ func (e *typeEvaluator) narrowIndexByCodeFlow(
 		indexTypeResult.IsIncomplete = true
 	}
 }
-
-// getTypeOfIndexWithBaseType corresponds to the function of the same name: the
-// part that decides whether an index is a subscript or a specialization, and
-// evaluates it accordingly.
-func (e *typeEvaluator) getTypeOfIndexWithBaseType(
-	_ *parser.IndexNode,
-	_ *TypeResult,
-	_ *EvaluatorUsage,
-	_ EvalFlags,
-) *TypeResult {
-	e.unported("getTypeOfIndexWithBaseType")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
