@@ -404,15 +404,3 @@ func (e *typeEvaluator) evaluateTypeForSubnode(subnode parser.ParseNode, callbac
 /*
  * The three type-alias satellites this layer reaches.
  */
-
-// transformTypeForTypeAlias corresponds to the typeUtils function of the same
-// name.
-func (e *typeEvaluator) transformTypeForTypeAlias(
-	t Type,
-	_ parser.ParseNode,
-	_ *TypeVarType,
-	_ bool,
-) Type {
-	e.unported("transformTypeForTypeAlias")
-	return t
-}
