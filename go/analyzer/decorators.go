@@ -340,8 +340,60 @@ func decoratorReturnHasTypedParams(returnType *FunctionType) bool {
  * The three dataClasses.ts helpers this reaches.
  */
 
-func getDataclassDecoratorBehaviors(evaluator TypeEvaluator, _ Type) *DataClassBehaviors {
-	noteDecoratorUnported(evaluator, "dataClasses.getDataclassDecoratorBehaviors")
+// getDataclassDecoratorBehaviors corresponds to the dataClasses.ts function of
+// the same name: the PEP 681 behaviors a decorator imparts, or nil when it is
+// not a dataclass-like decorator at all.
+//
+// The overload search is ordered by PEP 681: the first overload carrying a
+// dataclass_transform decorator wins, then the implementation, and only if
+// neither has one does it fall back to the first overload -- which will then
+// almost certainly answer nil, but reaches the `dataclasses.dataclass` check
+// below on the way.
+func getDataclassDecoratorBehaviors(evaluator TypeEvaluator, t Type) *DataClassBehaviors {
+	var functionType *FunctionType
+
+	if IsFunction(t) {
+		functionType = t.(*FunctionType)
+	} else if IsOverloaded(t) {
+		// The original's comment: find the first overload or implementation that
+		// contains a dataclass_transform decorator. If more than one have such a
+		// decorator, only the first one will be honored, as per PEP 681.
+		overloads := OverloadedTypeGetOverloads(t.(*OverloadedType))
+		impl := OverloadedTypeGetImplementation(t.(*OverloadedType))
+
+		for _, overload := range overloads {
+			if overload.Shared.DecoratorDataClassBehaviors != nil {
+				functionType = overload
+				break
+			}
+		}
+
+		if functionType == nil && impl != nil && IsFunction(impl) &&
+			impl.(*FunctionType).Shared.DecoratorDataClassBehaviors != nil {
+			functionType = impl.(*FunctionType)
+		}
+
+		if functionType == nil && len(overloads) > 0 {
+			functionType = overloads[0]
+		}
+	}
+
+	if functionType == nil {
+		return nil
+	}
+
+	if functionType.Shared.DecoratorDataClassBehaviors != nil {
+		return functionType.Shared.DecoratorDataClassBehaviors
+	}
+
+	// The original's comment: is this the built-in dataclass? If so, return the
+	// default behaviors.
+	if functionType.Shared.FullName == "dataclasses.dataclass" {
+		return &DataClassBehaviors{
+			FieldDescriptorNames: []string{"dataclasses.field", "dataclasses.Field"},
+		}
+	}
+
 	return nil
 }
 
