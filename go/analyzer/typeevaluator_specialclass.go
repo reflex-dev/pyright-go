@@ -648,20 +648,6 @@ func (e *typeEvaluator) createOptionalType(c *ClassType, _ parser.ExpressionNode
 	return c
 }
 
-// createSpecialType corresponds to the function of the same name. paramLimit,
-// allowParamSpec and isSpecialForm are pointers because each of the original's
-// defaults is not the Go zero value at every call site.
-func (e *typeEvaluator) createSpecialType(
-	c *ClassType,
-	_ []*TypeResultWithNode,
-	_ *int,
-	_ *bool,
-	_ *bool,
-) Type {
-	e.unported("createSpecialType")
-	return c
-}
-
 func (e *typeEvaluator) createClassVarType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {
 	e.unported("createClassVarType")
 	return c

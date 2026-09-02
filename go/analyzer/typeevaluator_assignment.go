@@ -346,9 +346,59 @@ func (e *typeEvaluator) cachedAssignmentTargetMayHaveDeclaredType(expression par
 }
 
 // handleTypingStubAssignment corresponds to the function of the same name. It
-// creates the special forms typing.pyi defines by assignment, and is a separate
-// unit of work alongside handleTypingStubTypeAnnotation.
-func (e *typeEvaluator) handleTypingStubAssignment(_ *parser.AssignmentNode) Type {
-	e.unported("handleTypingStubAssignment")
-	return nil
+// creates the special forms typing.pyi defines by assignment, and is the
+// counterpart of handleTypingStubTypeAnnotation, which handles the ones defined
+// by annotation.
+//
+// The table is the fifteen names typing.pyi assigns rather than declares. Six of
+// them alias a builtins or collections class under a capitalized name (List ->
+// list, Deque -> collections.deque); the rest carry an empty alias, which
+// createSpecialBuiltInClass reads as "there is no runtime class behind this,
+// synthesize one".
+//
+// Any is not in the table. It is the one special form that is not a class at
+// all, so it short-circuits above the lookup.
+func (e *typeEvaluator) handleTypingStubAssignment(node *parser.AssignmentNode) Type {
+	nameNode, ok := node.D.LeftExpr.(*parser.NameNode)
+	if !ok {
+		return nil
+	}
+
+	assignedName := nameNode.D.Value
+
+	if assignedName == "Any" {
+		return AnyTypeCreateSpecialForm()
+	}
+
+	entry, ok := typingStubAssignmentTypes[assignedName]
+	if !ok {
+		return nil
+	}
+
+	// The original's comment: evaluate the expression so symbols are marked as
+	// accessed.
+	e.getTypeOfExpression(node.D.RightExpr, EvalFlagsNone, nil)
+
+	return e.createSpecialBuiltInClass(node, assignedName, entry)
+}
+
+// typingStubAssignmentTypes is the original's `specialTypes` map, rebuilt on
+// every call there and hoisted to a package-level table here. The entries are
+// never mutated.
+var typingStubAssignmentTypes = map[string]aliasMapEntry{
+	"overload":      {Alias: "", Module: "builtins"},
+	"TypeVar":       {Alias: "", Module: "builtins"},
+	"_promote":      {Alias: "", Module: "builtins"},
+	"no_type_check": {Alias: "", Module: "builtins"},
+	"NoReturn":      {Alias: "", Module: "builtins"},
+	"Never":         {Alias: "", Module: "builtins"},
+	"Counter":       {Alias: "Counter", Module: "collections"},
+	"List":          {Alias: "list", Module: "builtins"},
+	"Dict":          {Alias: "dict", Module: "builtins"},
+	"DefaultDict":   {Alias: "defaultdict", Module: "collections"},
+	"Set":           {Alias: "set", Module: "builtins"},
+	"FrozenSet":     {Alias: "frozenset", Module: "builtins"},
+	"Deque":         {Alias: "deque", Module: "collections"},
+	"ChainMap":      {Alias: "ChainMap", Module: "collections"},
+	"OrderedDict":   {Alias: "OrderedDict", Module: "collections"},
 }
