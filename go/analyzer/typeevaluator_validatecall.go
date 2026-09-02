@@ -305,16 +305,6 @@ func (e *typeEvaluator) validateCallForOverloaded(
 	return &CallResult{ArgumentErrors: true}
 }
 
-// validateCallForInstantiableClass corresponds to the function of the same name:
-// construction, which runs __call__ on the metaclass, then __new__, then
-// __init__.
-func (e *typeEvaluator) validateCallForInstantiableClass(
-	_ parser.ExpressionNode, _ []*Arg, _ *ClassType, _ Type, _ bool, _ *InferenceContext,
-) *CallResult {
-	e.unported("validateCallForInstantiableClass")
-	return &CallResult{ArgumentErrors: true}
-}
-
 // validateCallForClassInstance corresponds to the function of the same name:
 // calling an object, which goes through its __call__ member.
 func (e *typeEvaluator) validateCallForClassInstance(
