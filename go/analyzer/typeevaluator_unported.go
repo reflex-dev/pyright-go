@@ -166,16 +166,6 @@ func (e *typeEvaluator) GetTypeForDeclaration(declaration Declaration) *Declared
 	return nil
 }
 
-func (e *typeEvaluator) ResolveAliasDeclaration(declaration Declaration, resolveLocalNames bool, options *EvaluatorResolveAliasOptions) Declaration {
-	e.unported("ResolveAliasDeclaration")
-	return nil
-}
-
-func (e *typeEvaluator) ResolveAliasDeclarationWithInfo(declaration Declaration, resolveLocalNames bool, options *EvaluatorResolveAliasOptions) *ResolvedAliasInfo {
-	e.unported("ResolveAliasDeclarationWithInfo")
-	return nil
-}
-
 func (e *typeEvaluator) GetTypeOfIterable(typeResult *TypeResult, isAsync bool, errorNode parser.ExpressionNode, emitNotIterableError *bool) *TypeResult {
 	e.unported("GetTypeOfIterable")
 	return nil
@@ -355,11 +345,6 @@ func (e *typeEvaluator) IsFinalVariable(symbol *Symbol) bool {
 
 func (e *typeEvaluator) IsFinalVariableDeclaration(decl Declaration) bool {
 	e.unported("IsFinalVariableDeclaration")
-	return false
-}
-
-func (e *typeEvaluator) IsExplicitTypeAliasDeclaration(decl Declaration) bool {
-	e.unported("IsExplicitTypeAliasDeclaration")
 	return false
 }
 

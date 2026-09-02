@@ -143,17 +143,6 @@ func (e *typeEvaluator) isPossibleTypeAliasDeclaration(decl Declaration) bool {
 // typeevaluator_decl.go; the fork above chooses between them and the inference
 // path below.
 
-// inferTypeOfSymbolForUsage corresponds to the function of the same name: the
-// path taken by a symbol with no typed declaration.
-func (e *typeEvaluator) inferTypeOfSymbolForUsage(
-	_ *Symbol,
-	_ *parser.NameNode,
-	_ bool,
-) *EffectiveTypeResult {
-	e.unported("inferTypeOfSymbolForUsage")
-	return &EffectiveTypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // isLegalTypeAliasExpressionForm corresponds to the function of the same name.
 func (e *typeEvaluator) isLegalTypeAliasExpressionForm(_ parser.ExpressionNode, _ bool) bool {
 	e.unported("isLegalTypeAliasExpressionForm")
