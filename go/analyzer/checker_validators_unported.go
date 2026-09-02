@@ -98,6 +98,14 @@ func (c *Checker) reportDeprecatedUseForType(_ *parser.NameNode, _ Type, _ bool)
 	c.noteUnported("checker.reportDeprecatedUseForType")
 }
 
-func (c *Checker) validateMethod(_ *parser.FunctionNode, _ *FunctionType, _ parser.ParseNode) {
-	c.noteUnported("checker.validateMethod")
+func (c *Checker) validateSuperCallForMethod(
+	_ *parser.FunctionNode, _ *FunctionType, _ *ClassType,
+) {
+	c.noteUnported("checker.validateSuperCallForMethod")
+}
+
+func (c *Checker) validateClsSelfParamType(
+	_ *parser.FunctionNode, _ *FunctionType, _ *ClassType, _ bool,
+) {
+	c.noteUnported("checker.validateClsSelfParamType")
 }

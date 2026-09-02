@@ -214,6 +214,11 @@ func (e *typeEvaluator) updateUsageVariancesRecursive(
 			return
 		}
 
+		// The original pushes here and pops at the end of the function. There is
+		// no pop here and none is needed: append rebinds a local, so each callee
+		// receives a slice value that already includes t while every sibling call
+		// still sees the caller's original length. That is exactly what
+		// push-then-pop achieves, and adding a pop would be wrong.
 		pendingTypes = append(pendingTypes, t)
 	}
 
