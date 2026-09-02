@@ -68,20 +68,6 @@ func IsEnumClassWithMembers(evaluator TypeEvaluator, _ *ClassType) bool {
  * The evaluator's own.
  */
 
-func (e *typeEvaluator) createTypeVarTupleType(
-	_ parser.ExpressionNode, _ *ClassType, _ []*Arg,
-) Type {
-	e.unported("createTypeVarTupleType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) createParamSpecType(
-	_ parser.ExpressionNode, _ *ClassType, _ []*Arg,
-) Type {
-	e.unported("createParamSpecType")
-	return UnknownTypeCreate(false)
-}
-
 // createTypeAliasType corresponds to the function of the same name: the PEP 695
 // TypeAliasType(...) runtime form. Returning nil is the original's undefined.
 func (e *typeEvaluator) createTypeAliasType(_ parser.ExpressionNode, _ []*Arg) Type {

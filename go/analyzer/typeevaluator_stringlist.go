@@ -324,13 +324,3 @@ func (e *typeEvaluator) getTypeOfString(node parser.StringOrFormatStringNode) *T
 
 	return typeResult
 }
-
-// getTypeOfStringListAsType corresponds to the function of the same name: parse
-// the string's contents as a type annotation, which is how a forward reference
-// is resolved.
-func (e *typeEvaluator) getTypeOfStringListAsType(
-	_ *parser.StringListNode, _ EvalFlags,
-) *TypeResult {
-	e.unported("getTypeOfStringListAsType")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}

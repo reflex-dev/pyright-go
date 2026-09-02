@@ -163,15 +163,6 @@ func (e *typeEvaluator) checkTypeVarAssignedName(
  * The three target-shape handlers this reaches.
  */
 
-// assignTypeToTupleOrListNode corresponds to the function of the same name: the
-// destructuring case, which matches the source's elements against the targets
-// and handles a starred target absorbing the remainder.
-func (e *typeEvaluator) assignTypeToTupleOrListNode(
-	_ parser.ExpressionNode, _ *TypeResult, _ parser.ExpressionNode,
-) {
-	e.unported("assignTypeToTupleOrListNode")
-}
-
 // AssignTypeToExpression corresponds to assignTypeToExpression with the
 // original's default arguments applied.
 func (e *typeEvaluator) AssignTypeToExpression(
