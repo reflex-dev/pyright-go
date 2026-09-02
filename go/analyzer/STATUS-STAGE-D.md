@@ -205,10 +205,40 @@ corpus is switched on for the first time.
 | step | files | lines | state |
 | --- | --- | --- | --- |
 | 1 | `typeEvaluatorTypes.ts` — the 109-member interface | 900 | done |
-| 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | state layer done |
-| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker + reachability done |
-| 4 | the class-shape satellites, lit one at a time | ~11k | |
-| 5 | `checker.ts` | 7,859 | |
+| 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | name path done end to end; call, index, member-access, binary-op remain |
+| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker + reachability done; `isCallNoReturn` and `getFlowTypeOfReference` remain |
+| 4 | the class-shape satellites, lit one at a time | ~11k | `getTypeOfClass` done; decorators, dataClasses, typedDicts, enums, protocols remain |
+| 5 | `checker.ts` | 7,859 | walk + `check()` done; 50 of 52 visit methods remain |
+
+### What is complete, end to end
+
+The **name path** now runs from a NameNode to a printed type with nothing
+stubbed along the spine:
+
+    GetType -> contextual cache -> context walk -> getTypeOfExpression
+      -> node dispatch -> getTypeOfName -> lookUpSymbolRecursive
+      -> getEffectiveTypeOfSymbolForUsage -> [ getDeclaredTypeOfSymbol
+                                             | inferTypeOfSymbolForUsage ]
+      -> getTypeForDeclaration / getInferredTypeOfDeclaration
+      -> getTypeOfClass | getTypeOfAnnotation | ...
+      -> printType
+
+Underneath it: the prefetch bootstrap (`object`, `type`, `int`, `str`, `tuple`
+resolved out of typeshed), class creation, the diagnostic-reporting layer, the
+checker walk that drives all of it, and `makeTopLevelTypeVarsConcrete`.
+
+### The next four, ranked by corpus hits
+
+| entry | hits | what it needs |
+| --- | --- | --- |
+| `codeFlowEngine.isCallNoReturn` | 4,309 | call evaluation |
+| `applyClassDecorator` | 1,020 | `decorators.ts` |
+| `getTypeOfIndex` | 799 | `operations.ts` and type-argument handling |
+| `evaluateTypesForAssignmentStatement` | 569 | assignment targets |
+
+`getTypeOfFunctionPredecorated` (347) is the largest single remaining unit that
+is self-contained; `getTypeOfCall` (~3,000 lines) and `assignType` (~2,000) are
+the two that everything else eventually waits on.
 
 ### What "state layer done" means
 
@@ -247,6 +277,10 @@ one entry, `IsNodeReachable`. Each thing ported reveals the next layer:
 | class creation and the printer | 38 entries; `GetTypeOfClass` gone |
 | the diagnostic layer | 38 entries; `AddDiagnostic` gone |
 | the checker walk | **46 entries**, and the corpus-wide count becomes visible for the first time |
+| the leaf expressions and `makeTopLevelTypeVarsConcrete` | 41 entries over the 60-file sample |
+| getTypeOfName's outbound adjustments | 39 entries; differential 133 -> 151 |
+| the inference fork and `getInferredTypeOfDeclaration` | 42 entries; 7 vacuous matches correctly lost |
+| `getTypeOfAnnotation` and `getTypeOfFunction` | **45 entries** |
 
 The last step is the one that pays. `evaluateTypesForExpressionInContext` and
 `getTypeOfExpressionCore` are both pure dispatch — every arm hands off to
