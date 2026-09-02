@@ -154,16 +154,16 @@ func reportUnaryOperationFailure(
 	if inferenceContext != nil && !IsAnyOrUnknown(inferenceContext.ExpectedType) {
 		evaluator.AddDiagnostic(DiagnosticRuleReportOperatorIssue,
 			localization.LocMessage.TypeNotSupportUnaryOperatorBidirectional().Format(
-				PrintOperator(node.D.Operator),
 				evaluator.PrintType(exprType, nil),
-				evaluator.PrintType(inferenceContext.ExpectedType, nil)),
+				evaluator.PrintType(inferenceContext.ExpectedType, nil),
+				PrintOperator(node.D.Operator)),
 			node, nil)
 		return
 	}
 
 	evaluator.AddDiagnostic(DiagnosticRuleReportOperatorIssue,
 		localization.LocMessage.TypeNotSupportUnaryOperator().Format(
-			PrintOperator(node.D.Operator), evaluator.PrintType(exprType, nil)),
+			evaluator.PrintType(exprType, nil), PrintOperator(node.D.Operator)),
 		node, nil)
 }
 

@@ -318,9 +318,9 @@ func reportBinaryOperationFailure(
 	evaluator.AddDiagnostic(
 		DiagnosticRuleReportOperatorIssue,
 		localization.LocMessage.TypeNotSupportBinaryOperator().Format(
-			PrintOperator(node.D.Operator),
 			evaluator.PrintType(leftType, nil),
-			evaluator.PrintType(rightType, nil))+diagString,
+			evaluator.PrintType(rightType, nil),
+			PrintOperator(node.D.Operator))+diagString,
 		node,
 		nil,
 	)

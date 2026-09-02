@@ -243,9 +243,9 @@ func validateContainmentOperation(
 
 					if returnTypeResult == nil {
 						diag.AddMessage(localization.LocMessage.TypeNotSupportBinaryOperator().Format(
-							PrintOperator(operator),
 							evaluator.PrintType(leftSubtype, nil),
-							evaluator.PrintType(rightSubtypeExpanded, nil)))
+							evaluator.PrintType(rightSubtypeExpanded, nil),
+							PrintOperator(operator)))
 						return evaluator.GetBuiltInObject(errorNode, "bool", nil)
 					}
 
@@ -433,17 +433,17 @@ func reportArithmeticFailure(
 ) {
 	if inferenceContext != nil && !IsAnyOrUnknown(inferenceContext.ExpectedType) {
 		diag.AddMessage(localization.LocMessage.TypeNotSupportBinaryOperatorBidirectional().Format(
-			PrintOperator(operator),
 			evaluator.PrintType(leftSubtypeExpanded, nil),
 			evaluator.PrintType(rightSubtypeExpanded, nil),
-			evaluator.PrintType(inferenceContext.ExpectedType, nil)))
+			evaluator.PrintType(inferenceContext.ExpectedType, nil),
+			PrintOperator(operator)))
 		return
 	}
 
 	diag.AddMessage(localization.LocMessage.TypeNotSupportBinaryOperator().Format(
-		PrintOperator(operator),
 		evaluator.PrintType(leftSubtypeExpanded, nil),
-		evaluator.PrintType(rightSubtypeExpanded, nil)))
+		evaluator.PrintType(rightSubtypeExpanded, nil),
+		PrintOperator(operator)))
 }
 
 // convertFunctionToObject corresponds to the function of the same name.

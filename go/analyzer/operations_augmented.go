@@ -128,9 +128,9 @@ func GetTypeOfAugmentedAssignment(
 			if !isIncomplete {
 				evaluator.AddDiagnostic(DiagnosticRuleReportOperatorIssue,
 					localization.LocMessage.TypeNotSupportBinaryOperator().Format(
-						PrintOperator(node.D.Operator),
 						evaluator.PrintType(leftType, nil),
-						evaluator.PrintType(rightType, nil))+diag.GetString(),
+						evaluator.PrintType(rightType, nil),
+						PrintOperator(node.D.Operator))+diag.GetString(),
 					node, nil)
 			}
 		}
