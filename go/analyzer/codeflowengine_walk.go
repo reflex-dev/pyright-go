@@ -697,7 +697,8 @@ func (w *codeFlowWalk) handleBranchLabel(
 		// reachable.
 		contextManagerSwallowsExceptions := false
 		for _, expr := range contextMgrNode.Expressions {
-			if isExceptionContextManager(w.evaluator, expr, contextMgrNode.IsAsync) {
+			if w.evaluator.codeFlowReachability.isExceptionContextManager(
+				w.evaluator, expr, contextMgrNode.IsAsync) {
 				contextManagerSwallowsExceptions = true
 				break
 			}

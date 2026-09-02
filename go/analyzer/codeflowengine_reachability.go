@@ -65,6 +65,11 @@ type codeFlowReachability struct {
 	callIsNoReturnCache   map[int]bool
 	noReturnAnalysisDepth int
 
+	// isExceptionContextManagerCache and contextManagerAnalysisDepth belong to
+	// isExceptionContextManager, below.
+	isExceptionContextManagerCache map[int]bool
+	contextManagerAnalysisDepth    int
+
 	// flowIncompleteGeneration is the original's counter of the same name. It is
 	// shared by every CodeFlowAnalyzer, because an incomplete type recorded in
 	// one analyzer can be invalidated by work done through another; see
@@ -78,6 +83,8 @@ func newCodeFlowReachability() *codeFlowReachability {
 		reachabilityCache:        map[int]*reachabilityCacheEntry{},
 		isReachableRecursionSet:  map[int]bool{},
 		callIsNoReturnCache:      map[int]bool{},
+
+		isExceptionContextManagerCache: map[int]bool{},
 	}
 }
 
@@ -229,7 +236,7 @@ func (c *codeFlowReachability) GetFlowNodeReachability(
 					contextMgrNode := curFlowNode.(*FlowPostContextManagerLabel)
 					suppresses := false
 					for _, expr := range contextMgrNode.Expressions {
-						if isExceptionContextManager(evaluator, expr, contextMgrNode.IsAsync) {
+						if c.isExceptionContextManager(evaluator, expr, contextMgrNode.IsAsync) {
 							suppresses = true
 							break
 						}
@@ -385,11 +392,88 @@ func labelOf(node FlowNode) *FlowLabel {
 }
 
 // isExceptionContextManager corresponds to the function of the same name in
-// codeFlowEngine.ts, which is not ported. It is a separate function rather than
-// an inline stub so that it records itself distinctly in the work-remaining map.
-func isExceptionContextManager(evaluator TypeEvaluator, _ parser.ExpressionNode, _ bool) bool {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported("codeFlowEngine.isExceptionContextManager")
+// codeFlowEngine.ts: does this context manager's __exit__ suppress exceptions?
+// Only a declared return of `bool` or `Literal[True]` counts -- `Literal[False]`
+// and `None` do not -- because that is what tells the flow engine whether code
+// after a `with` block is reachable when the body raises.
+//
+// Its cache is not just an optimization. The entry is set to false before the
+// analysis runs, so a context manager whose own type mentions the `with`
+// statement it appears in answers false rather than recursing forever. The depth
+// counter is the second guard, for chains rather than cycles.
+func (c *codeFlowReachability) isExceptionContextManager(
+	evaluator TypeEvaluator, node parser.ExpressionNode, isAsync bool,
+) bool {
+	// The original's comment: see if this information is cached already.
+	if cached, ok := c.isExceptionContextManagerCache[node.NodeBase().ID]; ok {
+		return cached
 	}
-	return false
+
+	// The original's comment: initially set to false to avoid infinite recursion.
+	c.isExceptionContextManagerCache[node.NodeBase().ID] = false
+
+	// The original's comment: see if we've exceeded the max recursion depth.
+	if c.contextManagerAnalysisDepth > MaxTypeRecursionCount {
+		return false
+	}
+
+	c.contextManagerAnalysisDepth++
+	cmSwallowsExceptions := false
+
+	func() {
+		defer func() { c.contextManagerAnalysisDepth-- }()
+
+		cmType := evaluator.GetTypeOfExpression(node, EvalFlagsNone, nil).Type
+		if cmType == nil || !IsClassInstance(cmType) {
+			return
+		}
+
+		cmClass := cmType.(*ClassType)
+		exitMethodName := "__exit__"
+		if isAsync {
+			exitMethodName = "__aexit__"
+		}
+
+		exitType := evaluator.GetBoundMagicMethod(cmClass, exitMethodName, nil, nil, nil, 0)
+		if exitType == nil || !IsFunction(exitType) ||
+			exitType.(*FunctionType).Shared.DeclaredReturnType == nil {
+			return
+		}
+
+		returnType := exitType.(*FunctionType).Shared.DeclaredReturnType
+
+		// The original's comment: if it's an __aexit__ method, its return type
+		// will typically be wrapped in a Coroutine, so we need to extract the
+		// return type from the third type argument.
+		if isAsync {
+			if IsClassInstance(returnType) &&
+				ClassTypeIsBuiltInNamed(returnType.(*ClassType), "Coroutine", "CoroutineType") &&
+				len(returnType.(*ClassType).Priv.TypeArgs) >= 3 {
+				returnType = returnType.(*ClassType).Priv.TypeArgs[2]
+			}
+		}
+
+		// The original's comment: generic context managers can declare __exit__ as
+		// returning a TypeVar that isn't necessarily the first type parameter.
+		// Specialize the declared return type using the context manager instance's
+		// type arguments.
+		if len(cmClass.Shared.TypeParams) > 0 && cmClass.Priv.TypeArgs != nil {
+			returnType = ApplySolvedTypeVars(returnType,
+				BuildSolution(cmClass.Shared.TypeParams, cmClass.Priv.TypeArgs), nil)
+		}
+
+		if IsClassInstance(returnType) && ClassTypeIsBuiltInNamed(returnType.(*ClassType), "bool") {
+			literal := returnType.(*ClassType).Priv.LiteralValue
+			if literal == nil {
+				cmSwallowsExceptions = true
+			} else if boolLiteral, ok := literal.(LiteralBool); ok && bool(boolLiteral) {
+				cmSwallowsExceptions = true
+			}
+		}
+	}()
+
+	// The original's comment: cache the value for next time.
+	c.isExceptionContextManagerCache[node.NodeBase().ID] = cmSwallowsExceptions
+
+	return cmSwallowsExceptions
 }

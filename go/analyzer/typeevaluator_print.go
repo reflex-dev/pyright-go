@@ -77,14 +77,29 @@ func (e *typeEvaluator) PrintFunctionParts(t *FunctionType, extraFlags PrintType
 // The interface exposes no options parameter, so this is the original called
 // with options undefined.
 func (e *typeEvaluator) PrintSrcDestTypes(srcType Type, destType Type) SrcDestTypes {
-	simpleSrcType := e.PrintType(srcType, nil)
-	simpleDestType := e.PrintType(destType, nil)
+	return e.printSrcDestTypes(srcType, destType, nil)
+}
+
+// printSrcDestTypes is the original with its options parameter, which
+// getTypeOfAssertType uses to request expanded type aliases. The
+// fully-qualified retry keeps whatever options were passed in, as the original
+// does by spreading them.
+func (e *typeEvaluator) printSrcDestTypes(
+	srcType Type, destType Type, options *PrintTypeOptions,
+) SrcDestTypes {
+	simpleSrcType := e.PrintType(srcType, options)
+	simpleDestType := e.PrintType(destType, options)
 
 	if simpleSrcType != simpleDestType {
 		return SrcDestTypes{SourceType: simpleSrcType, DestType: simpleDestType}
 	}
 
 	fullOptions := &PrintTypeOptions{UseFullyQualifiedNames: true}
+	if options != nil {
+		copied := *options
+		copied.UseFullyQualifiedNames = true
+		fullOptions = &copied
+	}
 	fullSrcType := e.PrintType(srcType, fullOptions)
 	fullDestType := e.PrintType(destType, fullOptions)
 

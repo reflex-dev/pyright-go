@@ -375,11 +375,52 @@ func IsTypeVarSame(type1 *TypeVarType, type2 Type) bool {
 	return isCompatible
 }
 
+// IsNilType reports whether t is absent -- either a nil interface, or an
+// interface holding a nil pointer to one of the concrete type structs.
+//
+// The second case has no analogue in the original. TypeScript's `undefined` is
+// `undefined` no matter what static type the expression had, but in Go a
+// function declared to return *ClassType returns a *typed* nil, and assigning
+// that to a Type produces an interface that is non-nil while dereferencing to
+// nothing. Every `x === undefined` check in the original therefore has to be
+// this, not `t == nil`, at any boundary where a concrete pointer becomes a Type.
+func IsNilType(t Type) bool {
+	if t == nil {
+		return true
+	}
+
+	switch v := t.(type) {
+	case *ClassType:
+		return v == nil
+	case *FunctionType:
+		return v == nil
+	case *OverloadedType:
+		return v == nil
+	case *TypeVarType:
+		return v == nil
+	case *UnionType:
+		return v == nil
+	case *ModuleType:
+		return v == nil
+	case *AnyType:
+		return v == nil
+	case *NeverType:
+		return v == nil
+	case *UnknownType:
+		return v == nil
+	case *UnboundType:
+		return v == nil
+	}
+
+	return false
+}
+
 // MakeInferenceContext corresponds to makeInferenceContext. A nil expectedType
 // yields a nil context, which is what the TypeScript's first overload
-// expresses.
+// expresses. This is the chokepoint every "no expected type" path passes
+// through, so it uses IsNilType rather than a bare nil comparison.
 func MakeInferenceContext(expectedType Type, isTypeIncomplete bool, returnTypeOverride Type) *InferenceContext {
-	if expectedType == nil {
+	if IsNilType(expectedType) {
 		return nil
 	}
 

@@ -218,28 +218,9 @@ func (e *typeEvaluator) touchCallArgs(node *parser.CallNode, argList []*Arg, bas
  * unit of work and records itself.
  */
 
-// getTypeOfLambdaForCall corresponds to the function of the same name. The
-// original's comment: used where a lambda is defined and immediately called, so
-// normal bidirectional inference cannot determine its type -- it is inferred
-// from the argument types instead.
-func (e *typeEvaluator) getTypeOfLambdaForCall(
-	_ *parser.CallNode,
-	_ *parser.LambdaNode,
-	_ *InferenceContext,
-) *TypeResult {
-	e.unported("getTypeOfLambdaForCall")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // getTypeOfSuperCall corresponds to the function of the same name.
 func (e *typeEvaluator) getTypeOfSuperCall(_ *parser.CallNode) *TypeResult {
 	e.unported("getTypeOfSuperCall")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-// getTypeOfAssertType corresponds to the function of the same name.
-func (e *typeEvaluator) getTypeOfAssertType(_ *parser.CallNode, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfAssertType")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 

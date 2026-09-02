@@ -159,11 +159,3 @@ func (e *typeEvaluator) applyFunctionDecorators(
 /*
  * The five things function creation reaches that are separate units of work.
  */
-
-// createAsyncFunction corresponds to the function of the same name. The
-// original's comment: clone the original function and replace its return type
-// with an Awaitable[<returnType>], marking the new function as no longer async.
-func (e *typeEvaluator) createAsyncFunction(_ *parser.FunctionNode, functionType *FunctionType) Type {
-	e.unported("createAsyncFunction")
-	return functionType
-}

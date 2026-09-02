@@ -411,11 +411,6 @@ func (e *typeEvaluator) getTypeOfAugmentedAssignment(
 	return GetTypeOfAugmentedAssignment(e, node, inferenceContext)
 }
 
-func (e *typeEvaluator) getTypeOfTernaryOperation(_ *parser.TernaryNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfTernaryOperation")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // useSignatureTracker corresponds to the function of the same name. It pushes a
 // signature tracker for the duration of a call evaluation; with no call
 // evaluation there is nothing for it to track, so it runs the callback plainly

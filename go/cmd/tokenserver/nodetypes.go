@@ -32,6 +32,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/microsoft/pyright/go/analyzer"
 	"github.com/microsoft/pyright/go/common"
@@ -68,6 +69,13 @@ const unportedMarker = "<unported>"
 func handleNodeTypes(payload json.RawMessage) (result any, errMsg string) {
 	defer func() {
 		if r := recover(); r != nil {
+			// A panic here is reported to the harness as a one-line error, which
+			// is enough to see that a file failed but not where. Setting
+			// PYRIGHT_GO_PANIC_STACK dumps the stack to stderr, which is how a
+			// nil-pointer dereference gets localized to a function.
+			if os.Getenv("PYRIGHT_GO_PANIC_STACK") != "" {
+				fmt.Fprintf(os.Stderr, "PANIC: %v\n%s\n", r, debug.Stack())
+			}
 			result = nil
 			errMsg = fmt.Sprint(r)
 		}

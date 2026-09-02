@@ -29,11 +29,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (e *typeEvaluator) CreateSubclass(errorNode parser.ExpressionNode, type1 *ClassType, type2 *ClassType) *ClassType {
-	e.unported("CreateSubclass")
-	return nil
-}
-
 func (e *typeEvaluator) EvaluateTypesForMatchStatement(node *parser.MatchNode) {
 	e.unported("EvaluateTypesForMatchStatement")
 }
@@ -80,20 +75,17 @@ func (e *typeEvaluator) GetTypeForDeclaration(declaration Declaration) *Declared
 	return e.getTypeForDeclaration(declaration)
 }
 
-func (e *typeEvaluator) ExpandPromotionTypes(node parser.ParseNode, t Type) Type {
-	e.unported("ExpandPromotionTypes")
-	return UnknownTypeCreate(false)
-}
-
 // GetInferredTypeOfDeclaration is the interface method for
 // getInferredTypeOfDeclaration.
 func (e *typeEvaluator) GetInferredTypeOfDeclaration(symbol *Symbol, decl Declaration) Type {
 	return e.getInferredTypeOfDeclaration(symbol, decl)
 }
 
-func (e *typeEvaluator) GetInferredReturnType(t *FunctionType, callSiteInfo *CallSiteEvaluationInfo) Type {
-	e.unported("GetInferredReturnType")
-	return UnknownTypeCreate(false)
+// GetInferredReturnType corresponds to getInferredReturnType. The interface
+// declares a callSiteInfo parameter, but the original's implementation takes
+// only the function type and drops it, so this does the same.
+func (e *typeEvaluator) GetInferredReturnType(t *FunctionType, _ *CallSiteEvaluationInfo) Type {
+	return e.getInferredReturnTypeResult(t, nil).Type
 }
 
 // GetCallbackProtocolType is the interface method for getCallbackProtocolType.
@@ -109,11 +101,6 @@ func (e *typeEvaluator) GetCallSignatureInfo(node *parser.CallNode, activeIndex 
 func (e *typeEvaluator) NarrowConstrainedTypeVar(node parser.ParseNode, typeVar *TypeVarType) Type {
 	e.unported("NarrowConstrainedTypeVar")
 	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) IsTypeComparable(leftType Type, rightType Type, assumeIsOperator bool) bool {
-	e.unported("IsTypeComparable")
-	return false
 }
 
 func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod Type, baseClass *ClassType, diag *common.DiagnosticAddendum, enforceParamNames *bool) bool {

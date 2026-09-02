@@ -146,7 +146,11 @@ func (e *typeEvaluator) adjustTypeArgsForTypeVarTuple(
 		}
 		variadicEndIndex--
 	}
-	variadicTypeResults := typeArgs[variadicIndex:variadicEndIndex]
+	// `typeArgs.slice(variadicIndex, variadicEndIndex)`. variadicEndIndex can
+	// fall below variadicIndex when there are fewer type arguments than type
+	// parameters; Array.prototype.slice answers an empty array there, while a Go
+	// slice expression panics, so the bounds are clamped the way slice does.
+	variadicTypeResults := sliceTypeArgs(typeArgs, variadicIndex, variadicEndIndex)
 
 	// The original's comment: if the type args consist of a lone TypeVarTuple,
 	// don't wrap it in a tuple.
@@ -180,12 +184,14 @@ func (e *typeEvaluator) adjustTypeArgsForTypeVarTuple(
 	tupleObject := MakeTupleObject(e, variadicTypes, true)
 
 	replaced := make([]*TypeResultWithNode, 0, variadicIndex+1+len(typeArgs)-variadicEndIndex)
-	replaced = append(replaced, typeArgs[:variadicIndex]...)
+	replaced = append(replaced, sliceTypeArgs(typeArgs, 0, variadicIndex)...)
 	replaced = append(replaced, &TypeResultWithNode{
 		TypeResult: TypeResult{Type: tupleObject},
 		Node:       typeArgs[variadicIndex].Node,
 	})
-	replaced = append(replaced, typeArgs[variadicEndIndex:]...)
+	// `typeArgs.slice(variadicEndIndex, typeArgs.length)` -- a negative
+	// variadicEndIndex counts back from the end here rather than meaning zero.
+	replaced = append(replaced, sliceTypeArgs(typeArgs, variadicEndIndex, len(typeArgs))...)
 
 	return replaced
 }
@@ -216,4 +222,35 @@ func (e *typeEvaluator) validateTypeVarTupleIsUnpacked(t *TypeVarType, node pars
 	}
 
 	return true
+}
+
+// sliceTypeArgs reproduces Array.prototype.slice over a type argument list.
+// Go's slice expression is not a substitute: a negative index counts back from
+// the end rather than being an error, an out-of-range index is clamped, and an
+// end below the start yields an empty result instead of a panic. All three
+// cases occur here, because variadicEndIndex is arithmetic on two lengths that
+// can legitimately disagree.
+func sliceTypeArgs(typeArgs []*TypeResultWithNode, start int, end int) []*TypeResultWithNode {
+	n := len(typeArgs)
+
+	resolve := func(index int) int {
+		if index < 0 {
+			index += n
+			if index < 0 {
+				return 0
+			}
+			return index
+		}
+		if index > n {
+			return n
+		}
+		return index
+	}
+
+	start = resolve(start)
+	end = resolve(end)
+	if end < start {
+		end = start
+	}
+	return typeArgs[start:end]
 }
