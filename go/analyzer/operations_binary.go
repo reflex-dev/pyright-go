@@ -393,15 +393,122 @@ func ValidateBinaryOperation(
 
 // CreateUnionTypeFromOperands corresponds to the operations.ts createUnionType,
 // renamed because the evaluator already has a createUnionType for `Union[...]`.
-// It reports the version and syntax errors that `X | Y` can raise before
-// combining the two operands.
+//
+// Three things happen here that a plain combineTypes would not do.
+//
+// Redundant literals are NOT elided. `Literal[1] | int` normally collapses to
+// int, but a union the user wrote by hand should keep what they wrote.
+//
+// The result is marked as a special form of `types.UnionType`, so it prints and
+// behaves as the runtime object `X | Y` evaluates to -- except under
+// IsinstanceArg, where the second argument to isinstance is a tuple of classes
+// rather than a type expression.
+//
+// And a stringified forward reference is rejected on either side, because `|`
+// cannot see inside a string at runtime. The exception is a subscripted class:
+// `list[int] | "Foo"` is legal because the index form already forced evaluation.
 func CreateUnionTypeFromOperands(
 	evaluator TypeEvaluator,
-	_ *parser.BinaryOperationNode,
-	_ EvalFlags,
-	_ *TypeResult, _ *TypeResult,
+	node *parser.BinaryOperationNode,
+	flags EvalFlags,
+	leftTypeResult *TypeResult, rightTypeResult *TypeResult,
 	adjustedRightType Type, adjustedLeftType Type,
 ) *TypeResult {
-	noteEvaluatorUnported(evaluator, "operations.createUnionType")
-	return &TypeResult{Type: CombineTypes([]Type{adjustedLeftType, adjustedRightType}, nil)}
+	leftExpression := node.D.LeftExpr
+	rightExpression := node.D.RightExpr
+	fileInfo := GetFileInfo(node)
+
+	unionNotationSupported := fileInfo.IsStubFile ||
+		(flags&EvalFlagsForwardRefs) != 0 ||
+		fileInfo.ExecutionEnvironment.PythonVersion.IsGreaterOrEqualTo(common.PythonVersion3_10)
+
+	if !unionNotationSupported {
+		// The original's comment: if the left type is Any, we can't say for sure
+		// whether this is an illegal syntax or a valid application of the "|"
+		// operator.
+		if !IsAnyOrUnknown(adjustedLeftType) {
+			operatorRange := node.D.OperatorToken.GetRange()
+			evaluator.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+				localization.LocMessage.UnionSyntaxIllegal(), node, &operatorRange)
+		}
+	}
+
+	leftArg := *leftTypeResult
+	rightArg := *rightTypeResult
+	isLeftTypeArgValid := evaluator.ValidateTypeArg(
+		&TypeResultWithNode{TypeResult: leftArg, Node: leftExpression}, nil)
+	isRightTypeArgValid := evaluator.ValidateTypeArg(
+		&TypeResultWithNode{TypeResult: rightArg, Node: rightExpression}, nil)
+
+	if !isLeftTypeArgValid || !isRightTypeArgValid {
+		return &TypeResult{Type: UnknownTypeCreate(false)}
+	}
+
+	adjustedLeftType = evaluator.ReportMissingTypeArgs(
+		node.D.LeftExpr, adjustedLeftType, flags|EvalFlagsInstantiableType)
+	adjustedRightType = evaluator.ReportMissingTypeArgs(
+		node.D.RightExpr, adjustedRightType, flags|EvalFlagsInstantiableType)
+
+	newUnion := CombineTypes([]Type{adjustedLeftType, adjustedRightType},
+		&CombineTypesOptions{SkipElideRedundantLiterals: true})
+
+	unionClass := evaluator.GetUnionClassType()
+	if IsInstantiableClass(unionClass) && (flags&EvalFlagsIsinstanceArg) == 0 {
+		newUnion = CloneAsSpecialForm(newUnion, ClassTypeCloneAsInstance(unionClass.(*ClassType), false))
+	}
+
+	leftProps := leftTypeResult.Type.Base().Props
+	rightProps := rightTypeResult.Type.Base().Props
+	if leftProps != nil && leftProps.TypeForm != nil && rightProps != nil && rightProps.TypeForm != nil {
+		newTypeForm := CombineTypes([]Type{leftProps.TypeForm, rightProps.TypeForm}, nil)
+		newUnion = CloneWithTypeForm(newUnion, newTypeForm)
+	}
+
+	// The original's comment: check for "stringified" forward reference type
+	// expressions. The "|" operator doesn't support these except in certain
+	// circumstances. Notably, it can't be used with other strings or with types
+	// that are not specialized using an index form.
+	if !fileInfo.IsStubFile {
+		reportStringifiedUnionOperand(evaluator, leftExpression, rightExpression, leftTypeResult, rightTypeResult)
+	}
+
+	return &TypeResult{Type: newUnion}
+}
+
+// reportStringifiedUnionOperand is the original's forward-reference check. Only
+// one side can be a string: two strings leave otherType unset in the original,
+// since the second branch is an else-if.
+func reportStringifiedUnionOperand(
+	evaluator TypeEvaluator,
+	leftExpression, rightExpression parser.ExpressionNode,
+	leftTypeResult, rightTypeResult *TypeResult,
+) {
+	var stringNode parser.ExpressionNode
+	var otherType Type
+
+	if leftExpression.GetNodeType() == parser.ParseNodeTypeStringList {
+		stringNode = leftExpression
+		otherType = rightTypeResult.Type
+	} else if rightExpression.GetNodeType() == parser.ParseNodeTypeStringList {
+		stringNode = rightExpression
+		otherType = leftTypeResult.Type
+	}
+
+	if stringNode == nil || otherType == nil {
+		return
+	}
+
+	isAllowed := true
+	if cls, ok := otherType.(*ClassType); ok && IsClass(otherType) {
+		// An explicitly subscripted instantiable class is allowed; a bare class or
+		// an instance is not.
+		if cls.Priv.IsTypeArgExplicit == nil || !*cls.Priv.IsTypeArgExplicit || IsClassInstance(otherType) {
+			isAllowed = false
+		}
+	}
+
+	if !isAllowed {
+		evaluator.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+			localization.LocMessage.UnionForwardReferenceNotAllowed(), stringNode, nil)
+	}
 }
