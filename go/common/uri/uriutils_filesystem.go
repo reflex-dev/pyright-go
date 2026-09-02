@@ -221,3 +221,14 @@ func fileSystemEntryExists(fs ReadOnlyFileSystem, u Uri, entryKind fileSystemEnt
 func ConvertUriToLspUriString(fs ReadOnlyFileSystem, u Uri) string {
 	return fs.GetOriginalUri(u).String()
 }
+
+// GetPathForLogging corresponds to the function of the same name in
+// common/logTracker.ts, which lands here because it is defined in terms of the
+// file system.
+func GetPathForLogging(fs ReadOnlyFileSystem, fileUri Uri) Uri {
+	if fs.IsMappedUri(fileUri) {
+		return fs.GetOriginalUri(fileUri)
+	}
+
+	return fileUri
+}
