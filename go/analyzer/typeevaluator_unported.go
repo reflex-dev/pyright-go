@@ -52,10 +52,6 @@ func (e *typeEvaluator) EvaluateTypesForCaseStatement(node *parser.CaseNode) {
 	e.unported("EvaluateTypesForCaseStatement")
 }
 
-func (e *typeEvaluator) EvaluateTypeOfParam(node *parser.ParameterNode) {
-	e.unported("EvaluateTypeOfParam")
-}
-
 func (e *typeEvaluator) CanBeTruthy(t Type) bool {
 	e.unported("CanBeTruthy")
 	return false
