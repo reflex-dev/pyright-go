@@ -626,3 +626,38 @@ and all four are invisible to the compiler:
   flag explicitly.
 - **stub defaults with a new caller** -- the safe answer is a property of the
   caller, not of the stub.
+
+## synthesizeDataClassMethods is the keystone, not a to-do
+
+`ClassType.Shared.DataClassEntries` and `ClassType.Shared.NamedTupleEntries` are
+both read in several places and **assigned nowhere in the Go tree**. Upstream,
+both are populated by `dataClasses.synthesizeDataClassMethods` (761 lines), with
+`namedTuples.createNamedTupleType` covering the functional NamedTuple form.
+
+Four readers of `DataClassEntries` exist today and three are in already-landed
+code:
+
+- `typeutils_members.go` — member lookup over dataclass entries.
+- `protocols_members.go` — protocol matching against a dataclass.
+- `checker_multiinherit.go` — the frozen-dataclass exemption in
+  `compareInheritedVariables`. Because the field is nil the exemption never
+  fires, so an inherited frozen-dataclass field is required to be invariant when
+  upstream does not require it. Narrow, but wrong, and landed.
+- `dataclasses_entries.go` — `AddInheritedDataClassEntries`, which consequently
+  always returns an empty list.
+
+`NamedTupleEntries` is the reason `_validateInstanceVariableInitialization` is
+parked under `wip/`.
+
+So this is not one more validator on a list. Until it lands, several already-
+ported checks are quietly answering from empty data, and any new check touching
+dataclasses will inherit the same defect. It is the highest-value remaining item
+by a wide margin, and it should be done before `_validateBaseClassOverride`,
+which reads `dataClassEntries` too and would otherwise be built on the same
+hole.
+
+The general form of this, which the earlier field-write rule only half caught:
+**an unwritten field does not fail loudly at its reader — it fails at every
+reader at once, including ones already reviewed and committed.** Auditing
+`grep -c '\.Field = '` across the whole `Shared`/`Priv` surface is worth doing
+once, rather than per-validator.
