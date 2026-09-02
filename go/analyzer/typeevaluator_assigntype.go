@@ -692,11 +692,6 @@ func (e *typeEvaluator) assignClassToProtocol(
 	return AssignClassToProtocol(e, destType, srcType, diag, constraints, flags, recursionCount)
 }
 
-func (e *typeEvaluator) createFunctionFromConstructor(_ *ClassType, _ Type, _ int) Type {
-	e.unported("constructors.createFunctionFromConstructor")
-	return nil
-}
-
 // combineTupleTypeArgs reaches the typeUtils.ts function of the same name.
 func (e *typeEvaluator) combineTupleTypeArgs(typeArgs []*TupleTypeArg) Type {
 	return CombineTupleTypeArgs(typeArgs)

@@ -23,21 +23,8 @@ func noteEvaluatorUnported(evaluator TypeEvaluator, name string) {
 	}
 }
 
-// CreateSentinelType corresponds to the sentinels.ts function of the same name.
-func CreateSentinelType(evaluator TypeEvaluator, _ parser.ExpressionNode, _ []*Arg) Type {
-	noteEvaluatorUnported(evaluator, "sentinels.createSentinelType")
-	return UnknownTypeCreate(false)
-}
-
 // CreateEnumType corresponds to the enums.ts function of the same name, which
 // builds a class from the functional `Color = Enum("Color", "RED GREEN")` form.
-// Returning nil is the original's undefined, and the caller falls back.
-func CreateEnumType(
-	evaluator TypeEvaluator, _ parser.ExpressionNode, _ *ClassType, _ []*Arg,
-) Type {
-	noteEvaluatorUnported(evaluator, "enums.createEnumType")
-	return nil
-}
 
 // IsEnumClassWithMembers corresponds to the enums.ts function of the same name:
 // is this an enum class that actually declares at least one member?

@@ -69,8 +69,10 @@ func (e *typeEvaluator) validateCallForInstantiableClass(
 	if expandedCallType.Shared.EffectiveMetaclass != nil {
 		if metaclass, ok := expandedCallType.Shared.EffectiveMetaclass.(*ClassType); ok &&
 			IsEnumMetaclass(metaclass) && !IsEnumClassWithMembers(e, expandedCallType) {
-			returnType := CreateEnumType(e, errorNode, expandedCallType, argList)
-			if returnType == nil {
+			var returnType Type
+			if enumType := CreateEnumType(e, errorNode, expandedCallType, argList); enumType != nil {
+				returnType = enumType
+			} else {
 				returnType = ConvertToInstance(unexpandedCallType, false)
 			}
 			return &CallResult{ReturnType: returnType}
