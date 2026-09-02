@@ -45,6 +45,18 @@
  *   <error>        the evaluator threw
  */
 
+import * as path from 'path';
+
+// testUtils.ts:34 does exactly this, and everything downstream depends on it:
+// RealFileSystem.getModulePath() reads this global to find the directory that
+// contains typeshed-fallback, and returns Uri.empty() when it is unset. Without
+// it the oracle resolves no stubs at all -- every annotation, every builtin and
+// every `from typing import ...` comes back Unknown -- which makes the whole
+// differential compare the Go port against a pyright that cannot type anything.
+// compare-types.js runs this bundle with cwd set to the reference tree's
+// pyright-internal directory precisely so that path.resolve() lands there.
+(global as any).__rootDirectory = path.resolve();
+
 import { ConfigOptions } from '@pyright/common/configOptions';
 import { NullConsole } from '@pyright/common/console';
 import { FullAccessHost } from '@pyright/common/fullAccessHost';

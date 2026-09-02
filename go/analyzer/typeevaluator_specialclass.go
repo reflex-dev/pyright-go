@@ -657,20 +657,62 @@ func (e *typeEvaluator) createUnionType(c *ClassType, _ parser.ExpressionNode, _
 // in a base class list, whose arguments declare the class's type parameters
 // rather than supplying values for them.
 //
-// HELD BACK. The transliteration is written and checks out against the original,
-// but landing it drops the per-node differential from 538 computed matches to
-// 448. The cause is downstream rather than here: with this stubbed, a class
-// deriving from Generic[T] reaches buildTypeParamsFromTypeArgs with no type
-// arguments and ends up with an EMPTY type parameter list; with it ported, the
-// class gets its real parameters and something that consumes them is wrong. The
-// stub was hiding that defect, so the next step is to find the consumer -- start
-// at typeevaluator_class.go's genericTypeParams handling and
-// verifyGenericTypeParams -- not to re-land this.
+// The type arguments are validated but not consumed here -- every one must be a
+// TypeVar, and no TypeVar twice -- and the list is then handed to
+// createSpecialType, which is what actually records them as the class's
+// parameters.
 func (e *typeEvaluator) createGenericType(
-	c *ClassType, _ parser.ParseNode, _ []*TypeResultWithNode, _ EvalFlags,
+	classType *ClassType,
+	errorNode parser.ParseNode,
+	typeArgs []*TypeResultWithNode,
+	flags EvalFlags,
 ) Type {
-	e.unported("createGenericType")
-	return c
+	if typeArgs == nil {
+		// The original's comment: if no type arguments are provided, the resulting
+		// type depends on whether we're evaluating a type annotation or we're in
+		// some other context.
+		if (flags & (EvalFlagsTypeExpression | EvalFlagsNoNakedGeneric | EvalFlagsTypeFormArg)) != 0 {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.GenericTypeArgMissing(), errorNode, nil)
+		}
+
+		if (flags & EvalFlagsTypeFormArg) != 0 {
+			return UnknownTypeCreate(false)
+		}
+		return classType
+	}
+
+	if (flags & EvalFlagsTypeFormArg) != 0 {
+		e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+			localization.LocMessage.GenericNotAllowed(), errorNode, nil)
+		return UnknownTypeCreate(false)
+	}
+
+	// The original's comment: make sure there's at least one type arg.
+	if len(typeArgs) == 0 {
+		e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+			localization.LocMessage.GenericTypeArgMissing(), errorNode, nil)
+	}
+
+	// The original's comment: make sure that all of the type args are typeVars and
+	// are unique.
+	uniqueTypeVars := []Type{}
+	for _, typeArg := range typeArgs {
+		if !IsTypeVar(typeArg.Type) {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.GenericTypeArgTypeVar(), typeArg.Node, nil)
+			continue
+		}
+
+		if containsSameType(uniqueTypeVars, typeArg.Type, TypeSameOptions{}) {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.GenericTypeArgUnique(), typeArg.Node, nil)
+		}
+
+		uniqueTypeVars = append(uniqueTypeVars, typeArg.Type)
+	}
+
+	return e.createSpecialType(classType, typeArgs, nil, boolPtr(true), nil)
 }
 
 func (e *typeEvaluator) createFinalType(c *ClassType, _ parser.ExpressionNode, _ []*TypeResultWithNode, _ EvalFlags) Type {

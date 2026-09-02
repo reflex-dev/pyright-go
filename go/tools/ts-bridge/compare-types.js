@@ -359,7 +359,7 @@ for (let i = 0; i < files.length; i++) {
             }
         } else {
             nodesDiffered++;
-            if (examples.length < 25) {
+            if (examples.length < Number(process.env.TYPES_MAX_EXAMPLES || 25)) {
                 examples.push(
                     `${relative}:${tsNodes[n].index} ${tsNodes[n].name}\n` +
                         `    go=${JSON.stringify(goNodes[n].type)}\n    ts=${JSON.stringify(tsNodes[n].type)}`
