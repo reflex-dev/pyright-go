@@ -30,6 +30,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/localization"
 	"github.com/microsoft/pyright/go/parser"
@@ -360,13 +362,140 @@ func (c *Checker) validateSymbolTables() {
 	c.noteUnported("checker.validateSymbolTables")
 }
 
+// reportUnusedMultipartImports corresponds to _reportUnusedMultipartImports.
+//
+// `import a.b.c` binds only `a`, so the ordinary unused-symbol check cannot see
+// whether `a.b.c` itself was ever used. This walks the module hierarchy to the
+// last part and asks whether THAT symbol was accessed, and reports the whole
+// dotted name if it was not.
 func (c *Checker) reportUnusedMultipartImports() {
-	c.noteUnported("checker.reportUnusedMultipartImports")
+	for _, node := range c.multipartImports {
+		if !c.isMultipartImportUnused(node) {
+			continue
+		}
+
+		nameParts := node.D.Module.D.NameParts
+		parts := make([]string, len(nameParts))
+		for i, np := range nameParts {
+			parts[i] = np.D.Value
+		}
+		multipartName := strings.Join(parts, ".")
+
+		textRange := common.TextRange{
+			Start:  nameParts[0].NodeBase().TextRange.Start,
+			Length: nameParts[0].NodeBase().TextRange.Length,
+		}
+		textRange = textRange.Extend(nameParts[len(nameParts)-1].NodeBase().TextRange)
+
+		c.fileInfo.DiagnosticSink.AddUnusedCodeWithTextRange(
+			localization.LocMessage.UnaccessedSymbol().Format(multipartName),
+			textRange,
+			&common.CreateTypeStubFileAction{Action: commandUnusedImport})
+
+		c.evaluator.AddDiagnosticForTextRange(c.fileInfo, DiagnosticRuleReportUnusedImport,
+			localization.LocMessage.UnaccessedImport().Format(multipartName), textRange)
+	}
 }
 
-func (c *Checker) reportDuplicateImports() {
-	c.noteUnported("checker.reportDuplicateImports")
+// isMultipartImportUnused corresponds to _isMultipartImportUnused.
+func (c *Checker) isMultipartImportUnused(node *parser.ImportAsNode) bool {
+	nameParts := node.D.Module.D.NameParts
+	assert(len(nameParts) > 1, "expected a multi-part import")
+
+	// The original's comment: get the top-level module type associated with this
+	// import.
+	typeResult := c.evaluator.EvaluateTypeForSubnode(node, func() {
+		c.evaluator.EvaluateTypesForStatement(node)
+	})
+	if typeResult == nil {
+		return false
+	}
+
+	moduleType := typeResult.Type
+	if !IsModule(moduleType) {
+		return false
+	}
+
+	// The original's comment: walk the module hierarchy to get the submodules in
+	// the multi-name import path until we get to the second-to-the-last part.
+	for i := 1; i < len(nameParts)-1; i++ {
+		symbol := ModuleTypeGetField(moduleType.(*ModuleType), nameParts[i].D.Value)
+		if symbol == nil {
+			return false
+		}
+
+		submoduleType := symbol.GetSynthesizedType()
+		if submoduleType == nil || !IsModule(submoduleType.Type) {
+			return false
+		}
+
+		moduleType = submoduleType.Type
+	}
+
+	// The original's comment: look up the last part of the import to get its
+	// symbol ID.
+	lastPartName := nameParts[len(nameParts)-1].D.Value
+	symbol := ModuleTypeGetField(moduleType.(*ModuleType), lastPartName)
+
+	if symbol == nil {
+		return false
+	}
+
+	return !c.fileInfo.AccessedSymbolSet.Has(symbol.ID)
 }
+
+// reportDuplicateImports corresponds to _reportDuplicateImports.
+//
+// An ALIASED duplicate is not a duplicate: `import x as a` and `import x as b`
+// bind two different names, and `from m import x as x` is the conventional
+// re-export spelling. Both forms are skipped.
+func (c *Checker) reportDuplicateImports() {
+	importStatements := GetTopLevelImports(c.moduleNode, false)
+
+	importModuleMap := common.NewOrderedMap[string, *parser.ImportAsNode]()
+
+	for _, importStatement := range importStatements.OrderedImports {
+		if importFrom, ok := importStatement.Node.(*parser.ImportFromNode); ok {
+			symbolMap := common.NewOrderedMap[string, *parser.ImportFromAsNode]()
+
+			for _, importFromAs := range importFrom.D.Imports {
+				// The original's comment: ignore duplicates if they're aliased.
+				if importFromAs.D.Alias != nil {
+					continue
+				}
+
+				if _, exists := symbolMap.Get(importFromAs.D.Name.D.Value); exists {
+					c.evaluator.AddDiagnostic(DiagnosticRuleReportDuplicateImport,
+						localization.LocMessage.DuplicateImport().Format(importFromAs.D.Name.D.Value),
+						importFromAs.D.Name, nil)
+				} else {
+					symbolMap.Set(importFromAs.D.Name.D.Value, importFromAs)
+				}
+			}
+			continue
+		}
+
+		if importStatement.Subnode == nil {
+			continue
+		}
+
+		// The original's comment: ignore duplicates if they're aliased.
+		if importStatement.Subnode.D.Alias != nil {
+			continue
+		}
+
+		if _, exists := importModuleMap.Get(importStatement.ModuleName); exists {
+			c.evaluator.AddDiagnostic(DiagnosticRuleReportDuplicateImport,
+				localization.LocMessage.DuplicateImport().Format(importStatement.ModuleName),
+				importStatement.Subnode, nil)
+		} else {
+			importModuleMap.Set(importStatement.ModuleName, importStatement.Subnode)
+		}
+	}
+}
+
+// commandUnusedImport corresponds to Commands.unusedImport.
+const commandUnusedImport = "pyright.unusedImport"
 
 // noteUnported records an unported checker path on the evaluator's counter, so
 // the checker and the evaluator share one frontier. The evaluator is reached
