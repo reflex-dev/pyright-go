@@ -232,22 +232,3 @@ func (e *typeEvaluator) checkConstantAndFinalReassignment(
 		)
 	}
 }
-
-/*
- * The two things this reaches.
- */
-
-// narrowTypeBasedOnAssignment corresponds to the function of the same name: it
-// constrains a declared type by what was actually assigned, so `x: list[Any] =
-// [1]` narrows to list[int] where that is sound.
-func (e *typeEvaluator) narrowTypeBasedOnAssignment(declaredType Type, _ *TypeResult) *TypeResult {
-	e.unported("narrowTypeBasedOnAssignment")
-	return &TypeResult{Type: declaredType}
-}
-
-// reportPossibleUnknownAssignment corresponds to the function of the same name.
-func (e *typeEvaluator) reportPossibleUnknownAssignment(
-	_ DiagnosticLevel, _ DiagnosticRule, _ *parser.NameNode, _ Type, _ parser.ExpressionNode, _ bool,
-) {
-	e.unported("reportPossibleUnknownAssignment")
-}

@@ -62,11 +62,6 @@ func (e *typeEvaluator) CanBeFalsy(t Type) bool {
 	return false
 }
 
-func (e *typeEvaluator) StripLiteralValue(t Type) Type {
-	e.unported("StripLiteralValue")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) RemoveTruthinessFromType(t Type) Type {
 	e.unported("RemoveTruthinessFromType")
 	return UnknownTypeCreate(false)
@@ -288,11 +283,6 @@ func (e *typeEvaluator) AssignTypeArgs(destType *ClassType, srcType *ClassType, 
 
 func (e *typeEvaluator) IsFinalVariable(symbol *Symbol) bool {
 	e.unported("IsFinalVariable")
-	return false
-}
-
-func (e *typeEvaluator) IsFinalVariableDeclaration(decl Declaration) bool {
-	e.unported("IsFinalVariableDeclaration")
 	return false
 }
 
