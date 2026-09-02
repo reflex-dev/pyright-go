@@ -358,10 +358,6 @@ func (c *Checker) reportUnusedDunderAllSymbols(_ []*parser.StringNode) {
 	c.noteUnported("checker.reportUnusedDunderAllSymbols")
 }
 
-func (c *Checker) validateSymbolTables() {
-	c.noteUnported("checker.validateSymbolTables")
-}
-
 // reportUnusedMultipartImports corresponds to _reportUnusedMultipartImports.
 //
 // `import a.b.c` binds only `a`, so the ordinary unused-symbol check cannot see
