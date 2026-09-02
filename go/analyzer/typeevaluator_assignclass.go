@@ -283,17 +283,6 @@ func (e *typeEvaluator) reportClassIncompatible(
  * The four things assignClass reaches that are separate units of work.
  */
 
-// assignClassWithTypeArgs corresponds to the function of the same name: the
-// nominal comparison, which walks the inheritance chain specializing type
-// arguments as it goes.
-func (e *typeEvaluator) assignClassWithTypeArgs(
-	_ *ClassType, _ *ClassType, _ InheritanceChain,
-	_ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
-) bool {
-	e.unported("assignClassWithTypeArgs")
-	return false
-}
-
 // assignTypedDictToTypedDict corresponds to the typedDicts.ts function of the
 // same name.
 func (e *typeEvaluator) assignTypedDictToTypedDict(
