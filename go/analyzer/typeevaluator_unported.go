@@ -173,17 +173,8 @@ func (e *typeEvaluator) BuildTupleTypesList(entryTypeResults []*TypeResult, stri
 	return nil
 }
 
-func (e *typeEvaluator) MarkNamesAccessed(node parser.ParseNode, names []string) {
-	e.unported("MarkNamesAccessed")
-}
-
 func (e *typeEvaluator) ExpandPromotionTypes(node parser.ParseNode, t Type) Type {
 	e.unported("ExpandPromotionTypes")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) MapSubtypesExpandTypeVars(t Type, options *EvaluatorMapSubtypesOptions, callback func(expandedSubtype Type, unexpandedSubtype Type) Type) Type {
-	e.unported("MapSubtypesExpandTypeVars")
 	return UnknownTypeCreate(false)
 }
 
