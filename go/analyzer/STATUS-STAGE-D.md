@@ -130,15 +130,43 @@ Over the whole corpus:
 | no evaluator | 1280 of 1343 | 0 of 88,487 |
 | evaluator installed, reachability ported | 1280 of 1343 | **158** of 88,487 |
 
-On the 60-file sample the same sequence reads 0 → 3 → 74 as the contextual
-layer, the context walk and the dispatch land. The 74 are the nodes both sides
-agree have no type at all — a module name, a pattern, a name the walk returns
-from without evaluating — which is a real agreement rather than two Unknowns
-meeting.
+88,487 is the denominator Stage D climbs. The 63 files whose node sets disagree
+are the ones below.
 
-All 158 were computed rather than inherited from an Unknown that happened to
-agree. 88,487 is the denominator Stage D climbs. The 63 files whose node sets
-disagree are the ones below.
+### Reading the two numbers
+
+The headline count is split, and the split is the point:
+
+    types: 532 of 2945 names match
+      of those, 394 were computed and 138 are Unknown or unported
+
+Only the **computed** number is un-gameable. An implementation that answers
+Unknown everywhere agrees with pyright wherever pyright also says Unknown, and
+that agreement is worth nothing. Every evaluator call in the differential is
+bracketed by the unported counter, so an answer that touched a stub reports
+`<unported>` and can never match.
+
+This has made the honest result a falling headline more than once: total matches
+drop while computed holds or rises, because vacuous Unknown-vs-Unknown
+agreements are correctly reclassified as `<unported>`.
+
+On the 60-file sample, computed matches over this session:
+
+| after | computed | frontier hits |
+| --- | --- | --- |
+| the context walk and dispatch | 0 | — |
+| `printType`, class creation, `assignType` | 341 | 6,809 |
+| `assignTypeToNameNode` and `narrowTypeBasedOnAssignment` | 341 | 5,896 |
+| `addOverloadsToFunctionType`, the typing-stub pair | 339 | 5,961 |
+| `applyTypeArgToTypeVar`, the expected-type cache | 339 | 4,973 |
+| `inferVarianceForClass`, the enum literal expansion | 339 | 4,045 |
+| **`getTypeOfMemberAccess`** | **378** | 4,156 |
+| the code flow walk, `evaluateTypeForSubnode` | 391 | 3,526 |
+| return-type inference | **394** | 3,280 |
+
+`getTypeOfMemberAccess` is the largest single jump since `printType`, which is
+what one would expect: `a.b` is the most common expression in Python after a
+bare name.
 
 ### It found something on the first run
 
@@ -183,11 +211,37 @@ missing for the whole first half of Stage D:
 
 Both are now closed, and the checker walk is verifiably live:
 `checker.reportUnusedExpression` records 9,880 hits over the gate corpus, which
-is one per expression statement in 1,343 files. The gate has not moved yet
-because the evaluator still bottoms out in stubs before it reaches a
-disagreement worth reporting -- but it also has not regressed, and no false
-positives appeared, which is the result that matters when a walk over the whole
-corpus is switched on for the first time.
+is one per expression statement in 1,343 files.
+
+### The gate's split scoreboard, and why total passes fell
+
+    446 passed, 823 failed, 10 skipped, 1279 total
+      of the passes, 60 assert at least one diagnostic and 386 assert none
+
+The second line is the one to read. A test that asserts zero diagnostics passes
+against an implementation that reports nothing, so 386 of those passes say
+nothing about the port. Substantive passes went **42 → 60** over this session
+while total passes went **547 → 446**, and both movements have the same cause:
+`reportAssignmentType`, `reportUnknownVariableType` and `reportUnknownMemberType`
+became live. Diagnostics emitted went 1,182 → 2,358. Tests that need a real
+diagnostic started passing; tests that had been passing on silence started
+failing.
+
+### Where the false positives come from
+
+The two loudest rules were instrumented rather than guessed at:
+
+- **987 × `reportInvalidTypeForm :: Variable not allowed in type expression`.**
+  Every one is reported on a type that prints as `Unknown`.
+  `isSymbolValidTypeExpression` is faithful — pyright reports on an Unknown
+  there too. It simply never gets one, because its evaluation succeeded.
+- **`TypeNarrowingIsNone1`, expected 0 errors, got 10.** `x.bit_length()` after
+  `if x is not None` reports unknown-member, because the narrowing did not
+  happen.
+
+Both trace to the same missing piece rather than to a mistransliteration. The
+false positives are a measure of how much of the evaluator is still stubbed,
+not of how much of it is wrong, and they retire as the frontier does.
 
 ## Still to build
 
@@ -205,9 +259,26 @@ corpus is switched on for the first time.
 | step | files | lines | state |
 | --- | --- | --- | --- |
 | 1 | `typeEvaluatorTypes.ts` — the 109-member interface | 900 | done |
-| 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | name path done end to end; call, index, member-access, binary-op remain |
-| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker + reachability done; `isCallNoReturn` and `getFlowTypeOfReference` remain |
-| 4 | the class-shape satellites, lit one at a time | ~11k | `getTypeOfClass` done; decorators, dataClasses, typedDicts, enums, protocols remain |
+| 2 | evaluator core: name / member-access / call / index / binary-op | ~12k | name, member-access shell, assignment, annotation, class and function creation, `assignType` done; `validateArgTypes`, binary-op, string-list remain |
+| 3 | `codeFlowEngine`, `typeGuards`, `constraintSolver`, `constraintTracker` | 6,716 | tracker, reachability, `isCallNoReturn`, the narrowing walk and return-type inference done; `typeGuards.getTypeNarrowingCallback` and the solver's four `assign*` arms remain |
+| 4 | the class-shape satellites, lit one at a time | ~11k | `getTypeOfClass`, variance inference and the enum literal expansion done; decorators, dataClasses, typedDicts, protocols, properties remain |
+
+### The frontier, and what it is not
+
+Every unported evaluator member records itself through `e.unported(name)`, and
+both harnesses print the ranked tally. It is a **frontier, not a map**: the
+first stub short-circuits everything behind it, so porting one entry reveals a
+layer that was invisible before. A count going *up* after a port is the normal
+case, not a regression — `addOverloadsToFunctionType` removed 434 hits and
+exposed 626 new ones behind it.
+
+Free functions in `codeFlowEngine`, `constraintSolver` and `decorators` reach
+the counter through an `interface{ noteUnported(string) }` assertion rather than
+through the evaluator struct, since they take the interface.
+
+The single largest remaining entry is `ValidateCallArgs`, at 32 percent of the
+frontier on the sample and 20,813 hits on the gate corpus. Nothing else is
+within a factor of four of it.
 | 5 | `checker.ts` | 7,859 | walk + `check()` done; 50 of 52 visit methods remain |
 
 ### What is complete, end to end
