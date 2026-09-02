@@ -271,16 +271,41 @@ Three times this session a *duplicate stub shadowed an already-ported function*
 while the evaluator carried a second copy that called `unported()`. The call
 sites reached the stub. Grep for a name in both places before writing it.
 
-More interesting is the opposite case. Porting `createGenericType` faithfully
-DROPPED computed matches from 538 to 448. The transliteration is right; the
-stub had been hiding a downstream defect. With `createGenericType` stubbed, a
-class deriving from `Generic[T]` reaches `buildTypeParamsFromTypeArgs` with no
-type arguments and ends up with an empty type parameter list. With it ported,
-the class gets its real parameters, and something that consumes them is wrong.
+### The instrument is part of the system under test
 
-It is held back in the tree with that reasoning recorded at the stub. The rule
-it illustrates: **a port that lowers computed matches is reporting a bug
-somewhere else, and re-landing it is not the fix.**
+Porting `createGenericType` faithfully dropped computed matches from 538 to
+448, twice, in two different sessions. Both times it was held back, and the
+second time the stub carried a confident comment naming
+`buildTypeParamsFromTypeArgs` as the downstream consumer at fault.
+
+That comment was wrong. So was the earlier conclusion. `createGenericType` was
+correct the whole time and is worth **+186** computed matches.
+
+The defect was in the oracle. `dump-types.ts` never set
+`global.__rootDirectory`, which is what `RealFileSystem.getModulePath()` reads
+to locate `typeshed-fallback`; unset, it returns `Uri.empty()` and the oracle's
+import resolver finds no stubs at all. Every `from typing import ...` bound
+Unknown, every builtin annotation evaluated to Unknown, and
+`def f(x: list[int])` came back as `(x: Unknown) -> Unknown`. **1387 of 2012
+reported differences were the oracle answering Unknown to a question the Go
+side answered correctly.**
+
+`Generic` in particular resolved to Unknown, so in the oracle no class was ever
+generic and `class B(Generic[T])` printed as `type[B]`. A stubbed
+`createGenericType` reproduced that by accident. Porting it made the Go side
+*disagree with a broken oracle*, which the scoreboard reported as a
+regression.
+
+Fixing the one missing line moved the same sample from 880 matches / 759
+computed to 1933 / 1900.
+
+The rule the earlier version of this section stated -- *a port that lowers
+computed matches is reporting a bug somewhere else* -- is right as far as it
+goes. What it missed is that **"somewhere else" includes the instrument**. The
+correct order is: reproduce the regression on the smallest possible input,
+then confirm the oracle's answer is one pyright would actually give, and only
+then go looking in the port. Two sessions of held-back work and a stub carrying
+a fabricated explanation is what skipping that step cost.
 
 ### The frontier, and what it is not
 
