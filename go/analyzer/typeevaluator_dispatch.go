@@ -369,15 +369,6 @@ func (e *typeEvaluator) assignTypeToExpression(
 	e.unported("assignTypeToExpression")
 }
 
-// convertToTypeFormType corresponds to the function of the same name: if the
-// expected type is an explicit TypeForm type, see if the source type has an
-// implicit TypeForm type that can be assigned to it. Returning the source
-// unchanged is what the original does when it is not a TypeForm type.
-func (e *typeEvaluator) convertToTypeFormType(_ Type, srcType Type) Type {
-	e.unported("convertToTypeFormType")
-	return srcType
-}
-
 func (e *typeEvaluator) addExpectedTypeCacheEntry(_ parser.ParseNode, _ Type) {
 	e.unported("addExpectedTypeCacheEntry")
 }

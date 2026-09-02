@@ -446,10 +446,6 @@ func (e *typeEvaluator) evaluateTypesForAugmentedAssignment(_ *parser.AugmentedA
 	e.unported("evaluateTypesForAugmentedAssignment")
 }
 
-func (e *typeEvaluator) evaluateTypesForTypeAnnotationNode(_ *parser.TypeAnnotationNode) {
-	e.unported("evaluateTypesForTypeAnnotationNode")
-}
-
 // isClassVarAllowedForAssignmentTarget corresponds to the evaluator-local
 // function of the same name, which shadows no parseTreeUtils counterpart.
 func (e *typeEvaluator) isClassVarAllowedForAssignmentTarget(targetNode parser.ExpressionNode) bool {

@@ -430,6 +430,18 @@ These looked wrong at first and are not:
 - **The doubled length check in `FunctionType.clone`**
   (`analyzer/types.ts:1882-1884`) — `if (type.shared.parameters.length > 0)`
   nested inside an identical check. Dead, not wrong.
+- **The `else if` chain in `convertToTypeFormType`** (`analyzer/typeEvaluator.ts:26868`)
+  — the function returns early unless `srcType.props?.typeForm` is truthy, then
+  immediately re-tests the same condition. The first branch is therefore always
+  taken and the three `else if` arms (isClass, isTypeVar, and the `type[T]`
+  unwrap) are unreachable. Dead, not wrong. The Go port keeps the arms so a
+  future change to the guard does not silently lose them.
+- **The parenthesization in `isPossibleTypeDictFactoryCall`**
+  (`analyzer/typeEvaluator.ts:29947`) — written as
+  `(callLeftNode.nodeType === Name && callLeftNode.d.value) === 'TypedDict'`,
+  which reads like a misplaced paren. It is not: `&&` yields `false` for a
+  non-Name and the value string for a Name, so the comparison gives the same
+  answer as the intended `A && B === 'TypedDict'`.
 - **Diagnostic addendum indentation is two U+00A0 non-breaking spaces**
   (`common/diagnostic.ts`) — written literally in the source. Deliberate, and
   load-bearing: the Go port got this wrong initially and the AST differential

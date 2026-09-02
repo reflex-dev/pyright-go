@@ -189,3 +189,92 @@ func (e *typeEvaluator) handleTypingStubTypeAnnotation(_ parser.ExpressionNode) 
 	e.unported("handleTypingStubTypeAnnotation")
 	return nil
 }
+
+// evaluateTypesForTypeAnnotationNode corresponds to the function of the same
+// name.
+func (e *typeEvaluator) evaluateTypesForTypeAnnotationNode(node *parser.TypeAnnotationNode) {
+	// The original's comment: if this node is part of an assignment statement,
+	// use specialized logic that performs bidirectional inference and assignment
+	// type narrowing.
+	if assignment, ok := node.NodeBase().Parent.(*parser.AssignmentNode); ok {
+		e.evaluateTypesForAssignmentStatement(assignment)
+		return
+	}
+
+	annotationType := e.GetTypeOfAnnotation(node.D.Annotation, &ExpectedTypeOptions{
+		VarTypeAnnotation: true,
+		AllowFinal:        e.isFinalAllowedForAssignmentTarget(node.D.ValueExpr),
+		AllowClassVar:     e.isClassVarAllowedForAssignmentTarget(node.D.ValueExpr),
+	})
+
+	e.writeTypeCache(node.D.ValueExpr, &TypeResult{Type: annotationType}, evalFlagsNonePtr(), nil, false)
+}
+
+// convertToTypeFormType corresponds to the function of the same name. The
+// original's comment paraphrased: if the source carries a TypeForm type and the
+// expected type is a TypeForm the source's is assignable to, specialize the
+// expected TypeForm with the source's type.
+func (e *typeEvaluator) convertToTypeFormType(expectedType Type, srcType Type) Type {
+	srcProps := srcType.Base().Props
+
+	// Is the source a TypeForm type?
+	if srcProps == nil || srcProps.TypeForm == nil {
+		return srcType
+	}
+
+	var srcTypeFormType Type
+
+	// The original repeats the same test here; the second branch chain is
+	// therefore unreachable in the shipped source, since the early return above
+	// has already rejected everything the `else if` arms would handle. It is
+	// preserved rather than collapsed, so a future upstream change to the guard
+	// does not silently lose the arms.
+	if srcProps.TypeForm != nil {
+		srcTypeFormType = srcProps.TypeForm
+	} else if IsClass(srcType) {
+		srcClass := srcType.(*ClassType)
+		if srcType.Base().IsInstantiable() {
+			if !ClassTypeIsSpecialBuiltIn(srcClass) {
+				srcTypeFormType = ClassTypeCloneAsInstance(srcClass, false)
+			}
+		} else if ClassTypeIsBuiltInNamed(srcClass, "type") {
+			if len(srcClass.Priv.TypeArgs) > 0 {
+				srcTypeFormType = srcClass.Priv.TypeArgs[0]
+			} else {
+				srcTypeFormType = UnknownTypeCreate(false)
+			}
+		}
+	} else if IsTypeVar(srcType) && srcType.Base().IsInstantiable() {
+		if !IsTypeVarTuple(srcType) || !srcType.(*TypeVarType).Priv.IsInUnion {
+			srcTypeFormType = ConvertToInstance(srcType, false)
+		}
+	}
+
+	if srcTypeFormType == nil {
+		return srcType
+	}
+
+	var resultType Type
+
+	DoForEachSubtype(expectedType, func(subtype Type, _ int, _ []Type) {
+		if resultType != nil || !IsClassInstance(subtype) ||
+			!ClassTypeIsBuiltInNamed(subtype.(*ClassType), "TypeForm") {
+			return
+		}
+
+		subtypeClass := subtype.(*ClassType)
+		var destTypeFormType Type = AnyTypeCreate(false)
+		if len(subtypeClass.Priv.TypeArgs) > 0 {
+			destTypeFormType = subtypeClass.Priv.TypeArgs[0]
+		}
+
+		if e.AssignType(destTypeFormType, srcTypeFormType, nil, nil, AssignTypeFlagsDefault, 0) {
+			resultType = ClassTypeSpecialize(subtypeClass, []Type{srcTypeFormType}, nil, false, nil, nil)
+		}
+	})
+
+	if resultType != nil {
+		return resultType
+	}
+	return srcType
+}
