@@ -181,15 +181,6 @@ func (e *typeEvaluator) GetTypeOfExpressionExpectingType(
 	return e.getTypeOfExpression(node, flags, nil)
 }
 
-// handleTypingStubTypeAnnotation corresponds to the function of the same name.
-// It creates the special built-in class types that typing.pyi declares as bare
-// annotations (Tuple, Generic, Protocol, Callable, ClassVar, Final, Literal and
-// the rest), which is a separate unit of work.
-func (e *typeEvaluator) handleTypingStubTypeAnnotation(_ parser.ExpressionNode) Type {
-	e.unported("handleTypingStubTypeAnnotation")
-	return nil
-}
-
 // evaluateTypesForTypeAnnotationNode corresponds to the function of the same
 // name.
 func (e *typeEvaluator) evaluateTypesForTypeAnnotationNode(node *parser.TypeAnnotationNode) {
