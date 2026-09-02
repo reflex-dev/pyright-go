@@ -20,10 +20,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {
-	c.noteUnported("checker.validateInstanceVariableInitialization")
-}
-
 /*
  * The per-function validators.
  */
@@ -65,4 +61,11 @@ func (c *Checker) validateBaseClassOverride(
 	_ *ClassMember, _ *Symbol, _ Type, _ *ClassType, _ string,
 ) {
 	c.noteUnported("checker.validateBaseClassOverride")
+}
+
+// validateInstanceVariableInitialization is ported but parked under wip/: it
+// depends on ClassType.Shared.NamedTupleEntries, which only
+// dataClasses.synthesizeDataClassMethods populates, and that is still a stub.
+func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {
+	c.noteUnported("checker.validateInstanceVariableInitialization")
 }
