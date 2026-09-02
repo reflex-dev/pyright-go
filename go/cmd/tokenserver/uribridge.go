@@ -196,6 +196,8 @@ func (m alwaysMatch) MatchString(s string) bool {
 	return true
 }
 
+func (m alwaysMatch) String() string { return "" }
+
 // readUri performs one scalar-returning call.
 func readUri(u uri.Uri, op uriOp) any {
 	switch op.Name {

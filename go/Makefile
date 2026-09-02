@@ -9,7 +9,7 @@ REF ?= /tmp/pyright-ref/packages/pyright-internal/src
 ESBUILD ?= $(shell ls -d $$(npm root 2>/dev/null)/@esbuild/*/bin/esbuild 2>/dev/null | head -1)
 SERVER := $(CURDIR)/bin/tokenserver
 
-.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge clean generate
+.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
 
 all: fmt vet test
 
@@ -92,12 +92,22 @@ bridge-binder: $(SERVER)
 bridge-binder-typeshed: $(SERVER)
 	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --dir $(REF)/../typeshed-fallback/stdlib
 
+# Diff the whole ConfigOptions and the enumerated file list over every sample
+# project, as a language server and as the command line. config.test.ts is not
+# bridgeable -- it asserts on object identity and mutates in place -- so this
+# stands in for it; see tools/ts-bridge/dump-config.ts.
+bridge-config: $(SERVER)
+	node tools/ts-bridge/compare-config.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
+
+bridge-config-oracle:
+	node tools/ts-bridge/compare-config.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
+
 # Run the binder differential's TypeScript oracle on its own and report what it
 # produced. Validates the harness without needing the Go binder.
 bridge-binder-oracle:
 	node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
 
-bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder bridge-binder-typeshed
+bridge: bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-corpus bridge-ast bridge-parsetreeutils bridge-binder bridge-binder-typeshed bridge-config
 
 # Regenerate the two generated files from the TypeScript sources.
 generate:

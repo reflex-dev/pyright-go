@@ -37,8 +37,9 @@ Where the Go differs, the reason is written down at the point of difference.
 | Path utils | `common/pathUtils.ts` | `common/pathutils.go` | **done and verified** (Stage C) |
 | URIs | `common/uri/*.ts` + the parts of `vscode-uri` they reach | `common/uri/*.go` | **done and verified** (Stage C) |
 | File system | `common/fileSystem.ts`, `readonlyAugmentedFileSystem.ts`, `pyrightFileSystem.ts`, `partialStubService.ts` | `common/uri/filesystem.go`, `analyzer/*filesystem.go`, `analyzer/partialstubservice.go` | done (Stage C) |
-| Config options | `common/configOptions.ts` | `analyzer/configoptions*.go` | partial — the JSON reader lands with the service |
+| Config options | `common/configOptions.ts`, `commandLineOptions.ts` | `analyzer/configoptions*.go`, `commandlineoptions.go` | **done and verified** (Stage C) |
 | **Import resolver** | `analyzer/importResolver.ts` + deps | `analyzer/importresolver*.go` | **done and verified** (Stage C) |
+| **Program loop** | `analyzer/sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`, `service.ts`, `sourceEnumerator.ts` | `analyzer/sourcefile*.go`, `program*.go`, `service*.go`, `sourceenumerator.go` | done, with the check phase stubbed (Stage C) |
 
 The front end is complete. `Parser.ParseSourceFile` and
 `Parser.ParseTextExpression` are exported and produce the same tree the
@@ -60,10 +61,16 @@ corresponds to.
 
 ### Not yet ported
 
-The program/service layer — `sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`
-and `service.ts`, the rest of Stage C — and the type evaluator and checker,
-which are all of Stage D. So this parses, binds and resolves imports exactly as
-pyright does, and type-checks nothing.
+The type evaluator and the checker, which are all of Stage D. The program loop
+stands up around them: `Program` holds the evaluator as an opaque value and
+takes its checker from a factory, and with a nil factory the check phase is
+skipped. So this parses, binds, resolves imports, walks the import graph,
+detects cycles and reports parse and bind diagnostics exactly as pyright does,
+and type-checks nothing.
+
+Also not ported: the service's file watchers and background-analysis thread
+(analysis is driven synchronously), the interpreter-spawning parts of `Host`,
+and the real file system's chokidar watchers, zip reader and temp files.
 Neither the language server nor the CLI is ported.
 
 ## How it is verified
@@ -88,11 +95,18 @@ under test for shims that forward to it, then runs the unmodified test files.
     7 passed, 0 failed, 0 skipped, 7 total
     2 passed, 0 failed, 0 skipped, 2 total
 
-The 4 skipped cases drive the fourslash harness, which needs the binder and the
-import resolver. They are reported as `SKIP` with a reason rather than being
-dropped or counted as passing.
+`src/tests/pathUtils.test.ts`, `src/tests/uri.test.ts` and
+`src/tests/importResolver.test.ts`:
 
-On top of that, two corpus differentials run **both** implementations over every
+    63 passed, 0 failed, 0 skipped, 63 total
+    95 passed, 0 failed, 0 skipped, 95 total
+    34 passed, 0 failed, 0 skipped, 34 total
+
+The 4 skipped cases drive the fourslash harness, which needs the checker. They
+are reported as `SKIP` with a reason rather than being dropped or counted as
+passing.
+
+On top of that, corpus differentials run **both** implementations over every
 file in `src/tests/samples` and diff the full output.
 
 `compare-corpus.js` covers the tokenizer — every token field, the line ranges,
@@ -112,8 +126,20 @@ caught the diagnostic-addendum indentation being two ordinary spaces in the Go
 port where `diagnostic.ts` writes two non-breaking spaces (U+00A0). Nothing else
 in the suite would have noticed.
 
-The Go-native tests in `common/` and `parser/` cover the pieces the TypeScript
-suite does not reach directly, such as the identifier lookup tables.
+`compare-config.js` covers the service's config path, which `config.test.ts`
+cannot: that test mutates `ConfigOptions` in place and asserts on object
+identity, neither of which survives a stateless bridge. Instead both
+implementations build an `AnalyzerService` over every project directory under
+`src/tests/samples`, in command-line and language-server mode, and the whole
+resulting `ConfigOptions` is diffed — every scalar, every file spec's compiled
+regular expression, the 96-field diagnostic rule set, every execution
+environment, and the files the source enumerator finds:
+
+    78 identical, 0 different, 78 total
+
+The Go-native tests in `common/`, `parser/`, `analyzer/` and `vfs/` cover the
+pieces the TypeScript suite does not reach directly, such as the identifier
+lookup tables and the in-memory file system.
 
 ### Running the checks
 
@@ -157,6 +183,18 @@ node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-int
 ```
 
 ```bash
+node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test pathUtils.test.ts
+```
+
+```bash
+node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test uri.test.ts
+```
+
+```bash
+node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test importResolver.test.ts
+```
+
+```bash
 node tools/ts-bridge/compare-corpus.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
 ```
 
@@ -169,27 +207,33 @@ node --max-old-space-size=8192 tools/ts-bridge/compare-parsetreeutils.js --ref /
 ```
 
 ```bash
+node tools/ts-bridge/compare-config.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
+```
+
+```bash
 node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
 ```
 
-The bridge needs `esbuild`, `vscode-uri`, `vscode-jsonrpc` and
-`vscode-languageserver` available to Node — install all four in one command,
-because `--no-save` prunes anything not named:
+The bridge needs a handful of packages available to Node — install them in one
+command, because `--no-save` prunes anything not named:
 
 ```bash
-npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver
+npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver vscode-languageserver-textdocument jsonc-parser smol-toml tmp fs-extra @yarnpkg/fslib @yarnpkg/libzip
 ```
 
-`make bridge` runs all ten checks. Or run them individually with
+`make bridge` runs all fourteen checks. Or run them individually with
 `make bridge-tests`, `make bridge-parser-tests`,
-`make bridge-typeprinter-tests`, `make bridge-symbolnameutils-tests`,
-`make bridge-typecacheutils-tests`, `make bridge-corpus`, `make bridge-ast`,
-`make bridge-parsetreeutils`, `make bridge-binder`,
-`make bridge-binder-typeshed`.
+`make bridge-typeprinter-tests`, `make bridge-pathutils-tests`,
+`make bridge-uri-tests`, `make bridge-importresolver-tests`,
+`make bridge-symbolnameutils-tests`, `make bridge-typecacheutils-tests`,
+`make bridge-corpus`, `make bridge-ast`, `make bridge-parsetreeutils`,
+`make bridge-binder`, `make bridge-binder-typeshed`, `make bridge-config`.
 
-`make bridge-binder-oracle` runs the binder differential's TypeScript side
-alone and reports what it produced. It needs no Go server, so it validates the
-harness independently of the port.
+`make bridge-binder-oracle` and `make bridge-config-oracle` run those
+differentials' TypeScript side alone and report what it produced. They need no
+Go server, so they validate the harness independently of the port — which is
+how two defects in the config oracle were caught before anything was compared
+against it.
 
 `typePrinter.test.ts` works differently from the others: rather than shipping
 data to Go, the shim records the test's type-construction calls and replays

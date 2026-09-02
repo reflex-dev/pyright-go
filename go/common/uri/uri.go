@@ -158,6 +158,11 @@ type Uri interface {
 // implementation so far (ConstantUri) ignores the argument entirely.
 type Regexp interface {
 	MatchString(s string) bool
+
+	// String is the compiled pattern's source. regexp.Regexp already has it;
+	// it is on the interface so a caller can report what it compiled, which the
+	// config differential needs.
+	String() string
 }
 
 // DefaultShortenedFileNameDirLength is the default for the maxDirLength

@@ -118,7 +118,7 @@ sample files and 752 typeshed stdlib stubs in both import modes -- 4,190
 file-runs, 0 different. See `analyzer/STATUS-STAGE-B.md`, which also lists what
 the differential cannot reach until the import resolver arrives in Stage C.
 
-### Stage C — import resolver, program, filesystem (~9k lines TS) — **import resolver DONE**
+### Stage C — import resolver, program, filesystem (~9k lines TS) — **DONE**
 
 `importResolver.ts`, `importResolverFileSystem.ts`, `pythonPathUtils.ts`,
 `typeshedInfoProvider.ts`, `sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`,
@@ -145,10 +145,19 @@ reach had to be ported too, because the exact percent-encoding it produces ends
 up in a Uri's key. `uri.test.ts` (95/95) and `pathUtils.test.ts` (63/63) are
 gates in their own right. See `analyzer/STATUS-STAGE-C.md`.
 
-What remains is `sourceFile.ts`, `sourceFileInfo.ts`, `program.ts` and
-`service.ts`. All four reach the evaluator and the checker, so they land with
-the check phase stubbed -- which is the "skeleton first, then fatten" step
-below.
+The program half went the same way. `sourceFile.ts`, `sourceFileInfo.ts`,
+`program.ts` and `service.ts` all reach the evaluator and the checker, so they
+landed with the check phase stubbed -- the "skeleton first, then fatten" step
+below. The seams are narrow: the evaluator is an opaque value nothing in Stage C
+calls a method on, and the checker comes from a factory that may be nil. With
+nil factories the program parses, binds, resolves imports, walks the import
+graph, detects cycles and reports parse and bind diagnostics.
+
+`config.test.ts` is not bridgeable -- it mutates `ConfigOptions` in place and
+asserts on object identity -- so a differential stands in for it, over every
+project directory in the corpus in both command-line and language-server mode:
+78/78 identical. What it cannot reach is `program.analyze()` itself, which stays
+ungated until Stage D.
 
 ### Stage D — evaluator and checker (~55k lines TS)
 
