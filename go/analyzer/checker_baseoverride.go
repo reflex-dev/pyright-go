@@ -31,6 +31,7 @@
 package analyzer
 
 import (
+	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/localization"
 	"github.com/microsoft/pyright/go/parser"
 )
@@ -280,4 +281,101 @@ func (c *Checker) isFinalFunction(name string, symbol *Symbol, _ Type) bool {
 	}
 
 	return false
+}
+
+// validateTypedDictOverrides corresponds to _validateTypedDictOverrides. The
+// original's comment: for a TypedDict class that derives from another TypedDict
+// class that is closed, verify that any new keys are compatible with the base
+// class.
+//
+// A closed TypedDict fixes what may appear in it. A subclass adding a key is
+// therefore only legal if the base declared `extra_items` and the new key fits
+// it -- invariantly when those extra items are mutable, covariantly when they
+// are read-only, which is the same reasoning that governs any mutable container.
+func (c *Checker) validateTypedDictOverrides(classType *ClassType) {
+	if !ClassTypeIsTypedDictClass(classType) {
+		return
+	}
+
+	typedDictEntries := GetTypedDictMembersForClass(c.evaluator, classType, false)
+
+	for _, baseClass := range classType.Shared.BaseClasses {
+		diag := common.NewDiagnosticAddendum()
+
+		if !IsClass(baseClass) || !ClassTypeIsTypedDictClass(baseClass.(*ClassType)) ||
+			!ClassTypeIsTypedDictEffectivelyClosed(baseClass.(*ClassType)) {
+			continue
+		}
+
+		baseCls := baseClass.(*ClassType)
+		baseTypedDictEntries := GetTypedDictMembersForClass(c.evaluator, baseCls, false)
+		solution := BuildSolutionFromSpecializedClass(baseCls)
+
+		var baseExtraItemsType Type = UnknownTypeCreate(false)
+		if baseTypedDictEntries.ExtraItems != nil {
+			baseExtraItemsType = ApplySolvedTypeVars(
+				baseTypedDictEntries.ExtraItems.ValueType, solution, nil)
+		}
+
+		// extraItemsFlags is the original's repeated
+		// `!extraItems.isReadOnly ? Invariant : Default`.
+		extraItemsFlags := AssignTypeFlagsDefault
+		if baseTypedDictEntries.ExtraItems != nil && !baseTypedDictEntries.ExtraItems.IsReadOnly {
+			extraItemsFlags = AssignTypeFlagsInvariant
+		}
+
+		for _, name := range typedDictEntries.KnownItems.Keys() {
+			entry, _ := typedDictEntries.KnownItems.Get(name)
+
+			if _, exists := baseTypedDictEntries.KnownItems.Get(name); exists {
+				continue
+			}
+
+			switch {
+			case baseTypedDictEntries.ExtraItems == nil ||
+				IsNever(baseTypedDictEntries.ExtraItems.ValueType):
+				diag.AddMessage(localization.LocAddendum.TypedDictClosedExtraNotAllowed().Format(name))
+
+			case !c.evaluator.AssignType(baseExtraItemsType, entry.ValueType,
+				nil, nil, extraItemsFlags, 0):
+				diag.AddMessage(localization.LocAddendum.TypedDictClosedExtraTypeMismatch().
+					Format(name, c.evaluator.PrintType(entry.ValueType, nil)))
+
+			case !baseTypedDictEntries.ExtraItems.IsReadOnly && entry.IsReadOnly:
+				diag.AddMessage(localization.LocAddendum.TypedDictClosedFieldNotReadOnly().Format(name))
+
+			case !baseTypedDictEntries.ExtraItems.IsReadOnly && entry.IsRequired:
+				diag.AddMessage(localization.LocAddendum.TypedDictClosedFieldNotRequired().Format(name))
+			}
+		}
+
+		if typedDictEntries.ExtraItems != nil && baseTypedDictEntries.ExtraItems != nil {
+			if !c.evaluator.AssignType(baseExtraItemsType, typedDictEntries.ExtraItems.ValueType,
+				nil, nil, extraItemsFlags, 0) {
+				diag.AddMessage(localization.LocAddendum.TypedDictClosedExtraTypeMismatch().
+					Format("extra_items", c.evaluator.PrintType(typedDictEntries.ExtraItems.ValueType, nil)))
+			}
+		}
+
+		if diag.IsEmpty() || classType.Shared.Declaration == nil {
+			continue
+		}
+
+		declNode := GetNameNodeForDeclaration(classType.Shared.Declaration)
+		if declNode == nil {
+			continue
+		}
+
+		if baseTypedDictEntries.ExtraItems != nil {
+			c.evaluator.AddDiagnostic(DiagnosticRuleReportIncompatibleVariableOverride,
+				localization.LocMessage.TypedDictClosedExtras().Format(
+					baseCls.Shared.Name, c.evaluator.PrintType(baseExtraItemsType, nil))+diag.GetString(),
+				declNode, nil)
+		} else {
+			c.evaluator.AddDiagnostic(DiagnosticRuleReportIncompatibleVariableOverride,
+				localization.LocMessage.TypedDictClosedNoExtras().Format(baseCls.Shared.Name)+
+					diag.GetString(),
+				declNode, nil)
+		}
+	}
 }

@@ -20,10 +20,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (c *Checker) validateTypedDictOverrides(_ *ClassType) {
-	c.noteUnported("checker.validateTypedDictOverrides")
-}
-
 func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {
 	c.noteUnported("checker.validateInstanceVariableInitialization")
 }
