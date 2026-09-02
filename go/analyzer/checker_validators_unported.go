@@ -94,10 +94,6 @@ func (c *Checker) validateOverloadAttributeConsistency(_ *parser.FunctionNode, _
  * The per-expression reporters the second batch of visits reaches.
  */
 
-func (c *Checker) validateIsInstanceCall(_ *parser.CallNode) {
-	c.noteUnported("checker.validateIsInstanceCall")
-}
-
 func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool) {
 	c.noteUnported("checker.validateExceptionType")
 }
