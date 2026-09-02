@@ -285,11 +285,3 @@ func getSpeculativeNodeForCall(errorNode parser.ExpressionNode) parser.ParseNode
  */
 
 // validateCallForClassInstance corresponds to the function of the same name:
-// calling an object, which goes through its __call__ member.
-func (e *typeEvaluator) validateCallForClassInstance(
-	_ parser.ExpressionNode, _ []*Arg, _ *ClassType, _ Type,
-	_ *ConstraintTracker, _ bool, _ *InferenceContext, _ int,
-) *CallResult {
-	e.unported("validateCallForClassInstance")
-	return &CallResult{ArgumentErrors: true}
-}

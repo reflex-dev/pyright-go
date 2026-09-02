@@ -71,11 +71,6 @@ func IsEnumClassWithMembers(evaluator TypeEvaluator, classType *ClassType) bool 
  */
 
 // createTypeAliasType corresponds to the function of the same name: the PEP 695
-// TypeAliasType(...) runtime form. Returning nil is the original's undefined.
-func (e *typeEvaluator) createTypeAliasType(_ parser.ExpressionNode, _ []*Arg) Type {
-	e.unported("createTypeAliasType")
-	return nil
-}
 
 // createNewType corresponds to the function of the same name.
 func (e *typeEvaluator) createNewType(_ parser.ExpressionNode, _ []*Arg) Type {

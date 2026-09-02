@@ -217,9 +217,3 @@ func (e *typeEvaluator) touchCallArgs(node *parser.CallNode, argList []*Arg, bas
  * The six special-case handlers and the lambda-call helper. Each is a separate
  * unit of work and records itself.
  */
-
-// getTypeOfTypeForm corresponds to the function of the same name.
-func (e *typeEvaluator) getTypeOfTypeForm(_ *parser.CallNode, _ *ClassType) *TypeResult {
-	e.unported("getTypeOfTypeForm")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
