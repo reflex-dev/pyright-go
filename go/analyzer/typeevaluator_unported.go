@@ -235,21 +235,6 @@ func (e *typeEvaluator) IsTypeSubsumedByOtherType(t Type, otherType Type, allowA
 	return false
 }
 
-func (e *typeEvaluator) GetDeclaredTypeOfSymbol(symbol *Symbol) *DeclaredSymbolTypeInfo {
-	e.unported("GetDeclaredTypeOfSymbol")
-	return nil
-}
-
-func (e *typeEvaluator) GetEffectiveTypeOfSymbol(symbol *Symbol) Type {
-	e.unported("GetEffectiveTypeOfSymbol")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetEffectiveTypeOfSymbolForUsage(symbol *Symbol, usageNode *parser.NameNode, useLastDecl bool) *EffectiveTypeResult {
-	e.unported("GetEffectiveTypeOfSymbolForUsage")
-	return nil
-}
-
 func (e *typeEvaluator) GetInferredTypeOfDeclaration(symbol *Symbol, decl Declaration) Type {
 	e.unported("GetInferredTypeOfDeclaration")
 	return UnknownTypeCreate(false)
