@@ -59,12 +59,18 @@ type reachabilityCacheEntry struct {
 type codeFlowReachability struct {
 	reachabilityCache       map[int]*reachabilityCacheEntry
 	isReachableRecursionSet map[int]bool
+
+	// callIsNoReturnCache and noReturnAnalysisDepth belong to isCallNoReturn;
+	// see codeflowengine_noreturn.go.
+	callIsNoReturnCache   map[int]bool
+	noReturnAnalysisDepth int
 }
 
 func newCodeFlowReachability() *codeFlowReachability {
 	return &codeFlowReachability{
 		reachabilityCache:       map[int]*reachabilityCacheEntry{},
 		isReachableRecursionSet: map[int]bool{},
+		callIsNoReturnCache:     map[int]bool{},
 	}
 }
 
@@ -200,7 +206,7 @@ func (c *codeFlowReachability) GetFlowNodeReachability(
 				// type, that means it always raises an exception or otherwise
 				// doesn't return, so we can assume that the code before this is
 				// unreachable.
-				if !ignoreNoReturn && isCallNoReturn(evaluator, callFlowNode) {
+				if !ignoreNoReturn && c.isCallNoReturn(evaluator, callFlowNode) {
 					return cacheReachabilityResult(ReachabilityUnreachableByAnalysis)
 				}
 
@@ -371,23 +377,12 @@ func labelOf(node FlowNode) *FlowLabel {
 }
 
 /*
- * The three call-backs into parts of the engine that are not ported.
+ * The two call-backs into parts of the engine that are not ported.
  *
  * These are separate functions rather than inline stubs so that each records
- * itself distinctly: the work-remaining map should name isCallNoReturn and
- * getTypeNarrowingCallback separately, because they are separate pieces of work
- * living in different files.
+ * itself distinctly: the work-remaining map should name them separately,
+ * because they are separate pieces of work living in different files.
  */
-
-// isCallNoReturn corresponds to the function of the same name in
-// codeFlowEngine.ts, which is not ported. Answering false means "assume the
-// call returns", which is what an engine with no NoReturn analysis would do.
-func isCallNoReturn(evaluator TypeEvaluator, _ *FlowCall) bool {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported("codeFlowEngine.isCallNoReturn")
-	}
-	return false
-}
 
 // isExceptionContextManager corresponds to the function of the same name in
 // codeFlowEngine.ts, which is not ported.

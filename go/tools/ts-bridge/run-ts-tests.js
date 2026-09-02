@@ -253,6 +253,21 @@ export function report() {
             console.log('');
             console.log('unported paths reached: none');
         }
+
+        // The diagnostic rules actually emitted. Run the same target under
+        // PYRIGHT_GO_BRIDGE_MODE=oracle to get the baseline to read this
+        // against: a rule the Go side emits far more often than the oracle is a
+        // false positive worth chasing, and one it emits far less often is a
+        // check that has not landed.
+        const rules = Object.entries(globalThis.__pyrightGoRules ?? {}).sort((a, b) => b[1] - a[1]);
+        if (rules.length > 0) {
+            const totalRules = rules.reduce((sum, [, count]) => sum + count, 0);
+            console.log('');
+            console.log('diagnostic rules emitted: ' + rules.length + ' distinct, ' + totalRules + ' total');
+            for (const [name, count] of rules.slice(0, 12)) {
+                console.log('  ' + String(count).padStart(9) + '  ' + name);
+            }
+        }
     }
     if (failures.length > 0) {
         process.exitCode = 1;

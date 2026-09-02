@@ -342,7 +342,19 @@ export function typeAnalyzeSampleFiles(
         // config and through the response wire format, so that everything the
         // Go path depends on is on the critical path here too.
         const results = RealTestUtils.typeAnalyzeSampleFiles(fileNames, reconstructed, console);
-        return wireToResults(resultsToWire(results));
+        const wire = resultsToWire(results);
+        // Tally the oracle's rules the same way, so `bridge-evaluator-oracle`
+        // produces the baseline the Go tally is read against.
+        for (const fileResult of wire) {
+            for (const kind of diagnosticKinds) {
+                for (const diag of fileResult[kind] ?? []) {
+                    const rule = diag.rule || '(no rule)';
+                    const tally = ((globalThis as any).__pyrightGoRules ??= {});
+                    tally[rule] = (tally[rule] ?? 0) + 1;
+                }
+            }
+        }
+        return wireToResults(wire);
     }
 
     const response = call({
@@ -357,6 +369,25 @@ export function typeAnalyzeSampleFiles(
             config: wire,
         },
     });
+
+    // Tally the diagnostic rules the Go side emits. A partially-ported
+    // evaluator produces both missing and spurious diagnostics, and the gate's
+    // pass/fail counts cannot distinguish them -- this can, by being compared
+    // against the same tally from an oracle run.
+    for (const fileResult of response.results ?? []) {
+        for (const kind of diagnosticKinds) {
+            for (const diag of fileResult[kind] ?? []) {
+                // Key by rule plus the first few words of the message, so a
+                // dominant rule can be attributed to a specific check without a
+                // second run.
+                const rule = diag.rule || '(no rule)';
+                const gist = String(diag.message).split(/\s+/).slice(0, 6).join(' ');
+                const key = rule + ' :: ' + gist;
+                const tally = ((globalThis as any).__pyrightGoRules ??= {});
+                tally[key] = (tally[key] ?? 0) + 1;
+            }
+        }
+    }
 
     // Accumulate the Go evaluator's and checker's unported counts across every
     // analyze call in the run, so the gate can report the same frontier the
