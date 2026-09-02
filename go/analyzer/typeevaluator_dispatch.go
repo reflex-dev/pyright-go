@@ -283,11 +283,6 @@ func (e *typeEvaluator) getTypeOfIndex(_ *parser.IndexNode, _ EvalFlags) *TypeRe
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-func (e *typeEvaluator) getTypeOfCall(_ *parser.CallNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfCall")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfTuple")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
