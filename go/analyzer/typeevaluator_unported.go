@@ -119,16 +119,6 @@ func (e *typeEvaluator) GetBestOverloadForArgs(errorNode parser.ExpressionNode, 
 	return nil
 }
 
-func (e *typeEvaluator) GetBoundMagicMethod(classType *ClassType, memberName string, selfType Type, errorNode parser.ExpressionNode, diag *common.DiagnosticAddendum, recursionCount int) Type {
-	e.unported("GetBoundMagicMethod")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetTypeOfMagicMethodCall(objType Type, methodName string, argList []*TypeResult, errorNode parser.ExpressionNode, inferenceContext *InferenceContext) *TypeResult {
-	e.unported("GetTypeOfMagicMethodCall")
-	return nil
-}
-
 func (e *typeEvaluator) GetCallbackProtocolType(objType *ClassType, recursionCount int) Type {
 	e.unported("GetCallbackProtocolType")
 	return UnknownTypeCreate(false)
