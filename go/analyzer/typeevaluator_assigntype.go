@@ -595,11 +595,6 @@ func (e *typeEvaluator) setConstraintsForFreeTypeVars(_ Type, _ Type, _ *Constra
 	e.unported("setConstraintsForFreeTypeVars")
 }
 
-func (e *typeEvaluator) expandEnumTypeForLiteralComparison(t Type, _ Type, _ bool) Type {
-	e.unported("expandEnumTypeForLiteralComparison")
-	return t
-}
-
 func (e *typeEvaluator) assignFromUnionType(
 	_ Type, _ *UnionType, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
 ) bool {
