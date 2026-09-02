@@ -366,9 +366,19 @@ func (e *typeEvaluator) getTypeOfLambda(_ *parser.LambdaNode, _ *InferenceContex
 // signature tracker for the duration of a call evaluation; with no call
 // evaluation there is nothing for it to track, so it runs the callback plainly
 // and records that the tracking is missing.
-func (e *typeEvaluator) useSignatureTracker(_ *parser.CallNode, callback func() *TypeResult) *TypeResult {
+func (e *typeEvaluator) useSignatureTracker(node *parser.CallNode, callback func() *TypeResult) *TypeResult {
+	var result *TypeResult
+	e.withSignatureTracker(node, func() { result = callback() })
+	return result
+}
+
+// withSignatureTracker is the original's useSignatureTracker, which is generic
+// in the callback's return type. Go methods cannot be generic, so the result is
+// carried out through the closure and the typed wrappers above and in
+// typeevaluator_class.go adapt it.
+func (e *typeEvaluator) withSignatureTracker(_ parser.ParseNode, callback func()) {
 	e.unported("useSignatureTracker")
-	return callback()
+	callback()
 }
 
 func (e *typeEvaluator) assignTypeToExpression(

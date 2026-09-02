@@ -39,11 +39,6 @@ func (e *typeEvaluator) GetTypeOfAnnotation(node parser.ExpressionNode, options 
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetTypeOfClass(node *parser.ClassNode) *ClassTypeResult {
-	e.unported("GetTypeOfClass")
-	return nil
-}
-
 func (e *typeEvaluator) CreateSubclass(errorNode parser.ExpressionNode, type1 *ClassType, type2 *ClassType) *ClassType {
 	e.unported("CreateSubclass")
 	return nil
@@ -349,10 +344,6 @@ func (e *typeEvaluator) GetTypeCheckerInternalsType(node parser.ParseNode, symbo
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) InferReturnTypeIfNecessary(t Type) {
-	e.unported("InferReturnTypeIfNecessary")
-}
-
 func (e *typeEvaluator) InferVarianceForClass(t *ClassType) {
 	e.unported("InferVarianceForClass")
 }
@@ -403,21 +394,6 @@ func (e *typeEvaluator) AddDiagnostic(rule DiagnosticRule, message string, node 
 func (e *typeEvaluator) AddDiagnosticForTextRange(fileInfo *AnalyzerFileInfo, rule DiagnosticRule, message string, textRange common.TextRange) *common.Diagnostic {
 	e.unported("AddDiagnosticForTextRange")
 	return nil
-}
-
-func (e *typeEvaluator) PrintType(t Type, options *PrintTypeOptions) string {
-	e.unported("PrintType")
-	return ""
-}
-
-func (e *typeEvaluator) PrintSrcDestTypes(srcType Type, destType Type) SrcDestTypes {
-	e.unported("PrintSrcDestTypes")
-	return SrcDestTypes{}
-}
-
-func (e *typeEvaluator) PrintFunctionParts(t *FunctionType, extraFlags PrintTypeFlags) ([]string, string) {
-	e.unported("PrintFunctionParts")
-	return nil, ""
 }
 
 func (e *typeEvaluator) UseSpeculativeMode(speculativeNode parser.ParseNode, callback func(), options *SpeculativeModeOptions) {
