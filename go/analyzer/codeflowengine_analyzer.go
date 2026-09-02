@@ -168,19 +168,6 @@ func (a *CodeFlowAnalyzer) isGetTypeFromCodeFlowPending(referenceKeyFilter strin
 	return pending
 }
 
-// GetTypeFromCodeFlow corresponds to the method of the same name.
-//
-// The original's comment: this function has two primary modes. The first is used
-// to determine the narrowed type of a reference expression based on code flow
-// analysis. The second (when reference is undefined) is used to determine whether
-// the specified flowNode is reachable when "never narrowing" is applied.
-func (a *CodeFlowAnalyzer) GetTypeFromCodeFlow(
-	_ FlowNode, _ CodeFlowReferenceExpressionNode, _ *flowTypeOptions,
-) *FlowNodeTypeResult {
-	a.evaluator.unported("codeFlowEngine.getTypeFromCodeFlow")
-	return NewFlowNodeTypeResult(nil, false, nil, nil)
-}
-
 /*
  * The evaluator's half.
  */

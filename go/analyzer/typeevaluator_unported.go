@@ -39,11 +39,6 @@ func (e *typeEvaluator) CreateSubclass(errorNode parser.ExpressionNode, type1 *C
 	return nil
 }
 
-func (e *typeEvaluator) EvaluateTypeForSubnode(subnode parser.ParseNode, callback func()) *TypeResult {
-	e.unported("EvaluateTypeForSubnode")
-	return nil
-}
-
 func (e *typeEvaluator) EvaluateTypesForMatchStatement(node *parser.MatchNode) {
 	e.unported("EvaluateTypesForMatchStatement")
 }

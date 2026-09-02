@@ -149,3 +149,10 @@ func (e *typeEvaluator) readContextualTypeCacheEntryForNode(node parser.ParseNod
 
 // initializePrefetchedTypes is in typeevaluator_prefetch.go, alongside the
 // module and builtin lookups it is built from.
+
+// EvaluateTypeForSubnode corresponds to evaluateTypeForSubnode, which delegates
+// to evaluateTypeForSubnodeWithCache with the ordinary cache reader; the
+// contextual variant above supplies a different one.
+func (e *typeEvaluator) EvaluateTypeForSubnode(subnode parser.ParseNode, callback func()) *TypeResult {
+	return e.evaluateTypeForSubnodeWithCache(subnode, callback, e.readTypeCacheEntry)
+}

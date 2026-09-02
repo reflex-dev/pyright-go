@@ -64,13 +64,20 @@ type codeFlowReachability struct {
 	// see codeflowengine_noreturn.go.
 	callIsNoReturnCache   map[int]bool
 	noReturnAnalysisDepth int
+
+	// flowIncompleteGeneration is the original's counter of the same name. It is
+	// shared by every CodeFlowAnalyzer, because an incomplete type recorded in
+	// one analyzer can be invalidated by work done through another; see
+	// codeflowengine_walk.go. The original starts it at 1.
+	flowIncompleteGeneration int
 }
 
 func newCodeFlowReachability() *codeFlowReachability {
 	return &codeFlowReachability{
-		reachabilityCache:       map[int]*reachabilityCacheEntry{},
-		isReachableRecursionSet: map[int]bool{},
-		callIsNoReturnCache:     map[int]bool{},
+		flowIncompleteGeneration: 1,
+		reachabilityCache:        map[int]*reachabilityCacheEntry{},
+		isReachableRecursionSet:  map[int]bool{},
+		callIsNoReturnCache:      map[int]bool{},
 	}
 }
 
@@ -398,7 +405,7 @@ func isExceptionContextManager(evaluator TypeEvaluator, _ parser.ExpressionNode,
 // applies", so the condition cannot make the branch unreachable.
 func getTypeNarrowingCallback(
 	evaluator TypeEvaluator,
-	_ *parser.NameNode,
+	_ parser.ExpressionNode,
 	_ parser.ExpressionNode,
 	_ bool,
 ) func(Type) *TypeResult {
