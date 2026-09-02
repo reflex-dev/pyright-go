@@ -42,12 +42,9 @@ func (e *typeEvaluator) GetType(node parser.ExpressionNode) Type {
 
 	// The original's comment: if this is a type parameter with a calculated
 	// variance, see if we can swap it out for a version that has a computed
-	// variance. That branch needs getTypeOfClass and getTypeOfTypeAlias, so it
-	// is not reachable yet; it records itself rather than being skipped in
-	// silence, because a TypeVar with Auto variance that comes back unswapped
-	// is a wrong answer rather than a missing one.
+	// variance.
 	if t != nil && IsTypeVar(t) && t.(*TypeVarType).Shared.DeclaredVariance == VarianceAuto {
-		e.unported("getType.autoVarianceTypeParam")
+		t = e.swapInComputedVariance(node, t.(*TypeVarType))
 	}
 
 	if t != nil {

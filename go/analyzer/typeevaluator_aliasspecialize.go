@@ -365,12 +365,3 @@ func (e *typeEvaluator) SolveConstraints(
 ) *ConstraintSolution {
 	return SolveConstraints(e, constraints, options)
 }
-
-// inferVarianceForTypeAlias corresponds to the function of the same name. The
-// original's comment: determines the effective variance of the type parameters
-// for a generic type alias. Normally variance is not important for type aliases,
-// but it matters when the alias is used to specify a base class.
-func (e *typeEvaluator) inferVarianceForTypeAlias(_ Type) []Variance {
-	e.unported("inferVarianceForTypeAlias")
-	return nil
-}
