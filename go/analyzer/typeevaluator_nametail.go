@@ -309,13 +309,6 @@ func (e *typeEvaluator) createSelfType(
 	return classType
 }
 
-// specializeTypeAliasWithDefaults corresponds to the function of the same name.
-// The original's errorNode is optional.
-func (e *typeEvaluator) specializeTypeAliasWithDefaults(t Type, _ parser.ExpressionNode) Type {
-	e.unported("specializeTypeAliasWithDefaults")
-	return t
-}
-
 // createSpecializedClassType corresponds to the function of the same name. It
 // returns nil where the original returns undefined.
 func (e *typeEvaluator) createSpecializedClassType(
