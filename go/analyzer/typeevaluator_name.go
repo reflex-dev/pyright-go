@@ -265,8 +265,3 @@ func (e *typeEvaluator) getCodeFlowTypeForCapturedVariable(
 	e.unported("getCodeFlowTypeForCapturedVariable")
 	return nil
 }
-
-func (e *typeEvaluator) validateTypeVarUsage(_ *parser.NameNode, t Type, _ EvalFlags) Type {
-	e.unported("validateTypeVarUsage")
-	return t
-}
