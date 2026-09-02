@@ -163,15 +163,6 @@ func (e *typeEvaluator) checkTypeVarAssignedName(
  * The three target-shape handlers this reaches.
  */
 
-// assignTypeToNameNode corresponds to the function of the same name: the common
-// case, which validates against the declared type and writes the narrowed result
-// to the name's cache entry.
-func (e *typeEvaluator) assignTypeToNameNode(
-	_ *parser.NameNode, _ *TypeResult, _ bool, _ parser.ExpressionNode, _ bool, _ *common.DiagnosticAddendum,
-) {
-	e.unported("assignTypeToNameNode")
-}
-
 // assignTypeToMemberAccessNode corresponds to the function of the same name.
 func (e *typeEvaluator) assignTypeToMemberAccessNode(
 	_ *parser.MemberAccessNode, _ *TypeResult, _ parser.ExpressionNode, _ *common.DiagnosticAddendum,
