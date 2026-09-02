@@ -260,7 +260,7 @@ func diagnosticLevelForRule(ruleSet *DiagnosticRuleSet, rule DiagnosticRule) Dia
 }
 
 /*
- * The one satellite this layer reaches.
+ * The decorators.ts types and wrapper this layer reaches.
  */
 
 // FunctionDecoratorInfo corresponds to the interface of the same name in
@@ -270,14 +270,12 @@ type FunctionDecoratorInfo struct {
 	DeprecationMessage *string
 }
 
-// getFunctionInfoFromDecorators corresponds to the decorators.ts function of the
-// same name. Answering with no flags means a @no_type_check function is not
-// recognized as one, so its diagnostics are reported rather than suppressed --
-// extra diagnostics rather than missing ones, and it counts itself either way.
+// getFunctionInfoFromDecorators is the evaluator-side wrapper over the
+// decorators.ts function of the same name, which takes the evaluator as its
+// first argument.
 func (e *typeEvaluator) getFunctionInfoFromDecorators(
-	_ *parser.FunctionNode,
-	_ bool,
+	node *parser.FunctionNode,
+	isInClass bool,
 ) *FunctionDecoratorInfo {
-	e.unported("getFunctionInfoFromDecorators")
-	return &FunctionDecoratorInfo{}
+	return GetFunctionInfoFromDecorators(e, node, isInClass)
 }
