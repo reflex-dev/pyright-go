@@ -34,11 +34,6 @@ func (e *typeEvaluator) GetCachedType(node parser.ExpressionNode) Type {
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetTypeOfAnnotation(node parser.ExpressionNode, options *ExpectedTypeOptions) Type {
-	e.unported("GetTypeOfAnnotation")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) CreateSubclass(errorNode parser.ExpressionNode, type1 *ClassType, type2 *ClassType) *ClassType {
 	e.unported("CreateSubclass")
 	return nil
@@ -46,11 +41,6 @@ func (e *typeEvaluator) CreateSubclass(errorNode parser.ExpressionNode, type1 *C
 
 func (e *typeEvaluator) GetTypeOfFunction(node *parser.FunctionNode) *FunctionTypeResult {
 	e.unported("GetTypeOfFunction")
-	return nil
-}
-
-func (e *typeEvaluator) GetTypeOfExpressionExpectingType(node parser.ExpressionNode, options *ExpectedTypeOptions) *TypeResult {
-	e.unported("GetTypeOfExpressionExpectingType")
 	return nil
 }
 
