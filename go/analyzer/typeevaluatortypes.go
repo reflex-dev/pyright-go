@@ -358,6 +358,9 @@ type EvaluatorUsage struct {
 // argument in several places.
 func EvaluatorUsageGet() *EvaluatorUsage { return &EvaluatorUsage{Method: "get"} }
 
+// EvaluatorUsageSet is the `{ method: 'set' }` counterpart.
+func EvaluatorUsageSet() *EvaluatorUsage { return &EvaluatorUsage{Method: "set"} }
+
 type ClassTypeResult struct {
 	ClassType     *ClassType
 	DecoratedType Type

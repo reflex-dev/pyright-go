@@ -20,6 +20,7 @@
 package analyzer
 
 import (
+	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -243,7 +244,7 @@ func (e *typeEvaluator) getTypeOfExpressionCore(
 
 	case *parser.AssignmentNode:
 		typeResult := e.getTypeOfExpression(n.D.RightExpr, flags, inferenceContext)
-		e.assignTypeToExpression(n.D.LeftExpr, typeResult, n.D.RightExpr, true, true)
+		e.assignTypeToExpression(n.D.LeftExpr, typeResult, n.D.RightExpr, true, true, nil)
 		return typeResult
 	}
 
@@ -363,6 +364,7 @@ func (e *typeEvaluator) assignTypeToExpression(
 	_ parser.ExpressionNode,
 	_ bool,
 	_ bool,
+	_ *common.DiagnosticAddendum,
 ) {
 	e.unported("assignTypeToExpression")
 }

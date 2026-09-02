@@ -293,7 +293,7 @@ func (e *typeEvaluator) inferTypeOfVariableDecl(
 		// becomes a real type alias only in the event that its inferred type is
 		// instantiable or explicitly Any (but not an ellipsis).
 		if e.isLegalImplicitTypeAliasType(inferredType) {
-			typeAliasTypeVar := e.synthesizeTypeAliasPlaceholder(variableDecl.TypeAliasName)
+			typeAliasTypeVar := e.synthesizeTypeAliasPlaceholder(variableDecl.TypeAliasName, false)
 
 			inferredType = e.transformTypeForTypeAlias(
 				inferredType,
@@ -409,12 +409,6 @@ func (e *typeEvaluator) evaluateTypeForSubnode(subnode parser.ParseNode, callbac
 func (e *typeEvaluator) isLegalImplicitTypeAliasType(_ Type) bool {
 	e.unported("isLegalImplicitTypeAliasType")
 	return false
-}
-
-// synthesizeTypeAliasPlaceholder corresponds to the function of the same name.
-func (e *typeEvaluator) synthesizeTypeAliasPlaceholder(_ *parser.NameNode) *TypeVarType {
-	e.unported("synthesizeTypeAliasPlaceholder")
-	return nil
 }
 
 // transformTypeForTypeAlias corresponds to the typeUtils function of the same
