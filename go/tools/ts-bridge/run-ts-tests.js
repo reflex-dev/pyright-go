@@ -230,6 +230,29 @@ export function report() {
                 vacuousPasses +
                 ' assert none (an implementation that reports nothing passes those)'
         );
+
+        // The frontier, accumulated by the shim across every analyze call. This
+        // is the same ranked list the per-node differential prints, so the two
+        // harnesses agree about what is missing rather than each having its own
+        // account of it.
+        const unported = globalThis.__pyrightGoUnported;
+        const entries = Object.entries(unported ?? {}).sort((a, b) => b[1] - a[1]);
+        if (entries.length > 0) {
+            const total = entries.reduce((sum, [, count]) => sum + count, 0);
+            console.log('');
+            console.log(
+                'unported paths reached: ' + entries.length + ' distinct, ' + total + ' hits'
+            );
+            for (const [name, count] of entries.slice(0, 15)) {
+                console.log('  ' + String(count).padStart(9) + '  ' + name);
+            }
+            if (entries.length > 15) {
+                console.log('       ' + ' '.repeat(6) + '... and ' + (entries.length - 15) + ' more');
+            }
+        } else {
+            console.log('');
+            console.log('unported paths reached: none');
+        }
     }
     if (failures.length > 0) {
         process.exitCode = 1;

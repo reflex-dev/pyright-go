@@ -512,7 +512,13 @@ func GetChildNodes(node parser.ParseNode) []parser.ParseNode {
 //
 // A visit method returning true means "walk my children"; returning false means
 // the handler has already dealt with them.
+//
+// Walk is part of the interface because the original's subclasses override it
+// -- checker.ts wraps it to suppress diagnostics under unreachable code -- and
+// the recursion in WalkMultiple has to reach the override rather than the
+// embedded default.
 type ParseTreeVisitorOverrides interface {
+	Walk(node parser.ParseNode)
 	VisitError(node *parser.ErrorNode) bool
 	VisitArgument(node *parser.ArgumentNode) bool
 	VisitAssert(node *parser.AssertNode) bool
@@ -620,7 +626,7 @@ func (w *ParseTreeWalker) Walk(node parser.ParseNode) {
 func (w *ParseTreeWalker) WalkMultiple(nodes []parser.ParseNode) {
 	for _, node := range nodes {
 		if node != nil {
-			w.Walk(node)
+			w.self.Walk(node)
 		}
 	}
 }

@@ -358,6 +358,17 @@ export function typeAnalyzeSampleFiles(
         },
     });
 
+    // Accumulate the Go evaluator's and checker's unported counts across every
+    // analyze call in the run, so the gate can report the same frontier the
+    // per-node differential does. Without this the two harnesses disagree about
+    // what is missing, and only one of them can say why a test failed.
+    if (response.unported) {
+        const totals = ((globalThis as any).__pyrightGoUnported ??= {});
+        for (const [name, count] of Object.entries(response.unported)) {
+            totals[name] = (totals[name] ?? 0) + (count as number);
+        }
+    }
+
     return wireToResults(response.results);
 }
 

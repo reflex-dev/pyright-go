@@ -59,19 +59,14 @@ var nextUniqueFileId = 1
 // is only created, stored and handed to the checker -- so a nil evaluator
 // factory still leaves the loop working.
 
-// Checker stands in for analyzer/checker.ts, which is Stage D.
-type Checker interface {
-	Check()
-}
-
-// CheckerFactory builds a Checker. A nil factory means no checking is
-// performed; see the header.
+// CheckerFactory builds a Checker (analyzer/checker.go). A nil factory means no
+// checking is performed; see the header.
 type CheckerFactory func(
 	importResolver *ImportResolver,
 	evaluator TypeEvaluator,
 	parserOutput *parser.ParserOutput,
 	dependentFiles []*parser.ParserOutput,
-) Checker
+) *Checker
 
 // SourceFileEditMode corresponds to the interface of the same name.
 type SourceFileEditMode interface {

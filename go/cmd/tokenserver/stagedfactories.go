@@ -4,20 +4,22 @@
  * Where the Stage D seams get filled.
  *
  * analyzer/program.go carries two of them: an evaluator factory and a checker
- * factory. The evaluator factory is now installed; the checker's is not, so the
- * program parses, binds, resolves imports, walks the import graph, evaluates
- * what the evaluator can evaluate, and reports parse and bind diagnostics --
- * but does not check types.
+ * factory. Both are now installed, which closes the gate's supply chain --
+ * sourcefile.go runs the checker and drains the diagnostic sink inside a single
+ * `if s.checkerFactory != nil` block, so until the checker existed nothing
+ * walked a file to drive the evaluator and nothing collected what the evaluator
+ * wrote.
  *
- * Installing the evaluator is what makes it reachable from the gate and the
- * per-node differential, so from here on every one of those runs exercises it.
  * The parts that do not exist yet count themselves; see
- * analyzer/typeevaluator_unported.go.
+ * analyzer/typeevaluator_unported.go and the checker's own stubs.
  */
 
 package main
 
-import "github.com/microsoft/pyright/go/analyzer"
+import (
+	"github.com/microsoft/pyright/go/analyzer"
+	"github.com/microsoft/pyright/go/parser"
+)
 
 func installStageDFactories(program *analyzer.Program) {
 	program.SetEvaluatorFactory(func(p *analyzer.Program) analyzer.TypeEvaluator {
@@ -38,7 +40,14 @@ func installStageDFactories(program *analyzer.Program) {
 		})
 	})
 
-	// The checker is still Stage D's remaining half.
+	program.SetCheckerFactory(func(
+		importResolver *analyzer.ImportResolver,
+		evaluator analyzer.TypeEvaluator,
+		parserOutput *parser.ParserOutput,
+		dependentFiles []*parser.ParserOutput,
+	) *analyzer.Checker {
+		return analyzer.NewChecker(importResolver, evaluator, parserOutput, dependentFiles)
+	})
 }
 
 // evaluatorUnportedCounts reports what the program's evaluator could not do, so

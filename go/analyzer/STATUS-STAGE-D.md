@@ -168,6 +168,27 @@ Worth knowing before writing the evaluator rather than after: it means parse
 trees are not immutable during analysis, which is not what the front-end port
 had any reason to assume.
 
+## Why the gate could not move, and what closed it
+
+The gate asserts on six diagnostic lists. Two separate things had to exist
+before any of them could see anything the evaluator concluded, and both were
+missing for the whole first half of Stage D:
+
+1. **`addDiagnostic` was a stub.** The evaluator's only route to the diagnostic
+   sink did nothing, so a conclusion could not become a diagnostic.
+2. **No checker was installed.** `sourcefile.go` runs the checker *and* drains
+   the sink inside one `if s.checkerFactory != nil` block. With no checker,
+   nothing walked a file to drive the evaluator and nothing collected what the
+   evaluator wrote.
+
+Both are now closed, and the checker walk is verifiably live:
+`checker.reportUnusedExpression` records 9,880 hits over the gate corpus, which
+is one per expression statement in 1,343 files. The gate has not moved yet
+because the evaluator still bottoms out in stubs before it reaches a
+disagreement worth reporting -- but it also has not regressed, and no false
+positives appeared, which is the result that matters when a walk over the whole
+corpus is switched on for the first time.
+
 ## Still to build
 
 - **`expected_text`** — 3,330 `reveal_type(x, expected_text="...")` assertions
@@ -220,24 +241,30 @@ one entry, `IsNodeReachable`. Each thing ported reveals the next layer:
 | symbol lookup | 5 entries; `LookUpSymbolRecursive` gone, `getTypeNarrowingCallback` appears behind it |
 | the contextual layer | 5 entries; `GetType` resolves into `evaluateTypesForExpressionInContext` |
 | the context walk and the dispatch | **30 entries** |
+| getTypeOfName | 40 entries |
+| declaration resolution | 38 entries; `getDeclaredTypeOfSymbol` resolves into what it dispatches to |
+| the prefetch bootstrap | 37 entries; `GetTypeOfClass` jumps 284 -> 1244 hits as the bootstrap reaches for `object` and `type` |
+| class creation and the printer | 38 entries; `GetTypeOfClass` gone |
+| the diagnostic layer | 38 entries; `AddDiagnostic` gone |
+| the checker walk | **46 entries**, and the corpus-wide count becomes visible for the first time |
 
 The last step is the one that pays. `evaluateTypesForExpressionInContext` and
 `getTypeOfExpressionCore` are both pure dispatch — every arm hands off to
 something that lives elsewhere — so porting the two of them turned one name into
 a ranked list of the actual remaining units of work:
 
-    unported evaluator paths reached: 30 distinct
-         4096  codeFlowEngine.isCallNoReturn
-          569  evaluateTypesForAssignmentStatement
-          433  evaluateTypesForTypeAnnotationNode
-          380  ensureSignatureIsUnique
-          335  getTypeOfName
-          308  GetTypeOfAnnotation
-          272  GetTypeOfFunction
-          246  EvaluateTypeOfParam
-          215  GetTypeOfClass
-           82  getTypeOfCall
-             ... and 20 more
+    unported paths reached: 46 distinct, 125922 hits    (the full gate corpus)
+        21702  codeFlowEngine.isCallNoReturn
+        19560  useSignatureTracker
+        14348  applyClassDecorator
+        13368  MakeTopLevelTypeVarsConcrete
+        12304  getTypeOfIndex
+         9880  checker.reportUnusedExpression
+         5212  getTypeOfCall
+         3343  inferTypeOfSymbolForUsage
+         2958  getTypeOfEllipsis
+         2322  ensureSignatureIsUnique
+             ... and 36 more
 
 That is the right shape for the work: it always names the thing to port next,
 ranked by how much of the corpus is waiting on it. And it is a *ranking*, which

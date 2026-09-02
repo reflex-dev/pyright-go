@@ -129,7 +129,13 @@ out.append("""// ParseTreeVisitorOverrides is the set of methods a ParseTreeWalk
 //
 // A visit method returning true means "walk my children"; returning false means
 // the handler has already dealt with them.
-type ParseTreeVisitorOverrides interface {""")
+//
+// Walk is part of the interface because the original's subclasses override it
+// -- checker.ts wraps it to suppress diagnostics under unreachable code -- and
+// the recursion in WalkMultiple has to reach the override rather than the
+// embedded default.
+type ParseTreeVisitorOverrides interface {
+	Walk(node parser.ParseNode)""")
 for n in names:
     out.append(f"\tVisit{n}(node *parser.{n}Node) bool")
 out.append("}\n")
@@ -161,7 +167,7 @@ func (w *ParseTreeWalker) Walk(node parser.ParseNode) {
 func (w *ParseTreeWalker) WalkMultiple(nodes []parser.ParseNode) {
 	for _, node := range nodes {
 		if node != nil {
-			w.Walk(node)
+			w.self.Walk(node)
 		}
 	}
 }
