@@ -111,13 +111,3 @@ func (e *typeEvaluator) getAbstractSymbols(_ *ClassType) []*AbstractSymbol {
 	e.unported("getAbstractSymbols")
 	return nil
 }
-
-// validateOverloadedArgTypes corresponds to the function of the same name, which
-// tries each overload in order and reports against the best partial match.
-func (e *typeEvaluator) validateOverloadedArgTypes(
-	_ parser.ExpressionNode, _ []*Arg, _ *TypeResult,
-	_ *ConstraintTracker, _ bool, _ *InferenceContext,
-) *CallResult {
-	e.unported("validateOverloadedArgTypes")
-	return &CallResult{ArgumentErrors: true}
-}

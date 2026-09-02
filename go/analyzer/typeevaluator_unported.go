@@ -114,11 +114,6 @@ func (e *typeEvaluator) GetInferredReturnType(t *FunctionType, callSiteInfo *Cal
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetBestOverloadForArgs(errorNode parser.ExpressionNode, typeResult *TypeResult, argList []*Arg) *FunctionType {
-	e.unported("GetBestOverloadForArgs")
-	return nil
-}
-
 func (e *typeEvaluator) GetCallbackProtocolType(objType *ClassType, recursionCount int) Type {
 	e.unported("GetCallbackProtocolType")
 	return UnknownTypeCreate(false)
