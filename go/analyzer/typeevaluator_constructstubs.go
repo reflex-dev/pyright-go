@@ -56,12 +56,6 @@ func CreateEnumType(
 	return nil
 }
 
-// GetEnumAutoValueType corresponds to the enums.ts function of the same name.
-func GetEnumAutoValueType(evaluator TypeEvaluator, _ parser.ExpressionNode) Type {
-	noteEvaluatorUnported(evaluator, "enums.getEnumAutoValueType")
-	return UnknownTypeCreate(false)
-}
-
 // IsEnumClassWithMembers corresponds to the enums.ts function of the same name.
 // Answering false routes a genuine enum class into the functional-form path, so
 // this stub is deliberately conservative in the direction that reports nothing.

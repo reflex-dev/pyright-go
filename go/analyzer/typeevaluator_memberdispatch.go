@@ -624,13 +624,3 @@ func effectiveRangeOr(diag *common.DiagnosticAddendum, node parser.ParseNode) *c
 	textRange := node.NodeBase().TextRange
 	return &textRange
 }
-
-// GetTypeOfEnumMember corresponds to the enums.ts function of the same name,
-// which answers a member access on an enum class -- where `Color.RED` has a
-// literal type and `name` and `value` are synthesized rather than declared.
-func GetTypeOfEnumMember(
-	evaluator TypeEvaluator, _ parser.ParseNode, _ *ClassType, _ string, _ bool,
-) *TypeResult {
-	noteEvaluatorUnported(evaluator, "enums.getTypeOfEnumMember")
-	return nil
-}

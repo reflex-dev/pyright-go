@@ -271,15 +271,3 @@ func EnumerateLiteralsForType(evaluator TypeEvaluator, t *ClassType) []*ClassTyp
 
 	return enumList
 }
-
-// TransformTypeForEnumMember corresponds to the enums.ts function of the same
-// name, which turns a raw member assignment into the enum-literal type the
-// member actually has. Returning nil is the original's undefined, and every
-// caller falls back to the untransformed type, so this degrades to reading the
-// declared type rather than producing a wrong one.
-func TransformTypeForEnumMember(evaluator TypeEvaluator, _ *ClassType, _ string) Type {
-	if noter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		noter.noteUnported("enums.transformTypeForEnumMember")
-	}
-	return nil
-}
