@@ -421,19 +421,6 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 	return nil
 }
 
-// adjustTypeArgsForTypeVarTuple corresponds to the function of the same name.
-// The original's comment: if the list of type parameters includes a
-// TypeVarTuple, we may need to adjust the supplied type arguments to map to the
-// type parameter list.
-func (e *typeEvaluator) adjustTypeArgsForTypeVarTuple(
-	typeArgs []*TypeResultWithNode,
-	_ []*TypeVarType,
-	_ parser.ExpressionNode,
-) []*TypeResultWithNode {
-	e.unported("adjustTypeArgsForTypeVarTuple")
-	return typeArgs
-}
-
 // createLiteralType corresponds to the function of the same name.
 func (e *typeEvaluator) createLiteralType(classType *ClassType, _ *parser.IndexNode, _ EvalFlags) Type {
 	e.unported("createLiteralType")
