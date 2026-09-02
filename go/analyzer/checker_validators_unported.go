@@ -80,14 +80,6 @@ func (c *Checker) validateFunctionTypeVarUsage(_ *parser.FunctionNode, _ *Functi
 	c.noteUnported("checker.validateFunctionTypeVarUsage")
 }
 
-func (c *Checker) validateGeneratorReturnType(_ *parser.FunctionNode, _ *FunctionType) {
-	c.noteUnported("checker.validateGeneratorReturnType")
-}
-
-func (c *Checker) reportDeprecatedClassProperty(_ *parser.FunctionNode, _ *FunctionTypeResult) {
-	c.noteUnported("checker.reportDeprecatedClassProperty")
-}
-
 func (c *Checker) validateOverloadConsistency(
 	_ *parser.FunctionNode, _ *FunctionType, _ []*FunctionType,
 ) {
@@ -106,17 +98,8 @@ func (c *Checker) validateIsInstanceCall(_ *parser.CallNode) {
 	c.noteUnported("checker.validateIsInstanceCall")
 }
 
-func (c *Checker) isTypeValidForUnusedValueTest(_ Type) bool {
-	c.noteUnported("checker.isTypeValidForUnusedValueTest")
-	return false
-}
-
 func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool) {
 	c.noteUnported("checker.validateExceptionType")
-}
-
-func (c *Checker) reportTupleIndexOutOfRange(_ *parser.IndexNode) {
-	c.noteUnported("checker.reportTupleIndexOutOfRange")
 }
 
 func (c *Checker) checkBinaryOperation(_ *parser.BinaryOperationNode) {
