@@ -279,17 +279,7 @@ func (e *typeEvaluator) getFlowTypeOfReference(
 	return &TypeResult{}
 }
 
-func (e *typeEvaluator) validateSymbolIsTypeExpression(_ *parser.NameNode, t Type, _ bool) Type {
-	e.unported("validateSymbolIsTypeExpression")
-	return t
-}
-
 func (e *typeEvaluator) validateTypeVarUsage(_ *parser.NameNode, t Type, _ EvalFlags) Type {
 	e.unported("validateTypeVarUsage")
 	return t
-}
-
-func (e *typeEvaluator) isSentinelLiteral(_ Type) bool {
-	e.unported("isSentinelLiteral")
-	return false
 }

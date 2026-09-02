@@ -405,12 +405,6 @@ func (e *typeEvaluator) evaluateTypeForSubnode(subnode parser.ParseNode, callbac
  * The three type-alias satellites this layer reaches.
  */
 
-// isLegalImplicitTypeAliasType corresponds to the function of the same name.
-func (e *typeEvaluator) isLegalImplicitTypeAliasType(_ Type) bool {
-	e.unported("isLegalImplicitTypeAliasType")
-	return false
-}
-
 // transformTypeForTypeAlias corresponds to the typeUtils function of the same
 // name.
 func (e *typeEvaluator) transformTypeForTypeAlias(

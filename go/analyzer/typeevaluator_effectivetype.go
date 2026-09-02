@@ -142,9 +142,3 @@ func (e *typeEvaluator) isPossibleTypeAliasDeclaration(decl Declaration) bool {
 // getDeclaredTypeOfSymbol and getTypeForDeclaration are in
 // typeevaluator_decl.go; the fork above chooses between them and the inference
 // path below.
-
-// isLegalTypeAliasExpressionForm corresponds to the function of the same name.
-func (e *typeEvaluator) isLegalTypeAliasExpressionForm(_ parser.ExpressionNode, _ bool) bool {
-	e.unported("isLegalTypeAliasExpressionForm")
-	return false
-}
