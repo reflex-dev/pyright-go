@@ -292,23 +292,8 @@ func (e *typeEvaluator) getTypeOfTuple(_ *parser.TupleNode, _ EvalFlags, _ *Infe
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-func (e *typeEvaluator) getTypeOfConstant(_ *parser.ConstantNode, _ EvalFlags) *TypeResult {
-	e.unported("getTypeOfConstant")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfStringList(_ *parser.StringListNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
 	e.unported("getTypeOfStringList")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfNumber(_ *parser.NumberNode) *TypeResult {
-	e.unported("getTypeOfNumber")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
-func (e *typeEvaluator) getTypeOfEllipsis(_ EvalFlags, _ *parser.EllipsisNode) *TypeResult {
-	e.unported("getTypeOfEllipsis")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
@@ -372,15 +357,6 @@ func (e *typeEvaluator) useSignatureTracker(node *parser.CallNode, callback func
 	return result
 }
 
-// withSignatureTracker is the original's useSignatureTracker, which is generic
-// in the callback's return type. Go methods cannot be generic, so the result is
-// carried out through the closure and the typed wrappers above and in
-// typeevaluator_class.go adapt it.
-func (e *typeEvaluator) withSignatureTracker(_ parser.ParseNode, callback func()) {
-	e.unported("useSignatureTracker")
-	callback()
-}
-
 func (e *typeEvaluator) assignTypeToExpression(
 	_ parser.ExpressionNode,
 	_ *TypeResult,
@@ -398,12 +374,6 @@ func (e *typeEvaluator) assignTypeToExpression(
 func (e *typeEvaluator) convertToTypeFormType(_ Type, srcType Type) Type {
 	e.unported("convertToTypeFormType")
 	return srcType
-}
-
-// ensureSignatureIsUnique corresponds to the function of the same name.
-func (e *typeEvaluator) ensureSignatureIsUnique(t Type, _ parser.ExpressionNode) Type {
-	e.unported("ensureSignatureIsUnique")
-	return t
 }
 
 func (e *typeEvaluator) addExpectedTypeCacheEntry(_ parser.ParseNode, _ Type) {

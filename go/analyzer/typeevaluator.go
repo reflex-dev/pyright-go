@@ -282,10 +282,9 @@ type typeEvaluator struct {
 	unportedTotal  int
 }
 
-// AssignClassToSelfInfo, CodeFlowAnalyzerCacheEntry and
-// SignatureTrackerStackEntry belong to files that are not ported yet. They are
-// declared here as the placeholders the stacks need, and move to their own
-// files when those land.
+// AssignClassToSelfInfo and CodeFlowAnalyzerCacheEntry belong to files that are
+// not ported yet. They are declared here as the placeholders the stacks need,
+// and move to their own files when those land.
 type AssignClassToSelfInfo struct {
 	ClassType       *ClassType
 	AssumedVariance Variance
@@ -300,9 +299,10 @@ type CodeFlowAnalyzerCacheEntry struct {
 }
 
 // SignatureTrackerStackEntry corresponds to the interface of the same name in
-// typeEvaluator.ts; the tracker itself is part of the call-evaluation code.
+// typeEvaluator.ts.
 type SignatureTrackerStackEntry struct {
-	Tracker any
+	Tracker  *UniqueSignatureTracker
+	RootNode parser.ParseNode
 }
 
 // NewTypeEvaluator corresponds to createTypeEvaluator. The original's third

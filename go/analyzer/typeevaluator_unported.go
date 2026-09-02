@@ -215,11 +215,6 @@ func (e *typeEvaluator) ExpandPromotionTypes(node parser.ParseNode, t Type) Type
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) MakeTopLevelTypeVarsConcrete(t Type, makeParamSpecsConcrete bool) Type {
-	e.unported("MakeTopLevelTypeVarsConcrete")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) MapSubtypesExpandTypeVars(t Type, options *EvaluatorMapSubtypesOptions, callback func(expandedSubtype Type, unexpandedSubtype Type) Type) Type {
 	e.unported("MapSubtypesExpandTypeVars")
 	return UnknownTypeCreate(false)
