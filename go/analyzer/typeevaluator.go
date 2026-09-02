@@ -282,13 +282,12 @@ type typeEvaluator struct {
 	unportedTotal  int
 }
 
-// AssignClassToSelfInfo and CodeFlowAnalyzerCacheEntry belong to files that are
-// not ported yet. They are declared here as the placeholders the stacks need,
-// and move to their own files when those land.
+// AssignClassToSelfInfo corresponds to the interface of the same name. The
+// original's field is named `class`, which is a reserved word in neither
+// language but reads poorly as a Go field name.
 type AssignClassToSelfInfo struct {
 	ClassType       *ClassType
 	AssumedVariance Variance
-	Depth           int
 }
 
 // CodeFlowAnalyzerCacheEntry corresponds to the interface of the same name.

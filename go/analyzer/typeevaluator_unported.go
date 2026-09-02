@@ -272,10 +272,6 @@ func (e *typeEvaluator) GetTypeCheckerInternalsType(node parser.ParseNode, symbo
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) InferVarianceForClass(t *ClassType) {
-	e.unported("InferVarianceForClass")
-}
-
 func (e *typeEvaluator) AssignTypeArgs(destType *ClassType, srcType *ClassType, diag *common.DiagnosticAddendum, constraints *ConstraintTracker, flags AssignTypeFlags, recursionCount int) bool {
 	e.unported("AssignTypeArgs")
 	return false
