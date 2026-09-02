@@ -158,11 +158,6 @@ func (e *typeEvaluator) GetGetterTypeFromProperty(propertyClass *ClassType) Type
 	return UnknownTypeCreate(false)
 }
 
-func (e *typeEvaluator) GetTypeOfArg(arg *Arg, inferenceContext *InferenceContext) *TypeResult {
-	e.unported("GetTypeOfArg")
-	return nil
-}
-
 func (e *typeEvaluator) ConvertNodeToArg(node *parser.ArgumentNode) *Arg {
 	e.unported("ConvertNodeToArg")
 	return nil
@@ -271,11 +266,6 @@ func (e *typeEvaluator) ValidateOverrideMethod(baseMethod Type, overrideMethod T
 func (e *typeEvaluator) ValidateCallArgs(errorNode parser.ExpressionNode, argList []*Arg, callTypeResult *TypeResult, constraints *ConstraintTracker, skipUnknownArgCheck bool, inferenceContext *InferenceContext) *CallResult {
 	e.unported("ValidateCallArgs")
 	return nil
-}
-
-func (e *typeEvaluator) ValidateTypeArg(argResult *TypeResultWithNode, options *ValidateTypeArgsOptions) bool {
-	e.unported("ValidateTypeArg")
-	return false
 }
 
 func (e *typeEvaluator) AssignTypeToExpression(target parser.ExpressionNode, typeResult *TypeResult, srcExpr parser.ExpressionNode) {

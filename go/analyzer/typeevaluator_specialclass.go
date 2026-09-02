@@ -725,21 +725,6 @@ func (e *typeEvaluator) explodeGenericClass(c *ClassType) Type {
 	return c
 }
 
-// transformTypeArgsForParamSpec corresponds to the function of the same name.
-// The original's comment: PEP 612 says that if the class has only one type
-// parameter consisting of a ParamSpec, the list of arguments does not need to be
-// enclosed in a list. The second result is the original's `undefined` return,
-// which means the arguments were invalid.
-func (e *typeEvaluator) transformTypeArgsForParamSpec(
-	_ []*TypeVarType,
-	typeArgs []*TypeResultWithNode,
-	typeArgsPresent bool,
-	_ parser.ExpressionNode,
-) ([]*TypeResultWithNode, bool) {
-	e.unported("transformTypeArgsForParamSpec")
-	return typeArgs, typeArgsPresent
-}
-
 // applyTypeArgToTypeVar corresponds to the function of the same name: it checks
 // a supplied type argument against its type parameter's bound or constraints. It
 // returns nil where the original returns undefined, meaning "not assignable".
