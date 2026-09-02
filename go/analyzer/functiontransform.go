@@ -42,8 +42,9 @@ func ApplyFunctionTransform(
 			return applyTotalOrderingTransform(evaluator, errorNode, argList, result)
 		}
 
-		if structUnpackKind(functionType.Shared.FullName) != "" {
-			return applyStructUnpackTransform(evaluator, errorNode, argList, result)
+		if kind := structUnpackKind(functionType.Shared.FullName); kind != "" {
+			return applyStructUnpackTransformWithKind(evaluator, errorNode, argList, result,
+				StructUnpackKind(kind))
 		}
 	}
 
@@ -166,15 +167,27 @@ func structUnpackKind(fullName string) string {
 	return ""
 }
 
-// applyStructUnpackTransform corresponds to the functionTransform.ts function of
-// the same name, which reads a literal `struct` format string and synthesizes the
-// exact tuple type its fields unpack to.
-func applyStructUnpackTransform(
+// applyStructUnpackTransformWithKind delegates to the functionTransform.ts
+// function of the same name. The Go port carries a CallResult at this seam where
+// the original carries a FunctionResult; the two hold the same fields.
+func applyStructUnpackTransformWithKind(
 	evaluator TypeEvaluator,
-	_ parser.ExpressionNode,
-	_ []*Arg,
+	errorNode parser.ExpressionNode,
+	argList []*Arg,
 	result *CallResult,
+	kind StructUnpackKind,
 ) *CallResult {
-	noteEvaluatorUnported(evaluator, "functionTransform.applyStructUnpackTransform")
-	return result
+	transformed := ApplyStructUnpackTransform(evaluator, errorNode, argList, &FunctionResult{
+		ReturnType:       result.ReturnType,
+		ArgumentErrors:   result.ArgumentErrors,
+		IsTypeIncomplete: result.IsTypeIncomplete,
+	}, kind)
+
+	if transformed == nil {
+		return result
+	}
+
+	updated := *result
+	updated.ReturnType = transformed.ReturnType
+	return &updated
 }

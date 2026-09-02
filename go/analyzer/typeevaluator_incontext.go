@@ -115,13 +115,15 @@ func (e *typeEvaluator) evaluateNameInNonExpressionContext(node *parser.NameNode
 }
 
 // evaluateAnnotationInContext is the original's annotation block. The original
-// asserts that the annotation node has a parent; a nil parent here would be a
-// binder bug, and falling through to the general case would evaluate the wrong
-// node, so it is recorded rather than ignored.
+// asserts that the annotation node has a parent; a nil parent would be a binder
+// bug, and falling through to the general case would evaluate the wrong node.
 func (e *typeEvaluator) evaluateAnnotationInContext(annotationNode parser.ExpressionNode) {
 	annotationParent := annotationNode.NodeBase().Parent
 	if annotationParent == nil {
-		e.unported("evaluateTypesForExpressionInContext.annotationWithoutParent")
+		// The original asserts here. This is not unported code -- the whole
+		// function is ported -- it is the original's invariant, which a
+		// well-formed tree cannot violate. Returning is the release-build
+		// behavior; falling through would evaluate the wrong node.
 		return
 	}
 
@@ -304,8 +306,8 @@ func (e *typeEvaluator) walkToEvaluableNode(node parser.ExpressionNode) (parser.
 func (e *typeEvaluator) evaluateResolvedNode(node parser.ExpressionNode, nodeToEvaluate parser.ExpressionNode, flags EvalFlags) {
 	parent := nodeToEvaluate.NodeBase().Parent
 	if parent == nil {
-		// The original asserts here.
-		e.unported("evaluateTypesForExpressionInContext.noParent")
+		// The original asserts here. As above, this is the original's invariant
+		// rather than missing work.
 		return
 	}
 

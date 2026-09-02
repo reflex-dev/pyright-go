@@ -527,7 +527,21 @@ func (e *typeEvaluator) isPossibleTypeDictFactoryCall(decl Declaration) bool {
  */
 
 // isDeclInEnumClass corresponds to the enums.ts function of the same name.
-func (e *typeEvaluator) isDeclInEnumClass(_ Declaration) bool {
-	e.unported("isDeclInEnumClass")
-	return false
+func (e *typeEvaluator) isDeclInEnumClass(decl Declaration) bool {
+	varDecl, ok := decl.(*VariableDeclaration)
+	if !ok {
+		return false
+	}
+
+	classNode := GetEnclosingClass(varDecl.Node, true)
+	if classNode == nil {
+		return false
+	}
+
+	classInfo := e.GetTypeOfClass(classNode)
+	if classInfo == nil {
+		return false
+	}
+
+	return ClassTypeIsEnumClass(classInfo.ClassType)
 }

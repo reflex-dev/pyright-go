@@ -246,20 +246,6 @@ func unreachableReportRange(statement parser.StatementNode) common.TextRange {
 	return statement.NodeBase().TextRange
 }
 
-// validateStubStatement corresponds to the method of the same name.
-func (c *Checker) validateStubStatement(statement parser.StatementNode) {
-	switch statement.GetNodeType() {
-	case parser.ParseNodeTypeIf,
-		parser.ParseNodeTypeFunction,
-		parser.ParseNodeTypeClass,
-		parser.ParseNodeTypeError:
-		// The original's comment: these are allowed in a stub file.
-
-	default:
-		c.noteUnported("checker.validateStubStatement")
-	}
-}
-
 /*
  * The checks that have not landed yet. Each is a method of the original and
  * records itself, so the frontier ranks them alongside the evaluator's.
@@ -352,10 +338,6 @@ func isLastStatementOfModule(node parser.ExpressionNode) bool {
 
 	return parser.ParseNode(moduleNode.D.Statements[len(moduleNode.D.Statements)-1]) ==
 		parser.ParseNode(statementList)
-}
-
-func (c *Checker) reportUnusedDunderAllSymbols(_ []*parser.StringNode) {
-	c.noteUnported("checker.reportUnusedDunderAllSymbols")
 }
 
 // reportUnusedMultipartImports corresponds to _reportUnusedMultipartImports.
