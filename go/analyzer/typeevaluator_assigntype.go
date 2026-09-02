@@ -191,7 +191,7 @@ func (e *typeEvaluator) AssignType(
 		if constraints != nil {
 			clonedConstraints = constraints.Clone()
 		}
-		if e.assignToUnionType(destType, srcType, nil, clonedConstraints, flags, recursionCount) {
+		if e.assignToUnionType(destType.(*UnionType), srcType, nil, clonedConstraints, flags, recursionCount) {
 			if constraints != nil && clonedConstraints != nil {
 				constraints.CopyFromClone(clonedConstraints)
 			}
@@ -205,7 +205,7 @@ func (e *typeEvaluator) AssignType(
 	}
 
 	if IsUnion(destType) {
-		return e.assignToUnionType(destType, srcType, diag, constraints, flags, recursionCount)
+		return e.assignToUnionType(destType.(*UnionType), srcType, diag, constraints, flags, recursionCount)
 	}
 
 	if handled, result := e.assignFromSpecializedTypeObject(destType, srcType, expandedSrcType, diag, constraints, flags, recursionCount); handled {
@@ -599,13 +599,6 @@ func (e *typeEvaluator) assignFromUnionType(
 	_ Type, _ *UnionType, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
 ) bool {
 	e.unported("assignFromUnionType")
-	return false
-}
-
-func (e *typeEvaluator) assignToUnionType(
-	_ Type, _ Type, _ *common.DiagnosticAddendum, _ *ConstraintTracker, _ AssignTypeFlags, _ int,
-) bool {
-	e.unported("assignToUnionType")
 	return false
 }
 
