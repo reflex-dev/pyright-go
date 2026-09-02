@@ -20,10 +20,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (c *Checker) validateProtocolTypeParamVariance(_ *parser.ClassNode, _ *ClassType) {
-	c.noteUnported("checker.validateProtocolTypeParamVariance")
-}
-
 func (c *Checker) validateBaseClassOverrides(_ *ClassType) {
 	c.noteUnported("checker.validateBaseClassOverrides")
 }
@@ -34,10 +30,6 @@ func (c *Checker) validateTypedDictOverrides(_ *ClassType) {
 
 func (c *Checker) validateMultipleInheritanceCompatibility(_ *ClassType, _ *parser.NameNode) {
 	c.noteUnported("checker.validateMultipleInheritanceCompatibility")
-}
-
-func (c *Checker) validateConstructorConsistency(_ *ClassType, _ *parser.NameNode) {
-	c.noteUnported("checker.validateConstructorConsistency")
 }
 
 func (c *Checker) validateInstanceVariableInitialization(_ *parser.ClassNode, _ *ClassType) {

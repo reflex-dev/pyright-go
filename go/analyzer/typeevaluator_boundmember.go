@@ -257,6 +257,11 @@ func (e *typeEvaluator) metaclassDescriptorSatisfiesLookup(
 // TreatConstructorAsClassMethod is what makes __new__ bind its first parameter to
 // the class: at runtime it is an implicit staticmethod, but for type checking it
 // behaves like a classmethod.
+// additionalFlags has no default in Go, and the original's is NOT zero: it is
+// MemberAccessFlags.SkipObjectBaseClass. Passing MemberAccessFlagsDefault here
+// is meaningful and deliberate at the two sites that do it -- the original
+// spells `MemberAccessFlags.Default` explicitly at both -- but it is the wrong
+// answer anywhere the original simply omits the argument.
 func GetBoundNewMethod(
 	evaluator TypeEvaluator,
 	errorNode parser.ExpressionNode,
@@ -275,6 +280,8 @@ func GetBoundNewMethod(
 
 // GetBoundInitMethod corresponds to the function of the same name. The original's
 // comment: fetches and binds the __init__ method from a class instance.
+// See GetBoundNewMethod on additionalFlags: the original's default is
+// SkipObjectBaseClass, not Default.
 func GetBoundInitMethod(
 	evaluator TypeEvaluator,
 	errorNode parser.ExpressionNode,
