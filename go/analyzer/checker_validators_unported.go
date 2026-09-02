@@ -20,10 +20,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (c *Checker) validateBaseClassOverrides(_ *ClassType) {
-	c.noteUnported("checker.validateBaseClassOverrides")
-}
-
 func (c *Checker) validateTypedDictOverrides(_ *ClassType) {
 	c.noteUnported("checker.validateTypedDictOverrides")
 }
@@ -64,4 +60,13 @@ func (c *Checker) validateClsSelfParamType(
 	_ *parser.FunctionNode, _ *FunctionType, _ *ClassType, _ bool,
 ) {
 	c.noteUnported("checker.validateClsSelfParamType")
+}
+
+// validateBaseClassOverride stands in for _validateBaseClassOverride, the
+// per-member comparison of a single override against a single base declaration.
+// It is 396 lines in the original and the last large piece of checker.ts.
+func (c *Checker) validateBaseClassOverride(
+	_ *ClassMember, _ *Symbol, _ Type, _ *ClassType, _ string,
+) {
+	c.noteUnported("checker.validateBaseClassOverride")
 }
