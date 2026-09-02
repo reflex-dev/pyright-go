@@ -259,10 +259,63 @@ func paramNameValue(param *parser.ParameterNode) string {
 	return param.D.Name.D.Value
 }
 
-// inferParamTypeFromDefaultValue corresponds to the function of the same name,
-// which reads a parameter's type from its default -- with None widened to
-// Optional[Unknown] rather than taken literally.
-func (e *typeEvaluator) inferParamTypeFromDefaultValue(_ parser.ExpressionNode) Type {
-	e.unported("inferParamTypeFromDefaultValue")
-	return nil
+// inferParamTypeFromDefaultValue corresponds to the function of the same name:
+// what `def f(x=0)` says about x.
+//
+// The answer is deliberately not just the default's type. A sentinel default --
+// None, a Sentinel literal, or an instance of a private class -- is a marker for
+// "not supplied", so the parameter's real type is that unioned with Unknown
+// rather than the sentinel alone.
+//
+// Three defaults infer nothing at all. A function or lambda default leaves the
+// question of positional-only open and would produce false positives. And a
+// tuple, list, set or dict default is likely narrower than intended -- `def
+// f(x=[])` does not mean x must be a list of nothing.
+//
+// The literal is stripped: `def f(x=0)` accepts any int, not just zero.
+func (e *typeEvaluator) inferParamTypeFromDefaultValue(paramValueExpr parser.ExpressionNode) Type {
+	defaultValueType := e.getTypeOfExpression(paramValueExpr, EvalFlagsConvertEllipsisToAny, nil).Type
+
+	var inferredParamType Type
+
+	// The original's comment: is the default value a "None", a sentinel, or an
+	// instance of some private class (one whose name starts with an underscore)?
+	// If so, we will assume that the value is a singleton sentinel. The actual
+	// supported type is going to be a union of this type and Unknown.
+	isPrivateInstance := IsClassInstance(defaultValueType) &&
+		IsPrivateOrProtectedName(defaultValueType.(*ClassType).Shared.Name)
+
+	if IsNoneInstance(defaultValueType) || e.isSentinelLiteral(defaultValueType) || isPrivateInstance {
+		inferredParamType = CombineTypes([]Type{defaultValueType, UnknownTypeCreate(false)}, nil)
+	} else {
+		skipInference := false
+
+		if IsFunctionOrOverloaded(defaultValueType) {
+			// The original's comment: do not infer parameter types that use a
+			// lambda or another function as a default value. We're likely to
+			// generate false positives in this case. It's not clear whether
+			// parameters should be positional-only or not.
+			skipInference = true
+		} else if IsClassInstance(defaultValueType) &&
+			ClassTypeIsBuiltInNamed(defaultValueType.(*ClassType), "tuple", "list", "set", "dict") {
+			// The original's comment: do not infer certain types like tuple because
+			// it's likely to be more restrictive (narrower) than intended.
+			skipInference = true
+		}
+
+		if !skipInference {
+			inferredParamType = e.convertSpecialFormToRuntimeValueEx(defaultValueType, EvalFlagsNone, true)
+			inferredParamType = StripTypeForm(inferredParamType)
+			inferredParamType = e.StripLiteralValue(inferredParamType)
+		}
+	}
+
+	if inferredParamType != nil {
+		fileInfo := GetFileInfo(paramValueExpr)
+		if fileInfo.IsInPyTypedPackage && !fileInfo.IsStubFile {
+			inferredParamType = CloneForAmbiguousType(inferredParamType)
+		}
+	}
+
+	return inferredParamType
 }
