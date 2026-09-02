@@ -1250,12 +1250,9 @@ func (w *codeFlowWalk) getTypeFromPostFinallyFlowNode(
 // function of the same name. A nil answer means the reference is not a
 // subexpression of the subject, so no narrowing applies.
 func getPatternSubtypeNarrowingCallback(
-	evaluator TypeEvaluator, _ CodeFlowReferenceExpressionNode, _ parser.ExpressionNode,
+	evaluator TypeEvaluator, reference CodeFlowReferenceExpressionNode, subjectExpression parser.ExpressionNode,
 ) func(Type) *TypeResult {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported("patternMatching.getPatternSubtypeNarrowingCallback")
-	}
-	return nil
+	return GetPatternSubtypeNarrowingCallback(evaluator, reference, subjectExpression)
 }
 
 // narrowForKeyAssignment corresponds to the typedDicts.ts function of the same

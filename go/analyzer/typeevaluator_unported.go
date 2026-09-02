@@ -29,14 +29,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (e *typeEvaluator) EvaluateTypesForMatchStatement(node *parser.MatchNode) {
-	e.unported("EvaluateTypesForMatchStatement")
-}
-
-func (e *typeEvaluator) EvaluateTypesForCaseStatement(node *parser.CaseNode) {
-	e.unported("EvaluateTypesForCaseStatement")
-}
-
 func (e *typeEvaluator) GetExpectedType(node parser.ExpressionNode) *ExpectedTypeResult {
 	e.unported("GetExpectedType")
 	return nil

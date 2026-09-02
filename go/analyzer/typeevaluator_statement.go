@@ -170,6 +170,6 @@ func (e *typeEvaluator) evaluateComprehensionForNode(curNode *parser.Comprehensi
 // reached only from here.
 
 // evaluateTypesForCaseStatement corresponds to the function of the same name.
-func (e *typeEvaluator) evaluateTypesForCaseStatement(_ *parser.CaseNode) {
-	e.unported("evaluateTypesForCaseStatement")
+func (e *typeEvaluator) evaluateTypesForCaseStatement(node *parser.CaseNode) {
+	e.EvaluateTypesForCaseStatement(node)
 }

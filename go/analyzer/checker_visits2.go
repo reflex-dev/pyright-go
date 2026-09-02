@@ -354,6 +354,12 @@ func (c *Checker) VisitTypeAlias(node *parser.TypeAliasNode) bool {
 	return true
 }
 
+// VisitPatternClass corresponds to visitPatternClass.
+func (c *Checker) VisitPatternClass(node *parser.PatternClassNode) bool {
+	ValidateClassPattern(c.evaluator, node)
+	return true
+}
+
 // VisitCase corresponds to visitCase.
 func (c *Checker) VisitCase(node *parser.CaseNode) bool {
 	if node.D.GuardExpr != nil {
