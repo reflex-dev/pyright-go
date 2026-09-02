@@ -244,16 +244,6 @@ func (e *typeEvaluator) disableSpeculativeMode(callback func()) {
  * The two things this reaches.
  */
 
-// inferReturnTypeForCallSite corresponds to the function of the same name, which
-// re-analyzes the function body with the call site's argument types substituted
-// for its unannotated parameters.
-func (e *typeEvaluator) inferReturnTypeForCallSite(
-	_ *FunctionType, _ *CallSiteEvaluationInfo,
-) Type {
-	e.unported("inferReturnTypeForCallSite")
-	return nil
-}
-
 // UseSpeculativeMode corresponds to useSpeculativeMode. The original is generic
 // over the callback's return type; every Go call site captures its result in a
 // closure variable instead.

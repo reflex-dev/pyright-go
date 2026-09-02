@@ -268,9 +268,9 @@ func (e *typeEvaluator) validateCallForMetaclass(
 	if len(argList) >= 2 {
 		// The original's comment: the two-parameter form of a call to a metaclass
 		// returns a new class built from the specified base types.
-		returnType := e.createClassFromMetaclass(errorNode, argList, expandedCallType)
-		if returnType == nil {
-			returnType = AnyTypeCreate(false)
+		var returnType Type = AnyTypeCreate(false)
+		if newClass := e.createClassFromMetaclass(errorNode, argList, expandedCallType); newClass != nil {
+			returnType = newClass
 		}
 		return &CallResult{ReturnType: returnType}
 	}

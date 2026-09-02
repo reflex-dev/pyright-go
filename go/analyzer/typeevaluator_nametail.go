@@ -279,11 +279,3 @@ func (e *typeEvaluator) ReportMissingTypeArgs(node parser.ExpressionNode, t Type
 /*
  * The four things these reach that are separate units of work.
  */
-
-// rejectBareSpecialFormInTypeForm corresponds to the function of the same name.
-// It returns nil where the original returns undefined, which is the "not
-// rejected" answer.
-func (e *typeEvaluator) rejectBareSpecialFormInTypeForm(_ *ClassType, _ parser.ExpressionNode) Type {
-	e.unported("rejectBareSpecialFormInTypeForm")
-	return nil
-}

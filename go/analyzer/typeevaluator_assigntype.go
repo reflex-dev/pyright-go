@@ -573,14 +573,6 @@ func (e *typeEvaluator) addTypeMismatch(diag *common.DiagnosticAddendum, srcType
  * the frontier ranks the assignability cases.
  */
 
-func (e *typeEvaluator) assignRecursiveTypeAliasToSelf(
-	_ *TypeAliasInfo, _ *TypeAliasInfo, _ *common.DiagnosticAddendum,
-	_ *ConstraintTracker, _ AssignTypeFlags, _ int,
-) bool {
-	e.unported("assignRecursiveTypeAliasToSelf")
-	return false
-}
-
 // setConstraintsForFreeTypeVars corresponds to the function of the same name.
 //
 // Its comment: finds unsolved type variables in the destType and establishes
@@ -695,11 +687,6 @@ func (e *typeEvaluator) assignClassToProtocol(
 // combineTupleTypeArgs reaches the typeUtils.ts function of the same name.
 func (e *typeEvaluator) combineTupleTypeArgs(typeArgs []*TupleTypeArg) Type {
 	return CombineTupleTypeArgs(typeArgs)
-}
-
-func (e *typeEvaluator) classGetItemReturnsGenericAlias(_ *ClassType) bool {
-	e.unported("classGetItemReturnsGenericAlias")
-	return false
 }
 
 /*

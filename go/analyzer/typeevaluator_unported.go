@@ -29,19 +29,6 @@ import (
 	"github.com/microsoft/pyright/go/parser"
 )
 
-func (e *typeEvaluator) GetExpectedType(node parser.ExpressionNode) *ExpectedTypeResult {
-	e.unported("GetExpectedType")
-	return nil
-}
-
-func (e *typeEvaluator) VerifyRaiseExceptionType(node parser.ExpressionNode, allowNone bool) {
-	e.unported("VerifyRaiseExceptionType")
-}
-
-func (e *typeEvaluator) VerifyDeleteExpression(node parser.ExpressionNode) {
-	e.unported("VerifyDeleteExpression")
-}
-
 // ValidateOverloadedArgTypes is the interface method; the original exposes
 // validateOverloadedArgTypes under the same name.
 func (e *typeEvaluator) ValidateOverloadedArgTypes(errorNode parser.ExpressionNode, argList []*Arg, typeResult *TypeResult, constraints *ConstraintTracker, skipUnknownArgCheck bool, inferenceContext *InferenceContext) *CallResult {
@@ -50,16 +37,6 @@ func (e *typeEvaluator) ValidateOverloadedArgTypes(errorNode parser.ExpressionNo
 
 func (e *typeEvaluator) ValidateInitSubclassArgs(node *parser.ClassNode, classType *ClassType) {
 	e.validateInitSubclassArgs(node, classType)
-}
-
-func (e *typeEvaluator) GetDeclInfoForStringNode(node *parser.StringNode) *SymbolDeclInfo {
-	e.unported("GetDeclInfoForStringNode")
-	return nil
-}
-
-func (e *typeEvaluator) GetDeclInfoForNameNode(node *parser.NameNode, skipUnreachableCode *bool) *SymbolDeclInfo {
-	e.unported("GetDeclInfoForNameNode")
-	return nil
 }
 
 // GetTypeForDeclaration is the interface method for getTypeForDeclaration.

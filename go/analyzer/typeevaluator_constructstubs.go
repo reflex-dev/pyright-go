@@ -64,12 +64,3 @@ func (e *typeEvaluator) createNewType(_ parser.ExpressionNode, _ []*Arg) Type {
 	e.unported("createNewType")
 	return UnknownTypeCreate(false)
 }
-
-// createClassFromMetaclass corresponds to the function of the same name: the
-// three-argument `type(name, bases, dict)` form.
-func (e *typeEvaluator) createClassFromMetaclass(
-	_ parser.ExpressionNode, _ []*Arg, _ *ClassType,
-) Type {
-	e.unported("createClassFromMetaclass")
-	return nil
-}
