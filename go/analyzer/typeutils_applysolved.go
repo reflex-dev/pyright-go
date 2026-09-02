@@ -83,6 +83,34 @@ func (t *applySolvedTypeVarsTransformer) TransformTypeVar(typeVar *TypeVarType, 
 
 	replacement := solutionSet.GetType(typeVar)
 
+	// DIVERGENCE from the original, forced by a real hang. See
+	// tests/samples/solverHigherOrder3.py, whose whole subject is a generic
+	// function passed to itself.
+	//
+	// A solution set can map a TypeVar to a type that mentions that same TypeVar
+	// at a strictly nested position. For `func2(func1, func2)`, T@func2's lower
+	// bound is func1's signature, T@func1 solves to T@func2, and substituting the
+	// dependent solutions in solveTypeVarRecursive produces
+	// `T@func2 := (x: T@func2, y: U@func1) -> ...`.
+	//
+	// assignTypeVar applies an occurs check when *recording* a lower bound -- see
+	// widenLowerBound and microsoft/pyright#11413 -- for exactly the reason stated
+	// there: a cyclic constraint has no finite solution, and later substitution
+	// rounds expand it into an exponentially growing type. That check cannot see
+	// this cycle, because the cycle is created after the bound was recorded.
+	//
+	// Expanding such a solution here re-enters the same TypeVar at every nesting
+	// level of the function it is substituted into. The recursion cap makes that
+	// finite rather than infinite, which is why it presents as a hang: for this
+	// one sample the port issues billions of Apply calls and never returns.
+	// Refusing to expand a self-referential replacement restores the invariant the
+	// occurs check is there to maintain -- no solution mentions the TypeVar it
+	// solves -- and leaves the TypeVar in place, which is what the original ends up
+	// producing for this file anyway.
+	if replacement != nil && typeVarOccursIn(typeVar, replacement) {
+		return nil
+	}
+
 	if replacement != nil {
 		// No more processing is needed for ParamSpecs.
 		if IsParamSpec(typeVar) {

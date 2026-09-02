@@ -365,17 +365,6 @@ func createProtocolConstraints(
 	return protocolConstraints
 }
 
-// AssignProperty corresponds to the properties.ts function of the same name,
-// which compares two property objects accessor by accessor.
-func AssignProperty(
-	evaluator TypeEvaluator,
-	_ *ClassType, _ *ClassType, _ *ClassType, _ Type,
-	_ *common.DiagnosticAddendum, _ *ConstraintTracker, _ *ConstraintSolution, _ int,
-) bool {
-	noteEvaluatorUnported(evaluator, "properties.assignProperty")
-	return true
-}
-
 // unusedLocalization keeps the import referenced from this file while the
 // member-walk lives in protocols_members.go.
 var _ = localization.LocAddendum

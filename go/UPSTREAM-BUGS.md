@@ -491,3 +491,54 @@ These looked wrong at first and are not:
   (`common/diagnostic.ts`) — written literally in the source. Deliberate, and
   load-bearing: the Go port got this wrong initially and the AST differential
   caught it.
+
+## 15. `getTypeOfYieldFrom` indexes past the end of `generatorTypeArgs`
+
+`typeEvaluator.ts`, `getTypeOfYieldFrom`:
+
+```ts
+const generatorTypeArgs = getGeneratorTypeArgs(yieldFromSubtype);
+if (generatorTypeArgs) {
+    return generatorTypeArgs.length >= 2 ? generatorTypeArgs[2] : UnknownType.create();
+}
+```
+
+The guard tests for at least *two* type arguments but reads index `[2]`, the
+*third*. A `Generator` specialized with exactly two arguments therefore yields
+`undefined`, which TypeScript happily returns as the subtype's narrowed type;
+downstream code that expects a `Type` receives `undefined`.
+
+The same pattern appears again a few lines below for the iterable fallback.
+
+The Go port tightens the bound to the index actually read (`> 2`), which is what
+the guard was evidently meant to say. Where the original produced `undefined`,
+the port produces `Unknown` -- the value the other arm of the same conditional
+already produces.
+
+## 16. A solution set can map a TypeVar to a type mentioning that TypeVar
+
+`constraintSolver.ts` applies an occurs check when *recording* a lower bound
+(`widenLowerBound`, added for microsoft/pyright#11413), on the stated grounds
+that a cyclic constraint has no finite solution and later substitution rounds
+expand it into an exponentially growing type.
+
+That check cannot see a cycle created *after* the bound is recorded, and
+`solveTypeVarRecursive` creates exactly one. For `func2(func1, func2)` in
+`tests/samples/solverHigherOrder3.py`:
+
+- `T@func2`'s lower bound is `func1`'s signature, which mentions `T@func1`;
+- `T@func1` solves to `T@func2`;
+- substituting the dependent solutions yields
+  `T@func2 := (x: T@func2, y: U@func1) -> ...`.
+
+`applySolvedTypeVars` then re-enters `T@func2` at every nesting level of the
+function it substitutes into. Pyright's own recursion cap bounds the depth, so
+this is finite rather than infinite -- but the branching makes it billions of
+transformer calls.
+
+Pyright itself completes this file, so something in its evaluation order avoids
+reaching the pathological substitution rather than the cycle being harmless. The
+port hit the pathological path and hung. The Go port refuses to expand a
+self-referential replacement in `applySolvedTypeVarsTransformer.transformTypeVar`,
+which restores the invariant the occurs check exists to maintain and terminates.
+This divergence is marked at the site.
