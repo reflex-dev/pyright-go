@@ -24,6 +24,8 @@
 package analyzer
 
 import (
+	"math/big"
+
 	"github.com/microsoft/pyright/go/localization"
 	"github.com/microsoft/pyright/go/parser"
 )
@@ -408,10 +410,242 @@ type getTypeArgsOptions struct {
 	SupportsTypedDictTypeArg bool
 }
 
-// createLiteralType corresponds to the function of the same name.
-func (e *typeEvaluator) createLiteralType(classType *ClassType, _ *parser.IndexNode, _ EvalFlags) Type {
-	e.unported("createLiteralType")
-	return classType
+// createLiteralType corresponds to the function of the same name: `Literal[...]`.
+//
+// The original's comment: as per the specification, we support None, int, bool,
+// str, bytes literals plus enum values.
+//
+// Each argument is read SYNTACTICALLY rather than evaluated, because the literal
+// value is the point -- `Literal[1]` needs the token `1`, not `int`. Only when
+// no syntactic form matches does it fall back on evaluating the expression,
+// which catches enum members and aliases to existing literal types.
+//
+// Outside a type expression an unrecognized argument is not an error; the whole
+// thing is just the `Literal` class object. Inside one it is reported.
+func (e *typeEvaluator) createLiteralType(
+	classType *ClassType, node *parser.IndexNode, flags EvalFlags,
+) Type {
+	if len(node.D.Items) == 0 {
+		e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+			localization.LocMessage.LiteralEmptyArgs(), node.D.LeftExpr, nil)
+		return UnknownTypeCreate(false)
+	}
+
+	literalTypes := []Type{}
+	isValidTypeForm := true
+
+	for _, item := range node.D.Items {
+		t := e.literalTypeForItem(node, classType, item, flags, &isValidTypeForm)
+
+		if t == nil {
+			t = e.literalTypeFromExpression(item.D.ValueExpr, flags)
+		}
+
+		if t == nil {
+			if (flags & EvalFlagsTypeExpression) == 0 {
+				// Outside a type expression this is just the `Literal` object.
+				return ClassTypeCloneAsInstance(classType, false)
+			}
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.LiteralUnsupportedType(), item, nil)
+			t = UnknownTypeCreate(false)
+			isValidTypeForm = false
+		}
+
+		literalTypes = append(literalTypes, t)
+	}
+
+	result := CombineTypes(literalTypes, &CombineTypesOptions{SkipElideRedundantLiterals: true})
+
+	if IsUnion(result) && e.prefetched != nil && e.prefetched.UnionTypeClass != nil &&
+		IsInstantiableClass(e.prefetched.UnionTypeClass) {
+		result = CloneAsSpecialForm(result,
+			ClassTypeCloneAsInstance(e.prefetched.UnionTypeClass.(*ClassType), false))
+	}
+
+	if isValidTypeForm {
+		result = CloneWithTypeForm(result, ConvertToInstance(result, false))
+	}
+
+	return result
+}
+
+// literalTypeForItem is the original's syntactic dispatch over one argument. It
+// returns nil when no syntactic form matched.
+func (e *typeEvaluator) literalTypeForItem(
+	node *parser.IndexNode,
+	classType *ClassType,
+	item *parser.ArgumentNode,
+	flags EvalFlags,
+	isValidTypeForm *bool,
+) Type {
+	itemExpr := item.D.ValueExpr
+
+	if item.D.ArgCategory != parser.ArgCategorySimple {
+		if (flags & EvalFlagsTypeExpression) != 0 {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.UnpackedArgInTypeArgument(), itemExpr, nil)
+			*isValidTypeForm = false
+			return UnknownTypeCreate(false)
+		}
+		return nil
+	}
+
+	if item.D.Name != nil {
+		if (flags & EvalFlagsTypeExpression) != 0 {
+			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+				localization.LocMessage.KeywordArgInTypeArgument(), itemExpr, nil)
+			*isValidTypeForm = false
+			return UnknownTypeCreate(false)
+		}
+		return nil
+	}
+
+	switch typed := itemExpr.(type) {
+	case *parser.StringListNode:
+		return e.literalTypeForStringList(node, classType, typed, flags, isValidTypeForm)
+
+	case *parser.NumberNode:
+		if !typed.D.IsImaginary && typed.D.IsInteger {
+			return e.cloneBuiltinClassWithLiteral(node, classType, "int",
+				numberNodeLiteralValue(typed.D.Value))
+		}
+
+	case *parser.ConstantNode:
+		switch typed.D.ConstType {
+		case parser.KeywordTypeTrue:
+			return e.cloneBuiltinClassWithLiteral(node, classType, "bool", LiteralBool(true))
+		case parser.KeywordTypeFalse:
+			return e.cloneBuiltinClassWithLiteral(node, classType, "bool", LiteralBool(false))
+		case parser.KeywordTypeNone:
+			if e.prefetched != nil && e.prefetched.NoneTypeClass != nil {
+				return e.prefetched.NoneTypeClass
+			}
+			return UnknownTypeCreate(false)
+		}
+
+	case *parser.UnaryOperationNode:
+		if typed.D.Operator != parser.OperatorTypeSubtract && typed.D.Operator != parser.OperatorTypeAdd {
+			return nil
+		}
+		numberNode, ok := typed.D.Expr.(*parser.NumberNode)
+		if !ok || numberNode.D.IsImaginary || !numberNode.D.IsInteger {
+			return nil
+		}
+
+		value := numberNodeLiteralValue(numberNode.D.Value)
+		if typed.D.Operator == parser.OperatorTypeSubtract {
+			value = negateIntLiteral(value)
+		}
+		return e.cloneBuiltinClassWithLiteral(node, classType, "int", value)
+	}
+
+	return nil
+}
+
+// literalTypeForStringList is the original's string arm. A named unicode escape
+// is rejected inside a type expression because its expansion is not stable
+// across Python versions.
+func (e *typeEvaluator) literalTypeForStringList(
+	node *parser.IndexNode,
+	classType *ClassType,
+	itemExpr *parser.StringListNode,
+	flags EvalFlags,
+	isValidTypeForm *bool,
+) Type {
+	strings := []*parser.StringNode{}
+	for _, s := range itemExpr.D.Strings {
+		stringNode, ok := s.(*parser.StringNode)
+		if !ok {
+			return nil
+		}
+		strings = append(strings, stringNode)
+	}
+	if len(strings) == 0 {
+		return nil
+	}
+
+	isBytes := (strings[0].D.Token.Flags & parser.StringTokenFlagsBytes) != 0
+	value := ""
+	for _, s := range strings {
+		value += s.D.Value.String()
+	}
+
+	builtInName := "str"
+	if isBytes {
+		builtInName = "bytes"
+	}
+	t := e.cloneBuiltinClassWithLiteral(node, classType, builtInName, LiteralString(value))
+
+	if (flags & EvalFlagsTypeExpression) != 0 {
+		for _, stringNode := range strings {
+			if (stringNode.D.Token.Flags & parser.StringTokenFlagsNamedUnicodeEscape) != 0 {
+				e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
+					localization.LocMessage.LiteralNamedUnicodeEscape(), stringNode, nil)
+				*isValidTypeForm = false
+			}
+		}
+	}
+
+	return t
+}
+
+// literalTypeFromExpression is the original's fallback: evaluate the argument
+// and accept it if it is an enum member or an alias to existing literal types.
+func (e *typeEvaluator) literalTypeFromExpression(
+	itemExpr parser.ExpressionNode, flags EvalFlags,
+) Type {
+	exprType := e.GetTypeOfExpression(itemExpr,
+		(flags&(EvalFlagsForwardRefs|EvalFlagsTypeExpression))|EvalFlagsNoConvertSpecialForm, nil)
+
+	// The original's comment: is this an enum type?
+	if exprClass, ok := exprType.Type.(*ClassType); ok && IsClassInstance(exprType.Type) &&
+		ClassTypeIsEnumClass(exprClass) && exprClass.Priv.LiteralValue != nil {
+		return ClassTypeCloneAsInstantiable(exprClass, false)
+	}
+
+	// The original's comment: is this a type alias to an existing literal type?
+	isLiteralType := true
+	DoForEachSubtype(exprType.Type, func(subtype Type, _ int, _ []Type) {
+		subtypeClass, ok := subtype.(*ClassType)
+		if !ok || !IsInstantiableClass(subtype) || subtypeClass.Priv.LiteralValue == nil {
+			if !IsNoneTypeClass(subtype) {
+				isLiteralType = false
+			}
+		}
+	})
+
+	if isLiteralType {
+		return exprType.Type
+	}
+
+	return nil
+}
+
+// cloneBuiltinClassWithLiteral corresponds to the function of the same name.
+func (e *typeEvaluator) cloneBuiltinClassWithLiteral(
+	node parser.ParseNode, literalClassType *ClassType, builtInName string, value LiteralValue,
+) Type {
+	t := e.GetBuiltInType(node, builtInName)
+	if IsInstantiableClass(t) {
+		literalType := ClassTypeCloneWithLiteral(t.(*ClassType), value)
+		literalType.Base().SetSpecialForm(literalClassType)
+		return literalType
+	}
+
+	return UnknownTypeCreate(false)
+}
+
+// negateIntLiteral is the original's `-itemExpr.d.expr.d.value`, which preserves
+// the number/bigint arm the value was in.
+func negateIntLiteral(value LiteralValue) LiteralValue {
+	switch literal := value.(type) {
+	case LiteralInt:
+		return LiteralInt{Value: new(big.Int).Neg(literal.Value)}
+	case LiteralFloat:
+		return LiteralFloat(-float64(literal))
+	}
+	return value
 }
 
 // getTypeOfIndexedObjectOrClass corresponds to the function of the same name:

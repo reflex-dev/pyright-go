@@ -250,12 +250,133 @@ type flowTypeOptions struct {
  */
 
 // getCodeFlowTypeForCapturedVariable corresponds to the function of the same
-// name.
+// name: narrowing a variable that an inner function or lambda CAPTURED from an
+// enclosing scope.
+//
+// Narrowing a captured variable is only sound if the variable cannot change
+// between the capture and the call, and most of this function is the list of
+// ways it could. A symbol reached through an explicit `global` or `nonlocal`
+// binding is out, as is one whose declarations are not all variables,
+// parameters or imports, or one assigned from a scope other than the one that
+// declares it. A non-Final module-level variable is out because another module
+// could rebind it.
+//
+// What survives that is checked against the code flow graph: if any assignment
+// to the symbol is REACHABLE from the point where the inner scope is created,
+// the value could still change and no narrowing applies. Parameters are exempt
+// -- they take their value at the start of the execution scope, so there is
+// nothing that could reassign one before the capture.
 func (e *typeEvaluator) getCodeFlowTypeForCapturedVariable(
-	_ *parser.NameNode,
-	_ *SymbolWithScope,
-	_ Type,
+	node *parser.NameNode,
+	symbolWithScope *SymbolWithScope,
+	effectiveType Type,
 ) *TypeResult {
-	e.unported("getCodeFlowTypeForCapturedVariable")
-	return nil
+	// The original's comment: this function applies only to captured variables,
+	// not those that are accessed via an explicit nonlocal or global binding.
+	if symbolWithScope.UsesGlobalBinding || symbolWithScope.UsesNonlocalBinding {
+		return nil
+	}
+
+	decls := symbolWithScope.Symbol.GetDeclarations()
+
+	// The original's comment: this function applies only to variables, parameters,
+	// and imports, not to other types of symbols.
+	for _, decl := range decls {
+		switch decl.(type) {
+		case *VariableDeclaration, *ParamDeclaration, *AliasDeclaration:
+		default:
+			return nil
+		}
+	}
+
+	// The original's comment: if the symbol is modified in scopes other than the
+	// one in which it is declared (e.g. through a nonlocal or global binding), it
+	// is not eligible for code flow analysis.
+	for _, decl := range decls {
+		if _, isParam := decl.(*ParamDeclaration); isParam {
+			continue
+		}
+		if GetScopeForNode(decl.DeclBase().Node) != symbolWithScope.Scope {
+			return nil
+		}
+	}
+
+	// The original's comment: if the symbol is a non-final variable in the global
+	// scope, it is not eligible because it could be modified by other modules.
+	for _, decl := range decls {
+		varDecl, isVar := decl.(*VariableDeclaration)
+		if !isVar || varDecl.IsFinal {
+			continue
+		}
+		if scope := GetScopeForNode(decl.DeclBase().Node); scope != nil && scope.Type == ScopeTypeModule {
+			return nil
+		}
+	}
+
+	// The original's comment: if the symbol is a variable captured by an inner
+	// function or lambda, see if we can infer the type from the outer scope.
+	scopeHierarchy := GetScopeHierarchy(node, symbolWithScope.Scope)
+	if len(scopeHierarchy) < 2 {
+		return nil
+	}
+
+	// The original's comment: find the parse node associated with the scope that
+	// is just inside of the scope that declares the captured variable.
+	innerScopeNode := FindTopNodeInScope(node, scopeHierarchy[len(scopeHierarchy)-2])
+	if innerScopeNode == nil {
+		return nil
+	}
+	switch innerScopeNode.GetNodeType() {
+	case parser.ParseNodeTypeFunction, parser.ParseNodeTypeLambda, parser.ParseNodeTypeClass:
+	default:
+		return nil
+	}
+
+	innerScopeCodeFlowNode := GetFlowNode(innerScopeNode)
+	if innerScopeCodeFlowNode == nil {
+		return nil
+	}
+
+	if !e.captureIsStable(symbolWithScope, innerScopeCodeFlowNode) {
+		return nil
+	}
+
+	typeAtStart := effectiveType
+	if symbolWithScope.Symbol.IsInitiallyUnbound() {
+		typeAtStart = UnboundTypeCreate()
+	}
+
+	return e.getFlowTypeOfReference(node, innerScopeNode, &flowTypeOptions{
+		TargetSymbolID: symbolWithScope.Symbol.ID,
+		TypeAtStart:    &TypeResult{Type: typeAtStart},
+	})
+}
+
+// captureIsStable is the original's reachability check.
+//
+// Its comment: see if any of the assignments of the symbol are reachable from
+// this node. If so, we cannot apply any narrowing because the type could change
+// after the capture.
+func (e *typeEvaluator) captureIsStable(
+	symbolWithScope *SymbolWithScope, innerScopeCodeFlowNode FlowNode,
+) bool {
+	for _, decl := range symbolWithScope.Symbol.GetDeclarations() {
+		// The original's comment: parameter declarations always start life at the
+		// beginning of the execution scope, so they are always safe to narrow.
+		if _, isParam := decl.(*ParamDeclaration); isParam {
+			continue
+		}
+
+		declCodeFlowNode := GetFlowNode(decl.DeclBase().Node)
+		if declCodeFlowNode == nil {
+			return false
+		}
+
+		if e.codeFlowReachability.GetFlowNodeReachability(e, declCodeFlowNode,
+			innerScopeCodeFlowNode, true) == ReachabilityReachable {
+			return false
+		}
+	}
+
+	return true
 }

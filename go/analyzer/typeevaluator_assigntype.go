@@ -608,9 +608,78 @@ func (e *typeEvaluator) assignFromUnionType(
 	return false
 }
 
-func (e *typeEvaluator) getCallbackProtocolType(_ *ClassType, _ int) Type {
-	e.unported("getCallbackProtocolType")
-	return nil
+// getCallbackProtocolType corresponds to the function of the same name.
+//
+// Its comment at the call site: if the class is a protocol and it has a
+// `__call__` method but no other methods or attributes that would be
+// incompatible with a function, this method returns the signature of the call
+// implied by the `__call__` method. Otherwise it returns undefined.
+//
+// "Incompatible" is decided by asking whether `types.FunctionType` itself
+// declares the same name, so a protocol may carry `__name__` or `__doc__` and
+// still be callable, but any member a function does not have disqualifies it.
+func (e *typeEvaluator) getCallbackProtocolType(objType *ClassType, recursionCount int) Type {
+	if !IsClassInstance(objType) || !ClassTypeIsProtocolClass(objType) {
+		return nil
+	}
+
+	// The original's comment: make sure that the protocol class doesn't define
+	// any fields that a normal function wouldn't be compatible with.
+	if !e.protocolIsFunctionShaped(objType) {
+		return nil
+	}
+
+	callType := e.GetBoundMagicMethod(objType, "__call__", nil, nil, nil, recursionCount)
+	if callType == nil {
+		return nil
+	}
+
+	return MakeFunctionTypeVarsBound(callType)
+}
+
+// protocolIsFunctionShaped is the original's MRO walk over the protocol's
+// members.
+func (e *typeEvaluator) protocolIsFunctionShaped(objType *ClassType) bool {
+	isFunctionShaped := true
+
+	for _, mroClass := range objType.Shared.Mro {
+		mroClassType, ok := mroClass.(*ClassType)
+		if !ok || !IsClass(mroClass) || !ClassTypeIsProtocolClass(mroClassType) {
+			continue
+		}
+
+		ClassTypeGetSymbolTable(mroClassType).ForEach(func(fieldSymbol *Symbol, fieldName string) {
+			if !isFunctionShaped {
+				return
+			}
+
+			// The original's comment: we're expecting a __call__ method. We will also
+			// ignore a __slots__ definition, which is (by convention) ignored for
+			// protocol matching.
+			if fieldName == "__call__" || fieldName == "__slots__" {
+				return
+			}
+
+			if fieldSymbol.IsIgnoredForProtocolMatch() {
+				return
+			}
+
+			fieldIsPartOfFunction := false
+			if e.prefetched != nil && e.prefetched.FunctionClass != nil &&
+				IsClass(e.prefetched.FunctionClass) {
+				if _, has := ClassTypeGetSymbolTable(
+					e.prefetched.FunctionClass.(*ClassType)).Get(fieldName); has {
+					fieldIsPartOfFunction = true
+				}
+			}
+
+			if !fieldIsPartOfFunction {
+				isFunctionShaped = false
+			}
+		})
+	}
+
+	return isFunctionShaped
 }
 
 // assignModuleToProtocol delegates to the protocols.ts function of the same
