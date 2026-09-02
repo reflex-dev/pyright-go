@@ -147,18 +147,5 @@ func (e *typeEvaluator) readContextualTypeCacheEntryForNode(node parser.ParseNod
 	return nil
 }
 
-// initializePrefetchedTypes corresponds to the function of the same name. Every
-// type it fetches goes through getBuiltInType or getTypeOfModule, both of which
-// end at getEffectiveTypeOfSymbol, so none of it can run yet.
-func (e *typeEvaluator) initializePrefetchedTypes(node parser.ParseNode) {
-	if e.prefetched != nil {
-		return
-	}
-
-	// The original's comment: some of these types have cyclical dependencies on
-	// each other, so don't re-enter this block once we start executing it. The
-	// assignment therefore happens before the fetches, not after.
-	e.prefetched = &PrefetchedTypes{}
-
-	e.unported("initializePrefetchedTypes")
-}
+// initializePrefetchedTypes is in typeevaluator_prefetch.go, alongside the
+// module and builtin lookups it is built from.

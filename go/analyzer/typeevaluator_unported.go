@@ -260,11 +260,6 @@ func (e *typeEvaluator) GetBestOverloadForArgs(errorNode parser.ExpressionNode, 
 	return nil
 }
 
-func (e *typeEvaluator) GetBuiltInType(node parser.ParseNode, name string) Type {
-	e.unported("GetBuiltInType")
-	return UnknownTypeCreate(false)
-}
-
 func (e *typeEvaluator) GetTypeOfMember(member *ClassMember) Type {
 	e.unported("GetTypeOfMember")
 	return UnknownTypeCreate(false)
@@ -342,51 +337,6 @@ func (e *typeEvaluator) AssignTypeToExpression(target parser.ExpressionNode, typ
 func (e *typeEvaluator) AssignClassToSelf(destType *ClassType, srcType *ClassType, assumedVariance Variance) bool {
 	e.unported("AssignClassToSelf")
 	return false
-}
-
-func (e *typeEvaluator) GetBuiltInObject(node parser.ParseNode, name string, typeArgs []Type) Type {
-	e.unported("GetBuiltInObject")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetTypedDictClassType() *ClassType {
-	e.unported("GetTypedDictClassType")
-	return nil
-}
-
-func (e *typeEvaluator) GetTupleClassType() *ClassType {
-	e.unported("GetTupleClassType")
-	return nil
-}
-
-func (e *typeEvaluator) GetDictClassType() *ClassType {
-	e.unported("GetDictClassType")
-	return nil
-}
-
-func (e *typeEvaluator) GetStrClassType() *ClassType {
-	e.unported("GetStrClassType")
-	return nil
-}
-
-func (e *typeEvaluator) GetObjectType() Type {
-	e.unported("GetObjectType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetNoneType() Type {
-	e.unported("GetNoneType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetUnionClassType() Type {
-	e.unported("GetUnionClassType")
-	return UnknownTypeCreate(false)
-}
-
-func (e *typeEvaluator) GetTypeClassType() *ClassType {
-	e.unported("GetTypeClassType")
-	return nil
 }
 
 func (e *typeEvaluator) GetTypingType(node parser.ParseNode, symbolName string) Type {
