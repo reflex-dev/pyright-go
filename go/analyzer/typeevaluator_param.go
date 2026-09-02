@@ -135,11 +135,134 @@ func (e *typeEvaluator) EvaluateTypeOfParam(node *parser.ParameterNode) {
 // context -- a synthesized Self/cls TypeVar for the first parameter of a method,
 // or the annotated type of the same parameter in a base class method.
 func (e *typeEvaluator) inferParamType(
-	_ *parser.FunctionNode,
-	_ FunctionTypeFlags,
-	_ int,
-	_ *ClassType,
+	functionNode *parser.FunctionNode,
+	functionFlags FunctionTypeFlags,
+	paramIndex int,
+	containingClassType *ClassType,
 ) Type {
-	e.unported("inferParamType")
+	// The original's comment: is the function a method within a class? If so, see
+	// if a base class defines the same method and provides annotations.
+	if containingClassType != nil {
+		if paramIndex == 0 && (functionFlags&FunctionTypeFlagsStaticMethod) == 0 {
+			hasClsParam := (functionFlags &
+				(FunctionTypeFlagsClassMethod | FunctionTypeFlagsConstructorMethod)) != 0
+			return SynthesizeTypeVarForSelfCls(containingClassType, hasClsParam)
+		}
+
+		if inherited := e.inferParamTypeFromBaseClass(
+			functionNode, paramIndex, containingClassType); inherited != nil {
+			return inherited
+		}
+	}
+
+	// The original's comment: if the parameter has a default argument value, we
+	// may be able to infer its type from this information.
+	if paramValueExpr := functionNode.D.Params[paramIndex].D.DefaultValue; paramValueExpr != nil {
+		return e.inferParamTypeFromDefaultValue(paramValueExpr)
+	}
+
+	return nil
+}
+
+// inferParamTypeFromBaseClass is the original's lookUpClassMember block: an
+// unannotated parameter of an overriding method inherits the base method's
+// annotation.
+//
+// The signature must match EXACTLY apart from annotations -- same parameter
+// count, same names, same categories. Anything less and the positions would not
+// correspond, so copying an annotation across would be a guess rather than an
+// inference.
+func (e *typeEvaluator) inferParamTypeFromBaseClass(
+	functionNode *parser.FunctionNode, paramIndex int, containingClassType *ClassType,
+) Type {
+	methodName := functionNode.D.Name.D.Value
+
+	baseClassMemberInfo := LookUpClassMember(containingClassType, methodName,
+		MemberAccessFlagsSkipOriginalClass, nil)
+	if baseClassMemberInfo == nil {
+		return nil
+	}
+
+	memberDecls := baseClassMemberInfo.Symbol.GetDeclarations()
+	if len(memberDecls) != 1 {
+		return nil
+	}
+	funcDecl, ok := memberDecls[0].(*FunctionDeclaration)
+	if !ok {
+		return nil
+	}
+	baseClassMethodNode, ok := funcDecl.Node.(*parser.FunctionNode)
+	if !ok {
+		return nil
+	}
+
+	// The original's comment: does the signature match exactly with the exception
+	// of annotations?
+	if len(baseClassMethodNode.D.Params) != len(functionNode.D.Params) {
+		return nil
+	}
+	for index, param := range baseClassMethodNode.D.Params {
+		overrideParam := functionNode.D.Params[index]
+		if paramNameValue(overrideParam) != paramNameValue(param) ||
+			overrideParam.D.Category != param.D.Category {
+			return nil
+		}
+	}
+
+	baseClassParam := baseClassMethodNode.D.Params[paramIndex]
+	baseClassParamAnnotation := baseClassParam.D.Annotation
+	if baseClassParamAnnotation == nil {
+		baseClassParamAnnotation = baseClassParam.D.AnnotationComment
+	}
+	if baseClassParamAnnotation == nil {
+		return nil
+	}
+
+	inferredParamType := e.getTypeOfParamAnnotation(
+		baseClassParamAnnotation, functionNode.D.Params[paramIndex].D.Category)
+
+	// The original's comment: if the parameter type is generic, specialize it in
+	// the context of the child class.
+	if RequiresSpecialization(inferredParamType, nil, 0) && IsClass(baseClassMemberInfo.ClassType) {
+		memberClass := baseClassMemberInfo.ClassType.(*ClassType)
+		scopeIds := GetTypeVarScopeIds(memberClass)
+		solution := BuildSolutionFromSpecializedClass(memberClass)
+
+		scopeIds = append(scopeIds, GetScopeIdForNode(baseClassMethodNode))
+
+		// The original's comment: replace any unsolved TypeVars with Unknown
+		// (including all function-scoped TypeVars).
+		inferredParamType = ApplySolvedTypeVars(inferredParamType, solution, &ApplyTypeVarOptions{
+			ReplaceUnsolved: &ReplaceUnsolvedOptions{
+				ScopeIDs:       scopeIds,
+				TupleClassType: e.GetTupleClassType(),
+			},
+		})
+	}
+
+	// An inferred type crossing a py.typed boundary is marked ambiguous: the
+	// package's authors did not declare it, so a consumer should not rely on it.
+	fileInfo := GetFileInfo(functionNode)
+	if fileInfo.IsInPyTypedPackage && !fileInfo.IsStubFile {
+		inferredParamType = CloneForAmbiguousType(inferredParamType)
+	}
+
+	return inferredParamType
+}
+
+// paramNameValue is the original's `param.d.name?.d.value`, which is undefined
+// for a bare `*` or `/` separator.
+func paramNameValue(param *parser.ParameterNode) string {
+	if param.D.Name == nil {
+		return ""
+	}
+	return param.D.Name.D.Value
+}
+
+// inferParamTypeFromDefaultValue corresponds to the function of the same name,
+// which reads a parameter's type from its default -- with None widened to
+// Optional[Unknown] rather than taken literally.
+func (e *typeEvaluator) inferParamTypeFromDefaultValue(_ parser.ExpressionNode) Type {
+	e.unported("inferParamTypeFromDefaultValue")
 	return nil
 }
