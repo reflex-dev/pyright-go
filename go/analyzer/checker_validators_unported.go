@@ -98,14 +98,6 @@ func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool)
 	c.noteUnported("checker.validateExceptionType")
 }
 
-func (c *Checker) validateConditionalIsBool(_ parser.ExpressionNode) {
-	c.noteUnported("checker.validateConditionalIsBool")
-}
-
-func (c *Checker) reportUnnecessaryConditionExpression(_ parser.ExpressionNode) {
-	c.noteUnported("checker.reportUnnecessaryConditionExpression")
-}
-
 func (c *Checker) reportDeprecatedUseForType(_ *parser.NameNode, _ Type, _ bool) {
 	c.noteUnported("checker.reportDeprecatedUseForType")
 }
