@@ -266,19 +266,6 @@ func (e *typeEvaluator) getCodeFlowTypeForCapturedVariable(
 	return nil
 }
 
-// getFlowTypeOfReference corresponds to the function of the same name: the
-// entry point into the code flow engine's narrowing, as opposed to its
-// reachability walk, which is ported. Returning an empty result means "code
-// flow says nothing", which leaves the effective type in place.
-func (e *typeEvaluator) getFlowTypeOfReference(
-	_ parser.ExpressionNode,
-	_ parser.ParseNode,
-	_ *flowTypeOptions,
-) *TypeResult {
-	e.unported("getFlowTypeOfReference")
-	return &TypeResult{}
-}
-
 func (e *typeEvaluator) validateTypeVarUsage(_ *parser.NameNode, t Type, _ EvalFlags) Type {
 	e.unported("validateTypeVarUsage")
 	return t
