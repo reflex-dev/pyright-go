@@ -106,14 +106,6 @@ func (c *Checker) validateIsInstanceCall(_ *parser.CallNode) {
 	c.noteUnported("checker.validateIsInstanceCall")
 }
 
-func (c *Checker) validateIllegalDefaultParamInitializer(_ parser.ParseNode) {
-	c.noteUnported("checker.validateIllegalDefaultParamInitializer")
-}
-
-func (c *Checker) validateStandardCollectionInstantiation(_ *parser.CallNode) {
-	c.noteUnported("checker.validateStandardCollectionInstantiation")
-}
-
 func (c *Checker) isTypeValidForUnusedValueTest(_ Type) bool {
 	c.noteUnported("checker.isTypeValidForUnusedValueTest")
 	return false
@@ -141,14 +133,6 @@ func (c *Checker) reportUnnecessaryConditionExpression(_ parser.ExpressionNode) 
 
 func (c *Checker) reportDeprecatedUseForType(_ *parser.NameNode, _ Type, _ bool) {
 	c.noteUnported("checker.reportDeprecatedUseForType")
-}
-
-func (c *Checker) validateNonlocalTypeParam(_ *parser.NameNode) {
-	c.noteUnported("checker.validateNonlocalTypeParam")
-}
-
-func (c *Checker) reportUnusedExceptStatements(_ *parser.TryNode) {
-	c.noteUnported("checker.reportUnusedExceptStatements")
 }
 
 func (c *Checker) validateMethod(_ *parser.FunctionNode, _ *FunctionType, _ parser.ParseNode) {
