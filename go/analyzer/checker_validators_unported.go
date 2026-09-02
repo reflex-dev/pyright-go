@@ -42,18 +42,6 @@ func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool)
 	c.noteUnported("checker.validateExceptionType")
 }
 
-func (c *Checker) validateSuperCallForMethod(
-	_ *parser.FunctionNode, _ *FunctionType, _ *ClassType,
-) {
-	c.noteUnported("checker.validateSuperCallForMethod")
-}
-
-func (c *Checker) validateClsSelfParamType(
-	_ *parser.FunctionNode, _ *FunctionType, _ *ClassType, _ bool,
-) {
-	c.noteUnported("checker.validateClsSelfParamType")
-}
-
 // validateBaseClassOverride stands in for _validateBaseClassOverride, the
 // per-member comparison of a single override against a single base declaration.
 // It is 396 lines in the original and the last large piece of checker.ts.
