@@ -54,10 +54,6 @@ func (c *Checker) validateExceptionType(_ Type, _ parser.ExpressionNode, _ bool)
 	c.noteUnported("checker.validateExceptionType")
 }
 
-func (c *Checker) reportDeprecatedUseForType(_ *parser.NameNode, _ Type, _ bool) {
-	c.noteUnported("checker.reportDeprecatedUseForType")
-}
-
 func (c *Checker) validateSuperCallForMethod(
 	_ *parser.FunctionNode, _ *FunctionType, _ *ClassType,
 ) {
