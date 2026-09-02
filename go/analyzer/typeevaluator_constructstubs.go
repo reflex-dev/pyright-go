@@ -23,14 +23,6 @@ func noteEvaluatorUnported(evaluator TypeEvaluator, name string) {
 	}
 }
 
-// CreateTypedDictType corresponds to the typedDicts.ts function of the same name.
-func CreateTypedDictType(
-	evaluator TypeEvaluator, _ parser.ExpressionNode, _ *ClassType, _ []*Arg,
-) Type {
-	noteEvaluatorUnported(evaluator, "typedDicts.createTypedDictType")
-	return UnknownTypeCreate(false)
-}
-
 // CreateSentinelType corresponds to the sentinels.ts function of the same name.
 func CreateSentinelType(evaluator TypeEvaluator, _ parser.ExpressionNode, _ []*Arg) Type {
 	noteEvaluatorUnported(evaluator, "sentinels.createSentinelType")

@@ -257,7 +257,8 @@ func (e *typeEvaluator) getTypeArg(
 
 // createTypedDictTypeInlined corresponds to the typedDicts.ts function of the
 // same name, which builds a TypedDict from an inline `{...}` type argument.
-func (e *typeEvaluator) createTypedDictTypeInlined(_ *parser.DictionaryNode, _ *ClassType) *ClassType {
-	e.unported("createTypedDictTypeInlined")
-	return nil
+func (e *typeEvaluator) createTypedDictTypeInlined(
+	dictNode *parser.DictionaryNode, typedDictClass *ClassType,
+) *ClassType {
+	return CreateTypedDictTypeInlined(e, dictNode, typedDictClass)
 }

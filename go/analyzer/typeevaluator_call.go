@@ -218,12 +218,6 @@ func (e *typeEvaluator) touchCallArgs(node *parser.CallNode, argList []*Arg, bas
  * unit of work and records itself.
  */
 
-// getTypeOfSuperCall corresponds to the function of the same name.
-func (e *typeEvaluator) getTypeOfSuperCall(_ *parser.CallNode) *TypeResult {
-	e.unported("getTypeOfSuperCall")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 // getTypeOfTypeForm corresponds to the function of the same name.
 func (e *typeEvaluator) getTypeOfTypeForm(_ *parser.CallNode, _ *ClassType) *TypeResult {
 	e.unported("getTypeOfTypeForm")

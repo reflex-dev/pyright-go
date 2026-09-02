@@ -419,8 +419,7 @@ func (e *typeEvaluator) resolveDeclaredMemberType(
 // getTypeOfIndexedTypedDict corresponds to the typedDicts.ts function of the
 // same name.
 func (e *typeEvaluator) getTypeOfIndexedTypedDict(
-	_ *parser.IndexNode, _ *ClassType, _ *EvaluatorUsage,
+	node *parser.IndexNode, baseType *ClassType, usage *EvaluatorUsage,
 ) *TypeResult {
-	e.unported("typedDicts.getTypeOfIndexedTypedDict")
-	return nil
+	return GetTypeOfIndexedTypedDict(e, node, baseType, usage)
 }
