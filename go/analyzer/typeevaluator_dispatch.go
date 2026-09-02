@@ -300,11 +300,6 @@ func (e *typeEvaluator) getTypeOfAugmentedAssignment(_ *parser.AugmentedAssignme
 	return &TypeResult{Type: UnknownTypeCreate(false)}
 }
 
-func (e *typeEvaluator) getTypeOfListOrSet(_ parser.ExpressionNode, _ EvalFlags, _ *InferenceContext) *TypeResult {
-	e.unported("getTypeOfListOrSet")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
-}
-
 func (e *typeEvaluator) getTypeOfSlice(_ *parser.SliceNode) *TypeResult {
 	e.unported("getTypeOfSlice")
 	return &TypeResult{Type: UnknownTypeCreate(false)}
