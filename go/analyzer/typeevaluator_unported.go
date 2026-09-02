@@ -44,10 +44,6 @@ func (e *typeEvaluator) EvaluateTypeForSubnode(subnode parser.ParseNode, callbac
 	return nil
 }
 
-func (e *typeEvaluator) EvaluateTypesForStatement(node parser.ParseNode) {
-	e.unported("EvaluateTypesForStatement")
-}
-
 func (e *typeEvaluator) EvaluateTypesForMatchStatement(node *parser.MatchNode) {
 	e.unported("EvaluateTypesForMatchStatement")
 }
