@@ -525,3 +525,72 @@ The gate now completes: **453 of 1,279 passing.** That is the first honest
 Stage D number. It is low, and the differential explains why -- the evaluator
 answers most *types* correctly while the checker that turns those types into
 diagnostics is barely started, and the gate asserts only on diagnostics.
+
+## From 453 to 822: the evaluator finishes, the checker starts
+
+The evaluator frontier is essentially clear. What remained after the hang fix
+came down in a few batches -- typeGuards, the special-form subscript handlers,
+forward references, destructuring, subscript evaluation, the protocol-binding
+statements, `assert_type`, `super()`'s siblings -- and the 60-file per-node
+differential moved from 2,226 computed matches at the start of this work to
+2,848, with all 60 files agreeing on which names to type. Four evaluator paths
+remain, worth 14 hits on that sample.
+
+Three findings from this stretch are worth keeping.
+
+**A sampling differential also cannot find a panic.** The hang lesson above has a
+sibling. The harness reports a crashed file as a one-line error and moves on, so
+54 of the 1,302 corpus files were dying on a nil dereference while the 60-file
+sample surfaced exactly one of them. Feeding the whole corpus through the
+`nodetypes` op and counting `error` envelopes is a separate check from the
+timeout probe, and it has to be run separately. `PYRIGHT_GO_PANIC_STACK=1` now
+makes the bridge server dump a goroutine stack instead of a bare message, which
+is what localized all three underlying causes in minutes.
+
+**Go's typed nil is the single most dangerous transliteration hazard in this
+port.** All three panic causes were the same shape: a function declared to return
+`*ClassType` returns nil, that nil is assigned to a `Type`, and the resulting
+interface is non-nil while dereferencing to nothing -- so every `x === undefined`
+check the original relies on silently fails. TypeScript's `undefined` does not
+have this property. `IsNilType` and its use in `MakeInferenceContext` are the fix
+at the chokepoint every "no expected type" path passes through; the rule for new
+code is that any boundary where a concrete pointer becomes a `Type` needs
+`IsNilType`, not `== nil`.
+
+**Landing half a pass can lose ground.** The checker's symbol-table validation
+went in before the visit methods that drive evaluation, and cost 13 gate tests.
+The evaluator is lazy, and evaluating a name is also what marks its symbol
+accessed -- so with no `visitClass`, `visitFunction` or `visitAssignment`,
+nothing ever evaluated a base-class list, a decorator, an annotation or a
+right-hand side, and essentially every import and local variable in the corpus
+read as unused: 90 "Any is not accessed", 568 "x is not accessed". The pass was
+correct; the walk underneath it was not there yet. The two must land together.
+
+The checker's walk is now complete and its symbol-table pass runs.
+**822 of 1,279 passing.** Of the 447 remaining failures, 241 over-report errors
+and 183 under-report, which is the ratio to watch: over-reporting is usually one
+eager check, under-reporting is usually a whole validator still on the frontier.
+
+### What is left
+
+The evaluator: `getTypeOfSuperCall`, `validateCallForClassInstance`,
+`namedTuples.createNamedTupleType`.
+
+The checker: roughly forty per-class and per-function validators, each named
+individually on the frontier rather than hidden behind one gap, so the ranking
+shows what each costs. The largest by reach are `validateBaseClassOverrides`,
+`validateFunctionParams`, `validateFunctionTypeVarUsage`,
+`validateInstanceVariableInitialization` and `validateEnumMembers`.
+
+Whole files not yet started: `dataClasses.ts` beyond the decorator behaviors,
+`patternMatching.ts`, `namedTuples.ts`, `sentinels.ts`, and the rest of
+`typedDicts.ts`.
+
+One class of bug found here is worth a standing check: **swapped arguments to a
+generated message format**. Six operator diagnostics passed
+`(operator, left, right)` into a `(leftType, rightType, operator)` signature.
+Every parameter is a string, so the compiler is silent, and the diagnostic still
+lands at the right node under the right rule, so count-based assertions pass --
+only a text comparison sees it. The audit that found them matches each argument
+expression against the generated parameter name and is worth re-running whenever
+a batch of diagnostics lands.
