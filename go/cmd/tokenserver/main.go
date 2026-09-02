@@ -403,6 +403,8 @@ func main() {
 			result, errMsg = handleImportResolver(req.Payload)
 		case "config":
 			result, errMsg = handleConfig(req.Payload)
+		case "analyze":
+			result, errMsg = handleAnalyze(req.Payload)
 		default:
 			errMsg = "unknown op: " + req.Op
 		}

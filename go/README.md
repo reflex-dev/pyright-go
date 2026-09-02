@@ -229,11 +229,17 @@ npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver vs
 `make bridge-corpus`, `make bridge-ast`, `make bridge-parsetreeutils`,
 `make bridge-binder`, `make bridge-binder-typeshed`, `make bridge-config`.
 
-`make bridge-binder-oracle` and `make bridge-config-oracle` run those
-differentials' TypeScript side alone and report what it produced. They need no
-Go server, so they validate the harness independently of the port — which is
-how two defects in the config oracle were caught before anything was compared
-against it.
+`make bridge-evaluator-tests` is the Stage D gate: pyright's own type evaluator
+and checker tests — 1,279 cases across nine files — run unmodified. It is not in
+`make bridge` yet, because the evaluator is not ported; see
+`analyzer/STATUS-STAGE-D.md` for what it currently reports and why the headline
+pass count is split in two.
+
+`make bridge-binder-oracle`, `make bridge-config-oracle` and
+`make bridge-evaluator-oracle` run those checks' TypeScript side alone and
+report what it produced. They need no Go server, so they validate the harness
+independently of the port — which is how two defects in the config oracle were
+caught before anything was compared against it.
 
 `typePrinter.test.ts` works differently from the others: rather than shipping
 data to Go, the shim records the test's type-construction calls and replays

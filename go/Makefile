@@ -9,7 +9,7 @@ REF ?= /tmp/pyright-ref/packages/pyright-internal/src
 ESBUILD ?= $(shell ls -d $$(npm root 2>/dev/null)/@esbuild/*/bin/esbuild 2>/dev/null | head -1)
 SERVER := $(CURDIR)/bin/tokenserver
 
-.PHONY: all build test fmt vet ref bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
+.PHONY: all build test fmt vet ref bridge-evaluator-tests bridge-evaluator-oracle bridge-tests bridge-parser-tests bridge-typeprinter-tests bridge-pathutils-tests bridge-uri-tests bridge-importresolver-tests bridge-symbolnameutils-tests bridge-typecacheutils-tests bridge-ast bridge-parsetreeutils bridge-corpus bridge-binder bridge-binder-typeshed bridge-binder-oracle bridge-config bridge-config-oracle bridge clean generate
 
 all: fmt vet test
 
@@ -36,7 +36,7 @@ vet:
 ref:
 	@mkdir -p $(dir $(REF))/../../..
 	git -C $(REPO) archive 1.1.412 packages/pyright-internal/src | tar -x -C $(dir $(REF))../../..
-	git -C $(REPO) archive 1.1.412 packages/pyright-internal/typeshed-fallback/stdlib | tar -x -C $(dir $(REF))../../..
+	git -C $(REPO) archive 1.1.412 packages/pyright-internal/typeshed-fallback | tar -x -C $(dir $(REF))../../..
 
 # Run the unmodified TypeScript tests against the Go implementation.
 bridge-tests: $(SERVER)
@@ -98,6 +98,20 @@ bridge-binder-typeshed: $(SERVER)
 # stands in for it; see tools/ts-bridge/dump-config.ts.
 bridge-config: $(SERVER)
 	node tools/ts-bridge/compare-config.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
+
+# The Stage D gate: pyright's own type evaluator and checker tests -- 1,279
+# cases across nine files -- run unmodified against the Go port. See
+# tools/ts-bridge/shim-evaluatorTestUtils.ts.
+EVALUATOR_TESTS := typeEvaluator1.test.ts,typeEvaluator2.test.ts,typeEvaluator3.test.ts,typeEvaluator4.test.ts,typeEvaluator5.test.ts,typeEvaluator6.test.ts,typeEvaluator7.test.ts,typeEvaluator8.test.ts,checker.test.ts
+
+bridge-evaluator-tests: $(SERVER)
+	node --max-old-space-size=8192 tools/ts-bridge/run-ts-tests.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD) --test $(EVALUATOR_TESTS)
+
+# The same suite, answered by the TypeScript evaluator but round-tripped through
+# the same wire format. Validates the harness without needing a Go evaluator:
+# anything the serialization loses shows up here, with no port in the picture.
+bridge-evaluator-oracle:
+	PYRIGHT_GO_BRIDGE_MODE=oracle node --max-old-space-size=8192 tools/ts-bridge/run-ts-tests.js --ref $(REF) --server /bin/true --esbuild $(ESBUILD) --test $(EVALUATOR_TESTS)
 
 bridge-config-oracle:
 	node tools/ts-bridge/compare-config.js --ref $(REF) --esbuild $(ESBUILD) --ts-only 1
