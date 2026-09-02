@@ -239,11 +239,90 @@ func builtinStringClassName(isBytes bool) string {
  * The two things this reaches.
  */
 
-// getTypeOfString corresponds to the function of the same name, which types one
-// piece of the concatenation and evaluates an f-string's interpolations.
-func (e *typeEvaluator) getTypeOfString(_ parser.StringOrFormatStringNode) *TypeResult {
-	e.unported("getTypeOfString")
-	return &TypeResult{Type: UnknownTypeCreate(false)}
+// getTypeOfString corresponds to the function of the same name: one piece of the
+// concatenation.
+//
+// A plain string is a literal. An f-string is not, but it is still LiteralString
+// when every interpolated expression is itself a literal string -- which is the
+// property that makes LiteralString useful, since it is what lets a formatted
+// query string stay safe. bytes is excluded because there are no bytes literals
+// in the LiteralString sense.
+func (e *typeEvaluator) getTypeOfString(node parser.StringOrFormatStringNode) *TypeResult {
+	isBytes := isBytesStringNode(node)
+
+	if stringNode, ok := node.(*parser.StringNode); ok {
+		return &TypeResult{
+			Type: e.cloneBuiltinObjectWithLiteral(stringNode, builtinStringClassName(isBytes),
+				LiteralString(stringNode.D.Value.String())),
+		}
+	}
+
+	formatNode, ok := node.(*parser.FormatStringNode)
+	if !ok {
+		return &TypeResult{Type: UnknownTypeCreate(false)}
+	}
+
+	isTemplateString := formatNode.D.Token.Flags&parser.StringTokenFlagsTemplate != 0
+	isLiteralString := true
+	isIncomplete := false
+
+	// The original's comment: if all of the format expressions are of type
+	// LiteralString, then the resulting formatted string is also LiteralString.
+	for _, expr := range formatNode.D.FieldExprs {
+		exprTypeResult := e.getTypeOfExpression(expr, EvalFlagsNone, nil)
+
+		if exprTypeResult.IsIncomplete {
+			isIncomplete = true
+		}
+
+		DoForEachSubtype(exprTypeResult.Type, func(exprSubtype Type, _ int, _ []Type) {
+			if !IsClassInstance(exprSubtype) {
+				isLiteralString = false
+				return
+			}
+
+			cls := exprSubtype.(*ClassType)
+			if ClassTypeIsBuiltInNamed(cls, "LiteralString") {
+				return
+			}
+			if ClassTypeIsBuiltInNamed(cls, "str") && cls.Priv.LiteralValue != nil {
+				return
+			}
+
+			isLiteralString = false
+		})
+	}
+
+	if isTemplateString {
+		var templateType Type = UnknownTypeCreate(false)
+		if e.prefetched != nil && IsInstantiableClass(e.prefetched.TemplateClass) {
+			templateType = ClassTypeCloneAsInstance(e.prefetched.TemplateClass.(*ClassType), false)
+		}
+		return &TypeResult{Type: templateType, IsIncomplete: isIncomplete}
+	}
+
+	if !isBytes && isLiteralString {
+		if literalStringType := e.getTypingType(formatNode, "LiteralString"); IsInstantiableClass(literalStringType) {
+			return &TypeResult{
+				Type:         ClassTypeCloneAsInstance(literalStringType.(*ClassType), false),
+				IsIncomplete: isIncomplete,
+			}
+		}
+	}
+
+	typeResult := &TypeResult{
+		Type:         e.GetBuiltInObject(formatNode, builtinStringClassName(isBytes), nil),
+		IsIncomplete: isIncomplete,
+	}
+
+	// An f-string result must not carry `str`'s promotion to `bytes`: the
+	// promotion is a property of the declared type, not of a computed value.
+	if cls, ok := typeResult.Type.(*ClassType); ok &&
+		cls.Priv.IncludePromotions != nil && *cls.Priv.IncludePromotions {
+		typeResult.Type = ClassTypeCloneRemoveTypePromotions(cls)
+	}
+
+	return typeResult
 }
 
 // getTypeOfStringListAsType corresponds to the function of the same name: parse
