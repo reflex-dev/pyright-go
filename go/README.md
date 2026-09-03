@@ -39,11 +39,21 @@ Where the Go differs, the reason is written down at the point of difference.
 | File system | `common/fileSystem.ts`, `readonlyAugmentedFileSystem.ts`, `pyrightFileSystem.ts`, `partialStubService.ts` | `common/uri/filesystem.go`, `analyzer/*filesystem.go`, `analyzer/partialstubservice.go` | done (Stage C) |
 | Config options | `common/configOptions.ts`, `commandLineOptions.ts` | `analyzer/configoptions*.go`, `commandlineoptions.go` | **done and verified** (Stage C) |
 | **Import resolver** | `analyzer/importResolver.ts` + deps | `analyzer/importresolver*.go` | **done and verified** (Stage C) |
-| **Program loop** | `analyzer/sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`, `service.ts`, `sourceEnumerator.ts` | `analyzer/sourcefile*.go`, `program*.go`, `service*.go`, `sourceenumerator.go` | done, with the check phase stubbed (Stage C) |
+| **Program loop** | `analyzer/sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`, `service.ts`, `sourceEnumerator.ts` | `analyzer/sourcefile*.go`, `program*.go`, `service*.go`, `sourceenumerator.go` | **done and verified** (Stage C) |
+| **Type evaluator** | `analyzer/typeEvaluator.ts`, `codeFlowEngine.ts`, `typeGuards.ts`, `constraintSolver.ts`, … | `analyzer/typeevaluator*.go`, `codeflowengine*.go`, `typeguards*.go`, … | **done and verified** (Stage D) |
+| **Checker** | `analyzer/checker.ts` | `analyzer/checker*.go` | **done and verified** (Stage D) |
+| Interpreter queries | `common/fullAccessHost.ts` | `analyzer/fullaccesshost.go` | done |
+| **CLI** | `pyright-internal/src/pyright.ts` | `cmd/pyright-go` | **done** — a drop-in for batch checking, including `--threads`; plus a `--cachedir` extension |
 
-The front end is complete. `Parser.ParseSourceFile` and
-`Parser.ParseTextExpression` are exported and produce the same tree the
-TypeScript does, verified file-for-file (see below).
+The whole type checker is complete: source text in, the same diagnostics
+pyright 1.1.412 reports out. **PORTING.md is the authoritative status
+document** — what is done, what is deliberately out of scope, how it is
+verified, and how fast it runs; this README covers layout and how to run the
+verification.
+
+`parser.ts` methods are exported through `Parser.ParseSourceFile` and
+`Parser.ParseTextExpression` and produce the same tree the TypeScript does,
+verified file-for-file (see below).
 
 `parser.ts` is split across several Go files by grammar area rather than kept as
 one 5.5k-line file: `parser.go` (state and token cursor), `parser_expressions.go`
@@ -57,21 +67,16 @@ statements, imports), `parser_patterns.go` (`match`), `parser_errors.go` and
 corresponds to.
 
 `ANALYZER-PLAN.md` has the staging; `analyzer/STATUS.md` covers Stage A,
-`analyzer/STATUS-STAGE-B.md` Stage B and `analyzer/STATUS-STAGE-C.md` Stage C.
+`analyzer/STATUS-STAGE-B.md` Stage B, `analyzer/STATUS-STAGE-C.md` Stage C and
+`analyzer/STATUS-STAGE-D.md` Stage D -- the evaluator, the checker, and the
+performance and concurrency work that followed.
 
-### Not yet ported
+### Not ported, deliberately
 
-The type evaluator and the checker, which are all of Stage D. The program loop
-stands up around them: `Program` holds the evaluator as an opaque value and
-takes its checker from a factory, and with a nil factory the check phase is
-skipped. So this parses, binds, resolves imports, walks the import graph,
-detects cycles and reports parse and bind diagnostics exactly as pyright does,
-and type-checks nothing.
-
-Also not ported: the service's file watchers and background-analysis thread
-(analysis is driven synchronously), the interpreter-spawning parts of `Host`,
-and the real file system's chokidar watchers, zip reader and temp files.
-Neither the language server nor the CLI is ported.
+The language server and everything that exists only to serve it: the
+providers (hover, completion, rename, …), background analysis and
+cancellation, the file watchers, `--watch`, `--createstub`, `--verifytypes`
+and `--dependencies`. PORTING.md carries the full table and the reasons.
 
 ## How it is verified
 
@@ -102,8 +107,9 @@ under test for shims that forward to it, then runs the unmodified test files.
     95 passed, 0 failed, 0 skipped, 95 total
     34 passed, 0 failed, 0 skipped, 34 total
 
-The 4 skipped cases drive the fourslash harness, which needs the checker. They
-are reported as `SKIP` with a reason rather than being dropped or counted as
+The 4 skipped cases drive the fourslash harness, which needs a live
+in-process `Program` that a stateless bridge cannot provide. They are
+reported as `SKIP` with a reason rather than being dropped or counted as
 passing.
 
 On top of that, corpus differentials run **both** implementations over every
@@ -149,96 +155,42 @@ Go tests:
 go test ./...
 ```
 
-The TypeScript-against-Go bridge needs the 1.1.412 sources and an `esbuild`
-binary. Extract the reference tree once:
-
-```bash
-git archive 1.1.412 packages/pyright-internal/src | tar -x -C /tmp/pyright-ref
-```
-
-Then:
-
-```bash
-go build -o /tmp/tokenserver ./cmd/tokenserver
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test parser.test.ts
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test typePrinter.test.ts
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test symbolNameUtils.test.ts
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test typeCacheUtils.test.ts
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test pathUtils.test.ts
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test uri.test.ts
-```
-
-```bash
-node tools/ts-bridge/run-ts-tests.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild" --test importResolver.test.ts
-```
-
-```bash
-node tools/ts-bridge/compare-corpus.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
-```
-
-```bash
-node tools/ts-bridge/compare-ast.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
-```
-
-```bash
-node --max-old-space-size=8192 tools/ts-bridge/compare-parsetreeutils.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
-```
-
-```bash
-node tools/ts-bridge/compare-config.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
-```
-
-```bash
-node --max-old-space-size=8192 tools/ts-bridge/compare-binder.js --ref /tmp/pyright-ref/packages/pyright-internal/src --server /tmp/tokenserver --esbuild "$(npm root)/@esbuild/linux-x64/bin/esbuild"
-```
-
-The bridge needs a handful of packages available to Node — install them in one
-command, because `--no-save` prunes anything not named:
+The TypeScript-against-Go bridge needs the 1.1.412 sources, an `esbuild`
+binary, and a handful of Node packages -- install them in one command, because
+`--no-save` prunes anything not named:
 
 ```bash
 npm install --no-save esbuild vscode-uri vscode-jsonrpc vscode-languageserver vscode-languageserver-textdocument jsonc-parser smol-toml tmp fs-extra @yarnpkg/fslib @yarnpkg/libzip
 ```
 
-`make bridge` runs all fourteen checks. Or run them individually with
-`make bridge-tests`, `make bridge-parser-tests`,
-`make bridge-typeprinter-tests`, `make bridge-pathutils-tests`,
-`make bridge-uri-tests`, `make bridge-importresolver-tests`,
-`make bridge-symbolnameutils-tests`, `make bridge-typecacheutils-tests`,
-`make bridge-corpus`, `make bridge-ast`, `make bridge-parsetreeutils`,
-`make bridge-binder`, `make bridge-binder-typeshed`, `make bridge-config`.
+Extract the reference tree once, then run everything:
 
-`make bridge-evaluator-tests` is the Stage D gate: pyright's own type evaluator
-and checker tests — 1,279 cases across nine files — run unmodified. It is not in
-`make bridge` yet, because the evaluator is not ported; see
-`analyzer/STATUS-STAGE-D.md` for what it currently reports and why the headline
-pass count is split in two.
+```bash
+make ref
+```
 
-`make bridge-types` is the per-node type differential: the printed type of every
-name in the corpus, diffed one name at a time, which is what localizes an
-evaluator failure to a single expression rather than an error count. Also not in
-`make bridge` yet.
+```bash
+make bridge
+```
+
+Individual checks have their own targets (`make bridge-tests`,
+`make bridge-ast`, `make bridge-binder`, `make bridge-config`, ... -- see the
+Makefile).
+
+`make bridge-evaluator-tests` is the Stage D gate: pyright's own type
+evaluator and checker tests -- 1,279 cases across nine files -- run
+unmodified: 1,269 pass, 0 fail, 10 skipped (the skips drive the fourslash
+harness, which needs a live in-process Program).
+
+`make bridge-types-full` is the per-node type differential: the printed type
+of **every name in every corpus file** -- 88,477 names over 1,343 files --
+diffed one name at a time, which is what localizes an evaluator failure to a
+single expression rather than an error count. `make bridge-types` is the
+faster sampled variant.
+
+Beyond the corpus, PORTING.md documents the whole-project differential: the
+CLI run against a real 3,138-file project alongside pyright 1.1.412, zero
+diagnostic differences in both single-threaded and `--threads` modes.
 
 `make bridge-binder-oracle`, `make bridge-config-oracle`,
 `make bridge-evaluator-oracle` and `make bridge-types-oracle` run those checks'

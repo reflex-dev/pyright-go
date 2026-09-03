@@ -1,3 +1,7 @@
+# Build outputs
+/pyright-go
+/pyright-go-race
+/tokenserver
 bin/
 
 # Written by tools/ts-bridge/run-ts-tests.js; contains an absolute path to the
