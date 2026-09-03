@@ -210,7 +210,7 @@ func SynthesizeDataClassMethods(
 		FunctionTypeAddDefaultParams(newType, false)
 		newType.Shared.Flags |= FunctionTypeFlagsGradualCallableForm
 	}
-	newType.Shared.DeclaredReturnType = ConvertToInstance(classTypeVar, false)
+	newType.Shared.DeclaredReturnType = ConvertToInstance(classTypeVar, true)
 
 	selfType := SynthesizeTypeVarForSelfCls(classType, false)
 	selfParam := FunctionParamCreate(

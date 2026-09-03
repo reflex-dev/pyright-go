@@ -98,7 +98,7 @@ func (e *typeEvaluator) createOptionalType(
 
 	if typeForm := typeFormOf(typeArg0Type); typeForm != nil {
 		typeFormType := CombineTypes(
-			[]Type{typeForm, ConvertToInstance(noneTypeClass, false)}, nil)
+			[]Type{typeForm, ConvertToInstance(noneTypeClass, true)}, nil)
 		optionalType = CloneWithTypeForm(optionalType, typeFormType)
 	}
 
@@ -184,7 +184,7 @@ func (e *typeEvaluator) createTypeFormType(
 	convertedTypeArgs := e.convertTypeArgsToInstances(typeArgs)
 	resultType := ClassTypeSpecialize(classType, convertedTypeArgs, nil, false, nil, nil)
 
-	return CloneWithTypeForm[Type](resultType, ConvertToInstance(resultType, false))
+	return CloneWithTypeForm[Type](resultType, ConvertToInstance(resultType, true))
 }
 
 // convertTypeArgsToInstances corresponds to the `typeArgs.map(...)` that
@@ -197,7 +197,7 @@ func (e *typeEvaluator) convertTypeArgsToInstances(typeArgs []*TypeResultWithNod
 		if e.ValidateTypeArg(typeArg, nil) {
 			t = typeArg.Type
 		}
-		converted = append(converted, ConvertToInstance(t, false))
+		converted = append(converted, ConvertToInstance(t, true))
 	}
 	return converted
 }
@@ -232,7 +232,7 @@ func (e *typeEvaluator) createTypeGuardType(
 	convertedTypeArgs := e.convertTypeArgsToInstances(typeArgs)
 	resultType := ClassTypeSpecialize(classType, convertedTypeArgs, nil, false, nil, nil)
 
-	return CloneWithTypeForm[Type](resultType, ConvertToInstance(resultType, false))
+	return CloneWithTypeForm[Type](resultType, ConvertToInstance(resultType, true))
 }
 
 // createRequiredOrReadOnlyType corresponds to the function of the same name. It

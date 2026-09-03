@@ -261,7 +261,7 @@ func (e *typeEvaluator) validateInitSubclassAgainstInitSubclass(
 	if diag != nil && initSubclassDecl != nil {
 		diag.AddRelatedInfo(
 			localization.LocAddendum.InitSubclassLocation().Format(
-				e.PrintType(ConvertToInstance(initSubclassMethodInfo.ClassType, false), nil)),
+				e.PrintType(ConvertToInstance(initSubclassMethodInfo.ClassType, true), nil)),
 			initSubclassDecl.DeclBase().Uri,
 			initSubclassDecl.DeclBase().Range,
 		)

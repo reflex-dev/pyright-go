@@ -86,7 +86,7 @@ func applyPartialTransform(
 	}
 	// The `__call__` must come from functools.partial itself; a subclass that
 	// overrides it is not something this transform can rewrite.
-	if !IsTypeSame(ConvertToInstance(callMemberResult.ClassType, false), partialInstance,
+	if !IsTypeSame(ConvertToInstance(callMemberResult.ClassType, true), partialInstance,
 		TypeSameOptions{}, 0) {
 		return nil
 	}
@@ -109,7 +109,7 @@ func applyPartialTransform(
 	if IsInstantiableClass(origFunctionTypeConcrete) {
 		var selfType Type
 		if IsTypeVar(origFunctionType) {
-			selfType = ConvertToInstance(origFunctionType, false)
+			selfType = ConvertToInstance(origFunctionType, true)
 		}
 
 		if constructor := CreateFunctionFromConstructor(evaluator,

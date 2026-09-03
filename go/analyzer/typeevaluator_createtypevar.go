@@ -95,7 +95,7 @@ func (e *typeEvaluator) createTypeVarType(
 					argOrErrorNode(arg, errorNode), nil)
 			}
 
-			TypeVarTypeAddConstraint(typeVar, ConvertToInstance(argType, false))
+			TypeVarTypeAddConstraint(typeVar, ConvertToInstance(argType, true))
 			if firstConstraintArg == nil {
 				firstConstraintArg = arg
 			}
@@ -161,7 +161,7 @@ func (e *typeEvaluator) applyTypeVarKeywordArg(
 				argOrErrorNode(arg, errorNode), nil)
 		}
 
-		typeVar.Shared.BoundType = ConvertToInstance(argType, false)
+		typeVar.Shared.BoundType = ConvertToInstance(argType, true)
 
 	case "covariant":
 		if arg.ValueExpression != nil && e.getBooleanValue(arg.ValueExpression) {
@@ -204,7 +204,7 @@ func (e *typeEvaluator) applyTypeVarKeywordArg(
 			TypeExpression:              true,
 		})
 
-		typeVar.Shared.DefaultType = ConvertToInstance(argType, false)
+		typeVar.Shared.DefaultType = ConvertToInstance(argType, true)
 		typeVar.Shared.IsDefaultExplicit = true
 
 		// PEP 696 landed in 3.13; typing_extensions backports it, so a TypeVar

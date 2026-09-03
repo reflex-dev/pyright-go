@@ -73,7 +73,7 @@ func (e *typeEvaluator) validateCallForInstantiableClass(
 			if enumType := CreateEnumType(e, errorNode, expandedCallType, argList); enumType != nil {
 				returnType = enumType
 			} else {
-				returnType = ConvertToInstance(unexpandedCallType, false)
+				returnType = ConvertToInstance(unexpandedCallType, true)
 			}
 			return &CallResult{ReturnType: returnType}
 		}
@@ -99,7 +99,7 @@ func (e *typeEvaluator) validateCallForInstantiableClass(
 	// convert the constructed type back to the TypeVar. For example, if we have
 	// `cls: Type[_T]` followed by `_T()`.
 	if IsTypeVar(unexpandedCallType) {
-		returnType = ConvertToInstance(unexpandedCallType, false)
+		returnType = ConvertToInstance(unexpandedCallType, true)
 	}
 
 	// The original's comment: if we instantiated the "deprecated" class, attach
@@ -251,11 +251,11 @@ func (e *typeEvaluator) validateCallForMetaclass(
 					}
 				}
 
-				return ConvertToInstantiable(e.StripLiteralValue(subtype), false)
+				return ConvertToInstantiable(e.StripLiteralValue(subtype), true)
 			}
 
 			if subtype.Base().IsInstance() && (IsFunction(subtype) || IsTypeVar(subtype)) {
-				return ConvertToInstantiable(subtype, false)
+				return ConvertToInstantiable(subtype, true)
 			}
 
 			return ClassTypeSpecialize(ClassTypeCloneAsInstance(expandedCallType, false),

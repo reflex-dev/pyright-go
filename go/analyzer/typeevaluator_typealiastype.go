@@ -206,7 +206,7 @@ func (e *typeEvaluator) getTypeOfTypeForm(node *parser.CallNode, typeFormClass *
 		if base := typeFormResult.Type.Base(); base.Props != nil && base.Props.TypeForm != nil {
 			tf := base.Props.TypeForm
 			typeFormResult.Type = ConvertToInstance(ClassTypeSpecialize(
-				typeFormClass, []Type{ConvertToInstance(tf, false)}, nil, false, nil, nil), false)
+				typeFormClass, []Type{ConvertToInstance(tf, true)}, nil, false, nil, nil), true)
 		}
 	}
 
@@ -260,7 +260,7 @@ func (e *typeEvaluator) validateCallForClassInstance(
 		// The original's comment: handle the case where a type[T] is being called.
 		// We presume this will instantiate an object of type T. `__call__` on
 		// `type` only promises `object`, which would lose T.
-		returnType = ConvertToInstance(unexpandedCallType, false)
+		returnType = ConvertToInstance(unexpandedCallType, true)
 	}
 
 	return &CallResult{

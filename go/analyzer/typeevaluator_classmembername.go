@@ -123,7 +123,7 @@ func (e *typeEvaluator) getTypeOfClassMemberName(
 		var selfClass Type
 
 		if selfType != nil {
-			selfClass = ConvertToInstantiable(selfType, false)
+			selfClass = ConvertToInstantiable(selfType, true)
 		} else {
 			// The original's comment: skip this for __new__ methods because they are
 			// not bound to the class but rather assume the type of the cls argument.

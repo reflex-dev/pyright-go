@@ -84,7 +84,7 @@ func (e *typeEvaluator) transformTypeForTypeAliasEx(
 			converted = append(converted, typeVar)
 			continue
 		}
-		if asTypeVar, ok := ConvertToInstance(typeVar, false).(*TypeVarType); ok {
+		if asTypeVar, ok := ConvertToInstance(typeVar, true).(*TypeVarType); ok {
 			converted = append(converted, asTypeVar)
 		}
 	}

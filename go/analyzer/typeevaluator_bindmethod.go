@@ -106,7 +106,7 @@ func (e *typeEvaluator) BindFunctionToClassOrObject(
 
 			var firstParamType Type = baseClass
 			if selfType != nil {
-				firstParamType = ConvertToInstantiable(selfType, false)
+				firstParamType = ConvertToInstantiable(selfType, true)
 			}
 
 			return e.partiallySpecializeBoundMethod(
@@ -163,7 +163,7 @@ func (e *typeEvaluator) partiallySpecializeBoundMethod(
 				// infinite recursion. Instead, we'll assume it's assignable.
 				lowerBound := firstParamType
 				if memberTypeFirstParamType.Base().IsInstantiable() {
-					lowerBound = ConvertToInstance(firstParamType, false)
+					lowerBound = ConvertToInstance(firstParamType, true)
 				}
 				constraints.SetBounds(firstParamTypeVar, lowerBound, nil, false)
 			} else {

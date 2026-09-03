@@ -171,7 +171,7 @@ func assignUnconstrainedTypeVar(
 			concreteAdjSrcType := evaluator.MakeTopLevelTypeVarsConcrete(adjSrcType, false)
 
 			if IsEffectivelyInstantiable(concreteAdjSrcType, nil, 0) {
-				adjSrcType = ConvertToInstance(concreteAdjSrcType, false)
+				adjSrcType = ConvertToInstance(concreteAdjSrcType, true)
 			} else {
 				if diag != nil {
 					types := evaluator.PrintSrcDestTypes(srcType, destType)
@@ -182,7 +182,7 @@ func assignUnconstrainedTypeVar(
 			}
 		}
 	} else if IsTypeVar(srcType) && srcType.Base().IsInstantiable() &&
-		IsTypeSame(ConvertToInstance(srcType, false), destType, TypeSameOptions{}, 0) {
+		IsTypeSame(ConvertToInstance(srcType, true), destType, TypeSameOptions{}, 0) {
 		if diag != nil {
 			types := evaluator.PrintSrcDestTypes(adjSrcType, destType)
 			diag.AddMessage(localization.LocAddendum.TypeAssignmentMismatch().Format(
@@ -599,7 +599,7 @@ func selectConstraintForSource(
 
 	adjustConstraint := func(constraint Type) Type {
 		if destType.Base().IsInstantiable() {
-			return ConvertToInstantiable(constraint, false)
+			return ConvertToInstantiable(constraint, true)
 		}
 		return constraint
 	}

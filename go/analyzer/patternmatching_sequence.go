@@ -703,7 +703,7 @@ func wrapTypeInList(evaluator TypeEvaluator, node parser.ParseNode, t Type) Type
 		return t
 	}
 
-	listObjectType := ConvertToInstance(evaluator.GetBuiltInObject(node, "list", nil), false)
+	listObjectType := ConvertToInstance(evaluator.GetBuiltInObject(node, "list", nil), true)
 	if listObjectType != nil && IsClassInstance(listObjectType) {
 		// The original's comment: if the type is a union that contains an Any or
 		// Unknown, eliminate the other types before wrapping it in a list.

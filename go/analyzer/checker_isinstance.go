@@ -84,7 +84,7 @@ func (c *Checker) validateIsInstanceCall(node *parser.CallNode) {
 		}
 		testType := arg0Type
 		if !isInstanceCheck {
-			testType = ConvertToInstance(arg0Type, false)
+			testType = ConvertToInstance(arg0Type, true)
 		}
 		c.validateUnsafeProtocolOverlap(node.D.Args[0].D.ValueExpr,
 			ClassTypeCloneAsInstance(filterType.(*ClassType), true), testType)
@@ -110,7 +110,7 @@ func (c *Checker) validateIsInstanceCall(node *parser.CallNode) {
 
 	instances := make([]Type, 0, len(classTypeList))
 	for _, t := range classTypeList {
-		instances = append(instances, ConvertToInstance(t, false))
+		instances = append(instances, ConvertToInstance(t, true))
 	}
 	classType := CombineTypes(instances, nil)
 

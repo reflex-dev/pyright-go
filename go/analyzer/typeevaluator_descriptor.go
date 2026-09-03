@@ -150,7 +150,7 @@ func (e *typeEvaluator) applyDescriptorAccessMethod(
 	if methodType == nil {
 		if diag != nil {
 			diag.AddMessage(localization.LocAddendum.DescriptorAccessBindingFailed().Format(
-				accessMethodName, e.PrintType(ConvertToInstance(methodClassType, false), nil)))
+				accessMethodName, e.PrintType(ConvertToInstance(methodClassType, true), nil)))
 		}
 
 		return &MemberAccessTypeResult{
@@ -191,7 +191,7 @@ func (e *typeEvaluator) applyDescriptorAccessMethod(
 	if usage.Method == "get" {
 		var classArgType Type
 		if selfType != nil {
-			classArgType = ConvertToInstantiable(selfType, false)
+			classArgType = ConvertToInstantiable(selfType, true)
 		} else if isAccessedThroughObject {
 			classArgType = ClassTypeCloneAsInstantiable(classType, false)
 		} else {
@@ -326,7 +326,7 @@ func (e *typeEvaluator) specializePropertyAccessMethod(
 
 	var selfClass Type = classType
 	if selfType != nil {
-		selfClass = ConvertToInstantiable(selfType, false)
+		selfClass = ConvertToInstantiable(selfType, true)
 	}
 
 	specializedType := PartiallySpecializeType(methodType, solvedClass, e.GetTypeClassType(), selfClass)

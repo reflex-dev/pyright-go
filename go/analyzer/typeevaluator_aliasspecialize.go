@@ -50,7 +50,7 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 		if typeFormProps := props.TypeForm.Base().Props; typeFormProps != nil {
 			aliasInfo = typeFormProps.TypeAliasInfo
 		}
-		aliasBaseType = ConvertToInstantiable(props.TypeForm, false)
+		aliasBaseType = ConvertToInstantiable(props.TypeForm, true)
 	}
 
 	if aliasInfo == nil || aliasInfo.Shared == nil || aliasInfo.Shared.TypeParams == nil ||
@@ -154,7 +154,7 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 		var typeArgType Type
 		switch {
 		case index < len(typeArgs):
-			typeArgType = ConvertToInstance(typeArgs[index].Type, false)
+			typeArgType = ConvertToInstance(typeArgs[index].Type, true)
 		case param.Shared.IsDefaultExplicit:
 			typeArgType = e.SolveAndApplyConstraints(param, constraints, &ApplyTypeVarOptions{
 				ReplaceUnsolved: &ReplaceUnsolvedOptions{
@@ -232,7 +232,7 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 
 	var typeFormType Type
 	if !reportedError {
-		typeFormType = ConvertToInstance(t, false)
+		typeFormType = ConvertToInstance(t, true)
 	}
 	t = CloneWithTypeForm(t, typeFormType)
 
@@ -241,7 +241,7 @@ func (e *typeEvaluator) createSpecializedTypeAlias(
 	}
 
 	return &TypeResultWithNode{
-		TypeResult: TypeResult{Type: CloneWithTypeForm(baseType, ConvertToInstance(t, false))},
+		TypeResult: TypeResult{Type: CloneWithTypeForm(baseType, ConvertToInstance(t, true))},
 		Node:       node,
 	}
 }
@@ -269,7 +269,7 @@ func (e *typeEvaluator) assignAliasParamSpecArg(
 			name := "__p" + itoa(paramIndex)
 			FunctionTypeAddParam(functionType, FunctionParamCreate(
 				parser.ParamCategorySimple,
-				ConvertToInstance(paramType, false),
+				ConvertToInstance(paramType, true),
 				FunctionParamFlagsNameSynthesized|FunctionParamFlagsTypeDeclared,
 				&name,
 				nil,
@@ -286,7 +286,7 @@ func (e *typeEvaluator) assignAliasParamSpecArg(
 	}
 
 	if IsParamSpec(typeArgType) {
-		e.AssignTypeVar(param, ConvertToInstance(typeArgType, false), diag, constraints,
+		e.AssignTypeVar(param, ConvertToInstance(typeArgType, true), diag, constraints,
 			AssignTypeFlagsRetainLiteralsForTypeVar, 0)
 		return true
 	}

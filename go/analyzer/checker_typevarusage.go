@@ -251,7 +251,7 @@ func (c *Checker) reportTypeVarUsedOnlyOnce(usage *typeVarUsageInfo) {
 		altTypeText = `"tuple[object, ...]"`
 	} else if usage.TypeVar.Shared.BoundType != nil {
 		altTypeText = `"` + c.evaluator.PrintType(
-			ConvertToInstance(usage.TypeVar.Shared.BoundType, false), nil) + `"`
+			ConvertToInstance(usage.TypeVar.Shared.BoundType, true), nil) + `"`
 	}
 
 	diag := common.NewDiagnosticAddendum()

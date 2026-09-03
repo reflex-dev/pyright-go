@@ -85,7 +85,7 @@ func (e *typeEvaluator) GetTypeOfAnnotation(node parser.ExpressionNode, options 
 		e.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues, localization.LocMessage.ModuleAsType(), node, nil)
 	}
 
-	return ConvertToInstance(annotationType, false)
+	return ConvertToInstance(annotationType, true)
 }
 
 // GetTypeOfExpressionExpectingType corresponds to
@@ -237,7 +237,7 @@ func (e *typeEvaluator) convertToTypeFormType(expectedType Type, srcType Type) T
 		}
 	} else if IsTypeVar(srcType) && srcType.Base().IsInstantiable() {
 		if !IsTypeVarTuple(srcType) || !srcType.(*TypeVarType).Priv.IsInUnion {
-			srcTypeFormType = ConvertToInstance(srcType, false)
+			srcTypeFormType = ConvertToInstance(srcType, true)
 		}
 	}
 

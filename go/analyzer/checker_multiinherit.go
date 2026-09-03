@@ -228,13 +228,13 @@ func (c *Checker) addMultipleInheritanceRelatedInfo(
 ) {
 	diag.AddRelatedInfo(
 		localization.LocAddendum.BaseClassOverriddenType().Format(
-			c.evaluator.PrintType(ConvertToInstance(overriddenClass, false), nil),
+			c.evaluator.PrintType(ConvertToInstance(overriddenClass, true), nil),
 			c.evaluator.PrintType(overriddenType, nil)),
 		overriddenDecl.DeclBase().Uri, overriddenDecl.DeclBase().Range)
 
 	diag.AddRelatedInfo(
 		localization.LocAddendum.BaseClassOverridesType().Format(
-			c.evaluator.PrintType(ConvertToInstance(overrideClass, false), nil),
+			c.evaluator.PrintType(ConvertToInstance(overrideClass, true), nil),
 			c.evaluator.PrintType(overrideType, nil)),
 		overrideDecl.DeclBase().Uri, overrideDecl.DeclBase().Range)
 }

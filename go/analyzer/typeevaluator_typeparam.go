@@ -129,7 +129,7 @@ func (e *typeEvaluator) applyTypeParamBound(node *parser.TypeParameterNode, type
 					localization.LocMessage.TypeVarBoundGeneric(), constraint, nil)
 			}
 
-			constraints = append(constraints, ConvertToInstance(constraintType, false))
+			constraints = append(constraints, ConvertToInstance(constraintType, true))
 		}
 
 		if len(constraints) < 2 {
@@ -150,7 +150,7 @@ func (e *typeEvaluator) applyTypeParamBound(node *parser.TypeParameterNode, type
 	}
 
 	if node.D.TypeParamKind == parser.TypeParamKindTypeVar {
-		typeVar.Shared.BoundType = ConvertToInstance(boundType, false)
+		typeVar.Shared.BoundType = ConvertToInstance(boundType, true)
 	}
 }
 
@@ -332,7 +332,7 @@ func (e *typeEvaluator) getTypeVarTupleDefaultType(node parser.ExpressionNode, i
 		return nil
 	}
 
-	return ConvertToInstance(argType, false)
+	return ConvertToInstance(argType, true)
 }
 
 // getParamSpecDefaultType corresponds to the function of the same name. It
@@ -356,7 +356,7 @@ func (e *typeEvaluator) getParamSpecDefaultType(node parser.ExpressionNode, isPe
 
 			FunctionTypeAddParam(functionType, FunctionParamCreate(
 				parser.ParamCategorySimple,
-				ConvertToInstance(typeResult.Type, false),
+				ConvertToInstance(typeResult.Type, true),
 				FunctionParamFlagsNameSynthesized|FunctionParamFlagsTypeDeclared,
 				synthesizedParamName(index), nil, nil))
 		}
@@ -441,7 +441,7 @@ func (e *typeEvaluator) createCallableType(
 			if !e.ValidateTypeArg(typeArgs[1], nil) {
 				typeArg1Type = UnknownTypeCreate(false)
 			}
-			functionType.Shared.DeclaredReturnType = ConvertToInstance(typeArg1Type, false)
+			functionType.Shared.DeclaredReturnType = ConvertToInstance(typeArg1Type, true)
 		} else {
 			e.AddDiagnostic(DiagnosticRuleReportMissingTypeArgument,
 				localization.LocMessage.CallableSecondArg(), errorNode, nil)
@@ -467,11 +467,11 @@ func (e *typeEvaluator) createCallableType(
 	}
 
 	if paramSpec != nil {
-		FunctionTypeAddParamSpecVariadics(functionType, ConvertToInstance(paramSpec, false).(*TypeVarType))
+		FunctionTypeAddParamSpecVariadics(functionType, ConvertToInstance(paramSpec, true).(*TypeVarType))
 	}
 
 	if isValidTypeForm {
-		return CloneWithTypeForm(functionType, ConvertToInstance(functionType, false))
+		return CloneWithTypeForm(functionType, ConvertToInstance(functionType, true))
 	}
 
 	return functionType
@@ -521,7 +521,7 @@ func (e *typeEvaluator) addCallableParamsFromTypeList(
 
 		FunctionTypeAddParam(functionType, FunctionParamCreate(
 			paramCategory,
-			ConvertToInstance(entryType, false),
+			ConvertToInstance(entryType, true),
 			FunctionParamFlagsNameSynthesized|FunctionParamFlagsTypeDeclared,
 			synthesizedParamName(index), nil, nil))
 	}

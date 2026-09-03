@@ -1421,8 +1421,8 @@ func (e *typeEvaluator) computeEffectiveMetaclass(classType *ClassType, errorNod
 					diag := common.NewDiagnosticAddendum()
 
 					diag.AddMessage(localization.LocAddendum.MetaclassConflict().Format(
-						e.PrintType(ConvertToInstance(effectiveMetaclass, false), nil),
-						e.PrintType(ConvertToInstance(baseClassMeta, false), nil),
+						e.PrintType(ConvertToInstance(effectiveMetaclass, true), nil),
+						e.PrintType(ConvertToInstance(baseClassMeta, true), nil),
 					))
 					e.AddDiagnostic(
 						DiagnosticRuleReportGeneralTypeIssues,

@@ -42,8 +42,8 @@ func (e *typeEvaluator) CreateSubclass(
 
 	printOptions := &PrintTypeOptions{OmitTypeArgsIfUnknown: true}
 	className := "<subclass of " +
-		e.PrintType(ConvertToInstance(type1, false), printOptions) + " and " +
-		e.PrintType(ConvertToInstance(type2, false), printOptions) + ">"
+		e.PrintType(ConvertToInstance(type1, true), printOptions) + " and " +
+		e.PrintType(ConvertToInstance(type2, true), printOptions) + ">"
 	fileInfo := GetFileInfo(errorNode)
 
 	// The original's comment: the effective metaclass of the intersection is the

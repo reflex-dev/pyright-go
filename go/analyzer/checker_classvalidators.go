@@ -385,7 +385,7 @@ func (c *Checker) validateMultipleInheritanceBaseClasses(
 			}
 
 			diag := common.NewDiagnosticAddendum()
-			baseClassObject := ConvertToInstance(baseClass, false)
+			baseClassObject := ConvertToInstance(baseClass, true)
 
 			if IsTypeSame(baseClassObject, baseClassMroObject, TypeSameOptions{}, 0) {
 				diag.AddMessage(localization.LocAddendum.BaseClassIncompatible().Format(

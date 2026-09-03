@@ -209,7 +209,7 @@ func (e *typeEvaluator) buildFunctionShape(
 		evaluated := e.evaluateTypeParamList(node.D.TypeParams)
 		converted := make([]*TypeVarType, 0, len(evaluated))
 		for _, typeParam := range evaluated {
-			if asTypeVar, ok := ConvertToInstance(typeParam, false).(*TypeVarType); ok {
+			if asTypeVar, ok := ConvertToInstance(typeParam, true).(*TypeVarType); ok {
 				converted = append(converted, asTypeVar)
 			}
 		}

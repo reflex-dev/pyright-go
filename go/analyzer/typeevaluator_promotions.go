@@ -67,7 +67,7 @@ func (e *typeEvaluator) expandPromotionTypes(
 
 			if promotionSubtype != nil && IsInstantiableClass(promotionSubtype) {
 				promoted := Type(ClassTypeCloneRemoveTypePromotions(promotionSubtype.(*ClassType)))
-				promoted = ConvertToInstance(promoted, false)
+				promoted = ConvertToInstance(promoted, true)
 				promoted = AddConditionToType(promoted, propsCondition(subtype), nil)
 				typesToCombine = append(typesToCombine, promoted)
 			}

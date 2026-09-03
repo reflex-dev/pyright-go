@@ -118,7 +118,7 @@ func (e *typeEvaluator) initializePrefetchedTypes(node parser.ParseNode) {
 		anySpecialForm := AnyTypeCreateSpecialForm()
 		if IsAny(anySpecialForm) {
 			anySpecialForm.Base().SetSpecialForm(anyClass)
-			anySpecialForm.Base().SetTypeForm(ConvertToInstance(anySpecialForm, false))
+			anySpecialForm.Base().SetTypeForm(ConvertToInstance(anySpecialForm, true))
 		}
 	}
 }
@@ -249,14 +249,14 @@ func (e *typeEvaluator) GetStrClassType() *ClassType {
 
 func (e *typeEvaluator) GetObjectType() Type {
 	if e.prefetched != nil && e.prefetched.ObjectClass != nil {
-		return ConvertToInstance(e.prefetched.ObjectClass, false)
+		return ConvertToInstance(e.prefetched.ObjectClass, true)
 	}
 	return UnknownTypeCreate(false)
 }
 
 func (e *typeEvaluator) GetNoneType() Type {
 	if e.prefetched != nil && e.prefetched.NoneTypeClass != nil {
-		return ConvertToInstance(e.prefetched.NoneTypeClass, false)
+		return ConvertToInstance(e.prefetched.NoneTypeClass, true)
 	}
 	return UnknownTypeCreate(false)
 }

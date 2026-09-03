@@ -235,7 +235,7 @@ func validateNewAndInitMethods(
 	// negatives if the __init__ method also produces type errors (perhaps unrelated
 	// to the errors in the __new__ method).
 	if argumentErrors {
-		initMethodTypeResult = &TypeResult{Type: ConvertToInstance(classType, false)}
+		initMethodTypeResult = &TypeResult{Type: ConvertToInstance(classType, true)}
 	}
 
 	// The original's comment: validate __init__ if it's present.
@@ -504,7 +504,7 @@ func validateFallbackConstructorCall(
 	// callable, then something has gone terribly wrong in the typeshed stubs. To
 	// avoid crashing, simply return the instance.
 	if newMethodType == nil || !IsFunctionOrOverloaded(newMethodType) {
-		return &CallResult{ReturnType: ConvertToInstance(classType, false)}
+		return &CallResult{ReturnType: ConvertToInstance(classType, true)}
 	}
 
 	return validateNewMethod(evaluator, errorNode, argList, classType, false, inferenceContext,
@@ -670,7 +670,7 @@ func applyExpectedTypeForTupleConstructor(classType *ClassType, inferenceContext
 func shouldSkipNewAndInitEvaluation(
 	evaluator TypeEvaluator, classType *ClassType, callMethodReturnType Type,
 ) bool {
-	if !evaluator.AssignType(ConvertToInstance(classType, false), callMethodReturnType,
+	if !evaluator.AssignType(ConvertToInstance(classType, true), callMethodReturnType,
 		nil, nil, AssignTypeFlagsDefault, 0) ||
 		IsNever(callMethodReturnType) ||
 		FindSubtype(callMethodReturnType, func(subtype Type) bool { return IsAny(subtype) }) != nil {

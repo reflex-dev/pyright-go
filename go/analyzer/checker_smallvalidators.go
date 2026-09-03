@@ -170,8 +170,8 @@ func (c *Checker) reportOneUnusedExcept(
 		}
 
 		diagAddendum.AddMessage(localization.LocAddendum.UnreachableExcept().Format(
-			c.evaluator.PrintType(ConvertToInstance(thisExceptType, false), nil),
-			c.evaluator.PrintType(ConvertToInstance(shadowedBy, false), nil)))
+			c.evaluator.PrintType(ConvertToInstance(thisExceptType, true), nil),
+			c.evaluator.PrintType(ConvertToInstance(shadowedBy, true), nil)))
 		overriddenExceptionCount++
 	}
 

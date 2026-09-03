@@ -317,7 +317,7 @@ func (e *typeEvaluator) superCallForMemberAccess(
 			// The original's comment: if a TypeVar was passed as the second
 			// argument, use it to derive the the self type.
 			if IsTypeVar(secondArgType) {
-				bindToSelfType = ConvertToInstance(secondArgType, false)
+				bindToSelfType = ConvertToInstance(secondArgType, true)
 			}
 		} else {
 			// The original's comment: if this is a zero-argument form of super(),
@@ -383,7 +383,7 @@ func (e *typeEvaluator) superCallOutsideMemberAccess(
 				nextBaseClassType = SpecializeForBaseClass(bindToType, nextBaseClassType.(*ClassType))
 			}
 			if resultIsInstance {
-				return &TypeResult{Type: ConvertToInstance(nextBaseClassType, false)}
+				return &TypeResult{Type: ConvertToInstance(nextBaseClassType, true)}
 			}
 			return &TypeResult{Type: nextBaseClassType}
 		}
@@ -395,7 +395,7 @@ func (e *typeEvaluator) superCallOutsideMemberAccess(
 			if resultIsInstance {
 				return &TypeResult{Type: e.GetObjectType()}
 			}
-			return &TypeResult{Type: ConvertToInstance(e.prefetched.TypeClass, false)}
+			return &TypeResult{Type: ConvertToInstance(e.prefetched.TypeClass, true)}
 		}
 
 		return &TypeResult{Type: UnknownTypeCreate(false)}

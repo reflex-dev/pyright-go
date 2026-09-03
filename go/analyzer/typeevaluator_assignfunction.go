@@ -798,7 +798,7 @@ func (a *functionAssigner) assignRemainingToParamSpec(
 	}
 	if effectiveSrcParamSpec != nil {
 		FunctionTypeAddParamSpecVariadics(remainingFunction,
-			ConvertToInstance(effectiveSrcParamSpec, false).(*TypeVarType))
+			ConvertToInstance(effectiveSrcParamSpec, true).(*TypeVarType))
 	}
 
 	if a.e.AssignType(effectiveDestParamSpec, remainingFunction, nil, a.constraints, a.flags, 0) {
@@ -812,8 +812,8 @@ func (a *functionAssigner) assignRemainingToParamSpec(
 		return false
 	}
 
-	return a.e.AssignType(ConvertToInstance(effectiveDestParamSpec, false),
-		ConvertToInstance(effectiveSrcParamSpec, false), nil, a.constraints, a.flags, 0)
+	return a.e.AssignType(ConvertToInstance(effectiveDestParamSpec, true),
+		ConvertToInstance(effectiveSrcParamSpec, true), nil, a.constraints, a.flags, 0)
 }
 
 // matchReturnType is the original's "match the return parameter" block. The

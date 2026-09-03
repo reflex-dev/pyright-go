@@ -151,7 +151,7 @@ func (c *Checker) validateClsSelfParamType(
 
 	var expectedType Type = classType
 	if !isCls {
-		expectedType = ConvertToInstance(classType, false)
+		expectedType = ConvertToInstance(classType, true)
 	}
 
 	// The original's comment: if the declared type is a protocol class or

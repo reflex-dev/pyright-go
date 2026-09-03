@@ -153,7 +153,7 @@ func (e *typeEvaluator) addTypeFormForSymbol(
 	}
 
 	if (flags&EvalFlagsTypeFormArg) != 0 && IsTypeVar(t) && TypeVarTypeIsSelf(t.(*TypeVarType)) {
-		t = CloneWithTypeForm(t, ConvertToInstance(t, false))
+		t = CloneWithTypeForm(t, ConvertToInstance(t, true))
 	}
 
 	if (flags&EvalFlagsTypeFormArg) != 0 && IsInstantiableClass(t) && !isIndexBase {
@@ -169,7 +169,7 @@ func (e *typeEvaluator) addTypeFormForSymbol(
 		if ClassTypeIsBuiltInNamed(classType, "Self") {
 			t = e.createSelfType(classType, node, nil, flags)
 			if IsTypeVar(t) {
-				t = CloneWithTypeForm(t, ConvertToInstance(t, false))
+				t = CloneWithTypeForm(t, ConvertToInstance(t, true))
 			}
 		}
 	}
@@ -198,7 +198,7 @@ func (e *typeEvaluator) addTypeFormForSymbol(
 	if IsTypeVar(t) && t.(*TypeVarType).Priv.ScopeID != "" && !t.(*TypeVarType).Shared.IsSynthesized {
 		if !IsTypeVarTuple(t) || !t.(*TypeVarType).Priv.IsInUnion {
 			liveScopeIds := GetTypeVarScopesForNode(node)
-			t = CloneWithTypeForm(t, ConvertToInstance(MakeTypeVarsBound(t, liveScopeIds, true), false))
+			t = CloneWithTypeForm(t, ConvertToInstance(MakeTypeVarsBound(t, liveScopeIds, true), true))
 		}
 	} else if IsInstantiableClass(t) && !t.(*ClassType).Priv.IncludeSubclasses &&
 		!ClassTypeIsSpecialBuiltIn(t.(*ClassType)) {
@@ -216,7 +216,7 @@ func (e *typeEvaluator) addTypeFormForSymbol(
 			typeFormType = e.specializeTypeAliasWithDefaults(typeFormType, nil)
 		}
 
-		t = CloneWithTypeForm(t, ConvertToInstance(typeFormType, false))
+		t = CloneWithTypeForm(t, ConvertToInstance(typeFormType, true))
 	}
 
 	return t

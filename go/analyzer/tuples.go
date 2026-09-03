@@ -16,7 +16,7 @@ package analyzer
 func MakeTupleObject(evaluator TypeEvaluator, typeArgs []*TupleTypeArg, isUnpacked bool) Type {
 	tupleClass := evaluator.GetTupleClassType()
 	if tupleClass != nil && IsInstantiableClass(tupleClass) {
-		return ConvertToInstance(SpecializeTupleClass(tupleClass, typeArgs, true, isUnpacked), false)
+		return ConvertToInstance(SpecializeTupleClass(tupleClass, typeArgs, true, isUnpacked), true)
 	}
 
 	return UnknownTypeCreate(false)

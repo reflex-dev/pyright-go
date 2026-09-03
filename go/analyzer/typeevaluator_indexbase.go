@@ -64,7 +64,7 @@ func (e *typeEvaluator) getTypeOfIndexWithBaseType(
 	if IsTypeVar(baseTypeResult.Type) && IsTypeAliasPlaceholder(baseTypeResult.Type) {
 		typeArgTypes := []Type{}
 		for _, arg := range e.getTypeArgs(node, flags, nil) {
-			typeArgTypes = append(typeArgTypes, ConvertToInstance(arg.Type, false))
+			typeArgTypes = append(typeArgTypes, ConvertToInstance(arg.Type, true))
 		}
 		return &TypeResult{Type: CloneForTypeAlias(baseTypeResult.Type, &TypeAliasInfo{
 			Shared:   baseTypeResult.Type.(*TypeVarType).Shared.RecursiveAlias,
@@ -131,7 +131,7 @@ func (e *typeEvaluator) specializeTypeAliasTypeInValueExpr(
 	// `{ ...typeAliasInfo, typeArgs: undefined }` -- the shared info without the
 	// arguments, so createSpecializedTypeAlias sees an unspecialized alias.
 	origTypeAlias := CloneForTypeAlias(
-		ConvertToInstantiable(props.TypeForm, false),
+		ConvertToInstantiable(props.TypeForm, true),
 		&TypeAliasInfo{Shared: typeFormProps.TypeAliasInfo.Shared},
 	)
 
@@ -141,7 +141,7 @@ func (e *typeEvaluator) specializeTypeAliasTypeInValueExpr(
 	}
 
 	return &TypeResult{
-		Type: CloneWithTypeForm(baseTypeResult.Type, ConvertToInstance(typeFormType.Type, false)),
+		Type: CloneWithTypeForm(baseTypeResult.Type, ConvertToInstance(typeFormType.Type, true)),
 	}
 }
 
@@ -322,7 +322,7 @@ func (e *typeEvaluator) indexInstantiableClass(
 		e.AddDiagnostic(
 			DiagnosticRuleReportInvalidTypeArguments,
 			localization.LocMessage.ClassAlreadySpecialized().Format(
-				e.PrintType(ConvertToInstance(concreteSubtype, false), &PrintTypeOptions{ExpandTypeAlias: true}),
+				e.PrintType(ConvertToInstance(concreteSubtype, true), &PrintTypeOptions{ExpandTypeAlias: true}),
 			),
 			node.D.LeftExpr,
 			nil,
@@ -464,7 +464,7 @@ func (e *typeEvaluator) createLiteralType(
 	}
 
 	if isValidTypeForm {
-		result = CloneWithTypeForm(result, ConvertToInstance(result, false))
+		result = CloneWithTypeForm(result, ConvertToInstance(result, true))
 	}
 
 	return result

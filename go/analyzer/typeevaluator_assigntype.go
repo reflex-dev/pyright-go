@@ -81,8 +81,8 @@ func (e *typeEvaluator) AssignType(
 	if destType.Base().IsInstantiable() && srcType.Base().IsInstantiable() {
 		if destType.Base().GetInstantiableDepth() > 0 || srcType.Base().GetInstantiableDepth() > 0 {
 			return e.AssignType(
-				ConvertToInstance(destType, false),
-				ConvertToInstance(srcType, false),
+				ConvertToInstance(destType, true),
+				ConvertToInstance(srcType, true),
 				diag, constraints, flags, recursionCount,
 			)
 		}
@@ -547,7 +547,7 @@ func (e *typeEvaluator) assignFromSpecializedTypeObject(
 		if diag != nil {
 			addendum = diag.CreateAddendum()
 		}
-		if e.AssignType(destType, ConvertToInstantiable(typeTypeArg, false), addendum, constraints, flags, recursionCount) {
+		if e.AssignType(destType, ConvertToInstantiable(typeTypeArg, true), addendum, constraints, flags, recursionCount) {
 			return true, true
 		}
 
@@ -714,7 +714,7 @@ func (e *typeEvaluator) assignToInstantiableClass(
 			IsInstantiableClass(srcType) && !srcType.(*ClassType).Priv.IncludeSubclasses {
 			if diag != nil {
 				diag.AddMessage(localization.LocAddendum.ProtocolSourceIsNotConcrete().Format(
-					e.PrintType(ConvertToInstance(srcType, false), nil),
+					e.PrintType(ConvertToInstance(srcType, true), nil),
 					e.PrintType(destType, nil),
 				))
 			}
@@ -769,7 +769,7 @@ func (e *typeEvaluator) assignToClassInstance(
 		destTypeArgs := destType.Priv.TypeArgs
 		if len(destTypeArgs) >= 1 {
 			if destTypeArgs[0].Base().IsInstance() && srcType.Base().IsInstantiable() {
-				return true, e.AssignType(destTypeArgs[0], ConvertToInstance(srcType, false),
+				return true, e.AssignType(destTypeArgs[0], ConvertToInstance(srcType, true),
 					diag, constraints, flags, recursionCount)
 			}
 		}
@@ -796,7 +796,7 @@ func (e *typeEvaluator) assignToClassInstance(
 		if IsClassInstance(concreteSrcType) && ClassTypeIsBuiltInNamed(concreteSrcType.(*ClassType), "type") {
 			srcTypeArg = concreteSrcType
 		} else if IsInstantiableClass(concreteSrcType) {
-			srcTypeArg = ConvertToInstance(concreteSrcType, false)
+			srcTypeArg = ConvertToInstance(concreteSrcType, true)
 		}
 
 		if srcTypeArg != nil {
@@ -827,7 +827,7 @@ func (e *typeEvaluator) assignToClassInstance(
 			}
 		}
 		if altClass != nil {
-			return true, e.AssignType(destType, ConvertToInstance(altClass, false),
+			return true, e.AssignType(destType, ConvertToInstance(altClass, true),
 				diag, constraints, flags, recursionCount)
 		}
 		return false, false
@@ -967,7 +967,7 @@ func (e *typeEvaluator) assignToFunction(
 	if IsInstantiableClass(concreteSrcType) && concreteSrcType.(*ClassType).Priv.LiteralValue == nil {
 		var selfType Type
 		if IsTypeVar(srcType) {
-			selfType = ConvertToInstance(srcType, false)
+			selfType = ConvertToInstance(srcType, true)
 		}
 		if constructor := e.createFunctionFromConstructor(concreteSrcType.(*ClassType), selfType, recursionCount); constructor != nil {
 			concreteSrcType = constructor

@@ -390,7 +390,7 @@ func (e *typeEvaluator) StripTypeGuard(t Type) Type {
 		if IsClassInstance(subtype) &&
 			ClassTypeIsBuiltInNamed(subtype.(*ClassType), "TypeGuard", "TypeIs") {
 			if e.prefetched != nil && e.prefetched.BoolClass != nil {
-				return ConvertToInstance(e.prefetched.BoolClass, false)
+				return ConvertToInstance(e.prefetched.BoolClass, true)
 			}
 			return UnknownTypeCreate(false)
 		}

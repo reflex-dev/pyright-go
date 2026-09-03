@@ -154,6 +154,21 @@ func (e *typeEvaluator) getAbstractSymbolInfo(classType *ClassType, symbolName s
 	hasImplementation := !IsSuiteEmpty(lastFunctionNode.D.Suite) &&
 		!e.methodAlwaysRaisesNotImplemented(lastFunctionDecl)
 
+	// The original's comment: if this is a protocol class, the method isn't
+	// explicitly marked as abstract, and there is an implementation, then it's a
+	// default implementation, and it's not considered abstract. If it's in a stub
+	// file, assume it's implemented in this case.
+	//
+	// The stub half is what matters most: a protocol method in typeshed has no
+	// body to inspect, so treating "empty suite" as "unimplemented" would make
+	// every protocol declared in a stub abstract and every call through one an
+	// error.
+	if isProtocolClass && !isAbstract {
+		if hasImplementation || isStubFile {
+			return nil
+		}
+	}
+
 	return &AbstractSymbol{
 		Symbol:            symbol,
 		SymbolName:        symbolName,

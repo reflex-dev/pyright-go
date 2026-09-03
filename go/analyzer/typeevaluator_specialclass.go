@@ -104,7 +104,7 @@ func (e *typeEvaluator) createSpecializedClassType(
 	if typeArgsPresent && len(classType.Shared.TypeParams) == 0 && ClassTypeIsPartiallyEvaluated(classType) {
 		typeArgTypes = make([]Type, 0, len(typeArgs))
 		for _, t := range typeArgs {
-			typeArgTypes = append(typeArgTypes, ConvertToInstance(t.Type, false))
+			typeArgTypes = append(typeArgTypes, ConvertToInstance(t.Type, true))
 		}
 	}
 
@@ -112,7 +112,7 @@ func (e *typeEvaluator) createSpecializedClassType(
 
 	var typeFormType Type
 	if isValidTypeForm {
-		typeFormType = ConvertToInstance(specialized, false)
+		typeFormType = ConvertToInstance(specialized, true)
 	}
 
 	return &TypeResult{Type: CloneWithTypeForm(Type(specialized), typeFormType)}
@@ -154,7 +154,7 @@ func (e *typeEvaluator) createSpecialFormType(
 			resultType = NeverTypeCreateNoReturn()
 		}
 		resultType = CloneAsSpecialForm(resultType, classType)
-		resultType = CloneWithTypeForm(resultType, ConvertToInstance(resultType, false))
+		resultType = CloneWithTypeForm(resultType, ConvertToInstance(resultType, true))
 
 		return &TypeResult{Type: resultType}, true
 
@@ -166,7 +166,7 @@ func (e *typeEvaluator) createSpecialFormType(
 		if IsInstantiableClass(typeType) {
 			typeType = ExplodeGenericClass(typeType.(*ClassType))
 		}
-		typeType = CloneWithTypeForm(typeType, ConvertToInstance(typeType, false))
+		typeType = CloneWithTypeForm(typeType, ConvertToInstance(typeType, true))
 		return &TypeResult{Type: typeType}, true
 
 	case "ClassVar":
@@ -295,7 +295,7 @@ func (e *typeEvaluator) createPy39BuiltinType(
 			if IsInstantiableClass(typeType) {
 				typeType = ExplodeGenericClass(typeType.(*ClassType))
 			}
-			typeType = CloneWithTypeForm(typeType, ConvertToInstance(typeType, false))
+			typeType = CloneWithTypeForm(typeType, ConvertToInstance(typeType, true))
 			return &TypeResult{Type: typeType}
 		}
 	}
@@ -304,7 +304,7 @@ func (e *typeEvaluator) createPy39BuiltinType(
 	// like "Tuple" in Python 3.9 and newer.
 	if IsTupleClass(classType) {
 		specializedClass := e.createSpecialType(classType, typeArgs, nil, nil, boolPtr(false))
-		specializedClass = CloneWithTypeForm(specializedClass, ConvertToInstance(specializedClass, false))
+		specializedClass = CloneWithTypeForm(specializedClass, ConvertToInstance(specializedClass, true))
 		return &TypeResult{Type: specializedClass}
 	}
 
@@ -351,7 +351,7 @@ func (e *typeEvaluator) validateClassTypeArgCount(
 
 		var inlinedTypeDict Type = typeArgs[0].InlinedTypeDict
 		if (flags & EvalFlagsTypeFormArg) != 0 {
-			inlinedTypeDict = CloneWithTypeForm(inlinedTypeDict, ConvertToInstance(inlinedTypeDict, false))
+			inlinedTypeDict = CloneWithTypeForm(inlinedTypeDict, ConvertToInstance(inlinedTypeDict, true))
 		}
 
 		return &TypeResult{Type: inlinedTypeDict}, true
@@ -472,7 +472,7 @@ func (e *typeEvaluator) buildClassTypeArgTypes(
 				}
 			}
 
-			typeArgType := ConvertToInstance(typeArgs[index].Type, false)
+			typeArgType := ConvertToInstance(typeArgs[index].Type, true)
 			typeArgTypes = append(typeArgTypes, typeArgType)
 			constraints.SetBounds(typeParam, typeArgType, nil, false)
 			continue
@@ -515,7 +515,7 @@ func (e *typeEvaluator) buildParamSpecTypeArg(
 			name := "__p" + itoa(paramIndex)
 			FunctionTypeAddParam(functionType, FunctionParamCreate(
 				parser.ParamCategorySimple,
-				ConvertToInstance(paramType.Type, false),
+				ConvertToInstance(paramType.Type, true),
 				FunctionParamFlagsNameSynthesized|FunctionParamFlagsTypeDeclared,
 				&name,
 				nil,

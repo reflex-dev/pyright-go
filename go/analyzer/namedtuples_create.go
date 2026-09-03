@@ -140,7 +140,7 @@ func CreateNamedTupleType(
 
 	classTypeVar := SynthesizeTypeVarForSelfCls(classType, true)
 	constructorType := FunctionTypeCreateSynthesizedInstance("__new__", FunctionTypeFlagsConstructorMethod)
-	constructorType.Shared.DeclaredReturnType = ConvertToInstance(classTypeVar, false)
+	constructorType.Shared.DeclaredReturnType = ConvertToInstance(classTypeVar, true)
 	constructorType.Priv.ConstructorTypeVarScopeID = GetTypeVarScopeID(classType)
 	if IsAssignmentToDefaultsFollowingNamedTuple(errorNode) {
 		// `N.__new__.__defaults__ = (...)` is the runtime idiom for adding

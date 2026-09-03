@@ -66,7 +66,7 @@ func (e *typeEvaluator) createSpecialType(
 
 	typeArgTypes := make([]Type, 0, len(typeArgs))
 	for _, typeArg := range typeArgs {
-		typeArgTypes = append(typeArgTypes, ConvertToInstance(typeArg.Type, false))
+		typeArgTypes = append(typeArgTypes, ConvertToInstance(typeArg.Type, true))
 	}
 
 	// The original's comment: make sure the argument list count is correct.

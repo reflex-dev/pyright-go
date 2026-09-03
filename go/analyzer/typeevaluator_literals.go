@@ -80,10 +80,10 @@ func (e *typeEvaluator) getTypeOfConstant(node *parser.ConstantNode, flags EvalF
 			if (flags & EvalFlagsInstantiableType) != 0 {
 				t = e.prefetched.NoneTypeClass
 			} else {
-				t = ConvertToInstance(e.prefetched.NoneTypeClass, false)
+				t = ConvertToInstance(e.prefetched.NoneTypeClass, true)
 			}
 
-			t = CloneWithTypeForm(t, ConvertToInstance(t, false))
+			t = CloneWithTypeForm(t, ConvertToInstance(t, true))
 		}
 
 	case parser.KeywordTypeTrue, parser.KeywordTypeFalse, parser.KeywordTypeDebug:
@@ -219,7 +219,7 @@ func (e *typeEvaluator) makeTopLevelTypeVarsConcrete(
 					e.prefetched.StrClass != nil && IsInstantiableClass(e.prefetched.StrClass) {
 					specialized := ClassTypeSpecialize(
 						e.prefetched.DictClass.(*ClassType),
-						[]Type{ConvertToInstance(e.prefetched.StrClass, false), e.GetObjectType()},
+						[]Type{ConvertToInstance(e.prefetched.StrClass, true), e.GetObjectType()},
 						nil, false, nil, nil,
 					)
 					return ClassTypeCloneAsInstance(specialized, false)
@@ -304,7 +304,7 @@ func (e *typeEvaluator) makeTypeVarConcrete(tv *TypeVarType, conditionFilter []T
 
 			expanded := constraintType
 			if tv.Base().IsInstantiable() {
-				expanded = ConvertToInstantiable(expanded, false)
+				expanded = ConvertToInstantiable(expanded, true)
 			}
 
 			typesToCombine = append(typesToCombine, AddConditionToType(
@@ -341,7 +341,7 @@ func (e *typeEvaluator) makeTypeVarConcrete(tv *TypeVarType, conditionFilter []T
 	}
 
 	if tv.Base().IsInstantiable() {
-		boundType = ConvertToInstantiable(boundType, false)
+		boundType = ConvertToInstantiable(boundType, true)
 	}
 
 	return AddConditionToType(boundType, []TypeCondition{{TypeVar: tv, ConstraintIndex: 0}}, nil)

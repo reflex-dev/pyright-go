@@ -174,7 +174,7 @@ func (e *typeEvaluator) adjustTypeArgsForTypeVarTuple(
 				variadicTypes = append(variadicTypes, typeResult.Type.(*ClassType).Priv.TupleTypeArgs...)
 			} else {
 				variadicTypes = append(variadicTypes, &TupleTypeArg{
-					Type:        ConvertToInstance(typeResult.Type, false),
+					Type:        ConvertToInstance(typeResult.Type, true),
 					IsUnbounded: false,
 				})
 			}

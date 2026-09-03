@@ -455,7 +455,7 @@ func (e *typeEvaluator) evaluateCastCall(argList []*Arg, errorNode parser.Expres
 	}
 
 	if castToType.Base().IsInstantiable() && !IsUnknown(castToType) {
-		if IsTypeSame(ConvertToInstance(castToType, false), castFromType,
+		if IsTypeSame(ConvertToInstance(castToType, true), castFromType,
 			TypeSameOptions{IgnorePseudoGeneric: true}, 0) {
 			e.AddDiagnostic(DiagnosticRuleReportUnnecessaryCast,
 				localization.LocMessage.UnnecessaryCast().Format(e.PrintType(castFromType, nil)),
@@ -463,7 +463,7 @@ func (e *typeEvaluator) evaluateCastCall(argList []*Arg, errorNode parser.Expres
 		}
 	}
 
-	return ConvertToInstance(castToType, false)
+	return ConvertToInstance(castToType, true)
 }
 
 // GetBestOverloadForArgs corresponds to getBestOverloadForArgs.

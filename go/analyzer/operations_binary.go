@@ -266,9 +266,9 @@ func tryCreateUnionFromBitwiseOr(
 	// interpreted as the None singleton object in contexts where a type annotation
 	// isn't assumed, we'll allow it here.
 	if !IsNoneInstance(leftType) && IsNoneInstance(rightType) {
-		adjustedRightType = ConvertToInstantiable(evaluator.GetNoneType(), false)
+		adjustedRightType = ConvertToInstantiable(evaluator.GetNoneType(), true)
 	} else if !IsNoneInstance(rightType) && IsNoneInstance(leftType) {
-		adjustedLeftType = ConvertToInstantiable(evaluator.GetNoneType(), false)
+		adjustedLeftType = ConvertToInstantiable(evaluator.GetNoneType(), true)
 	}
 
 	if !IsUnionableType([]Type{adjustedLeftType, adjustedRightType}) {

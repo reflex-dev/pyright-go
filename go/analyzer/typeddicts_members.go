@@ -138,7 +138,7 @@ func getTypedDictMembersForClassRecursive(
 			classType.Shared.TypedDictExtraItemsExpr, &ExpectedTypeOptions{AllowReadOnly: true})
 
 		entries.ExtraItems = &TypedDictEntry{
-			ValueType:  ConvertToInstance(extraItemsTypeResult.Type, false),
+			ValueType:  ConvertToInstance(extraItemsTypeResult.Type, true),
 			IsReadOnly: extraItemsTypeResult.IsReadOnly,
 			IsProvided: true,
 		}

@@ -125,7 +125,7 @@ func (e *typeEvaluator) handleTypingStubTypeAnnotation(node parser.ExpressionNod
 		asClass.Shared.BaseClasses = append(asClass.Shared.BaseClasses, strBase)
 		ComputeMroLinearization(asClass)
 
-		specialType = CloneWithTypeForm(specialType, ConvertToInstance(specialType, false))
+		specialType = CloneWithTypeForm(specialType, ConvertToInstance(specialType, true))
 	}
 
 	// The original's comment: handle 'Never' and 'NoReturn' specially.
@@ -136,7 +136,7 @@ func (e *typeEvaluator) handleTypingStubTypeAnnotation(node parser.ExpressionNod
 		}
 
 		specialType = CloneAsSpecialForm(neverType, specialType.(*ClassType))
-		specialType = CloneWithTypeForm(specialType, ConvertToInstance(specialType, false))
+		specialType = CloneWithTypeForm(specialType, ConvertToInstance(specialType, true))
 	}
 
 	e.writeTypeCache(node, &TypeResult{Type: specialType}, evalFlagsNonePtr(), nil, false)

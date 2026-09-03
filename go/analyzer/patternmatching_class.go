@@ -145,7 +145,7 @@ func specializeBoundedMatchTypeParams(
 		}
 
 		if param.Shared.BoundType != nil {
-			typeArgs = append(typeArgs, ConvertToInstance(param.Shared.BoundType, false))
+			typeArgs = append(typeArgs, ConvertToInstance(param.Shared.BoundType, true))
 			continue
 		}
 
@@ -157,7 +157,7 @@ func specializeBoundedMatchTypeParams(
 	}
 
 	return AddConditionToType(
-		ConvertToInstance(ClassTypeSpecialize(matchType, typeArgs, nil, false, nil, nil), false),
+		ConvertToInstance(ClassTypeSpecialize(matchType, typeArgs, nil, false, nil, nil), true),
 		condition, nil)
 }
 
@@ -215,7 +215,7 @@ func narrowTypeBasedOnClassPattern(
 			}
 
 			expandedClass := expandedSubtype.(*ClassType)
-			expandedSubtypeInstance := ConvertToInstance(expandedSubtype, false)
+			expandedSubtypeInstance := ConvertToInstance(expandedSubtype, true)
 			isPatternMetaclass := IsMetaclassInstance(expandedSubtypeInstance)
 
 			return evaluator.MapSubtypesExpandTypeVars(t, nil,
@@ -357,7 +357,7 @@ func narrowClassPatternSubject(
 			return unknownCallable
 		}
 
-		return ConvertToInstance(unexpandedSubtype, false)
+		return ConvertToInstance(unexpandedSubtype, true)
 	}
 
 	// The original's comment: handle the case where the class pattern references
@@ -388,7 +388,7 @@ func narrowClassPatternSubject(
 			return subjectSubtypeExpanded
 		}
 
-		subjObjType := ConvertToInstance(subjectSubtypeExpanded, false)
+		subjObjType := ConvertToInstance(subjectSubtypeExpanded, true)
 		if evaluator.AssignType(subjObjType, callableType, nil, nil, AssignTypeFlagsDefault, 0) {
 			return callableType
 		}
@@ -458,7 +458,7 @@ func classPatternResultType(
 		return nil, false
 	}
 
-	resultType = AddConditionToType(ConvertToInstance(unexpandedSubtype, false),
+	resultType = AddConditionToType(ConvertToInstance(unexpandedSubtype, true),
 		GetTypeCondition(subjectSubtypeExpanded), nil)
 
 	// The original's comment: try to retain the type arguments for the pattern

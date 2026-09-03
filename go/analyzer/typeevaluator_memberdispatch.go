@@ -222,7 +222,7 @@ func (e *typeEvaluator) memberAccessOnTypeVar(
 	// reached this way binds to Self.
 	var bindToSelfType Type = baseType
 	if baseType.Base().IsInstantiable() {
-		bindToSelfType = ConvertToInstance(baseType, false)
+		bindToSelfType = ConvertToInstance(baseType, true)
 	}
 
 	return e.getTypeOfMemberAccessWithBaseType(node, &TypeResult{
@@ -546,7 +546,7 @@ func (e *typeEvaluator) memberAccessOnFunction(
 
 	var altInstance Type = UnknownTypeCreate(false)
 	if altType != nil {
-		altInstance = ConvertToInstance(altType, false)
+		altInstance = ConvertToInstance(altType, true)
 	}
 
 	st.resolvedType = e.getTypeOfMemberAccessWithBaseType(node,

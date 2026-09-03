@@ -217,7 +217,7 @@ func (c *Checker) validateOverrideDecoratorPresent(
 	c.evaluator.AddDiagnostic(DiagnosticRuleReportImplicitOverride,
 		localization.LocMessage.OverrideDecoratorMissing().Format(
 			funcNode.D.Name.D.Value,
-			c.evaluator.PrintType(ConvertToInstance(baseMember.ClassType, false), nil)),
+			c.evaluator.PrintType(ConvertToInstance(baseMember.ClassType, true), nil)),
 		funcNode.D.Name, nil)
 }
 

@@ -90,8 +90,8 @@ func (e *typeEvaluator) assignClass(
 			addendum, constraints, flags, recursionCount) {
 			if diag != nil {
 				diag.AddMessage(localization.LocAddendum.ProtocolIncompatible().Format(
-					e.PrintType(ConvertToInstance(srcType, false), nil),
-					e.PrintType(ConvertToInstance(destType, false), nil),
+					e.PrintType(ConvertToInstance(srcType, true), nil),
+					e.PrintType(ConvertToInstance(destType, true), nil),
 				))
 			}
 			return false
