@@ -590,3 +590,28 @@ Nothing about this is reproduced in the port, which has no threading. It is
 recorded because the comparison that found it is the port's own verification
 harness, and because it is evidence for how any future parallelism here should
 be validated: against the single-threaded diagnostic set, file by file.
+
+## 18. `matchFileSpecs` makes command-line file lists quadratic
+
+`configOptions.matchFileSpecs` (common/configOptions.ts:939) answers "is this
+file part of the analysis?" by trying every include spec's regex in turn.
+Files named on the command line each become one include spec, so a tool that
+passes N files -- pre-commit hooks do exactly this -- makes every
+membership query O(N), and the queries themselves happen per file (or, via
+importResolver.ts:878, per import resolution), for N × reachable-files regex
+executions overall.
+
+Observed on a 1,779-file pre-commit invocation of a real project: in this
+port, which transliterated the loop and additionally memoizes the resolver's
+query per source file, the scan still accounted for 76% of a cached run's
+wall time (28.5 s of 37.6 s) before being replaced with a path-keyed index
+over the wildcard-free specs. Upstream calls the un-memoized loop per import
+resolution, so it pays strictly more; V8's regex engine softens the constant,
+but the O(N·M) shape is the same.
+
+The fix is mechanical and behavior-preserving: a spec with no wildcard
+characters can only match its own path or paths beneath it, so wildcard-free
+specs can be indexed by path and only wildcard specs need scanning. The
+port's version is MatchFileSpecs in go/analyzer/configoptions_class.go,
+verified against config.test.ts project resolution (78/78 identical) and
+byte-identical diagnostics on the motivating project.

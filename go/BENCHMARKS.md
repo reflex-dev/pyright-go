@@ -149,3 +149,44 @@ port's lead is 5–9×). And the comparison target is pyright under Node;
 checkers with different architectures (interned types, no GC, shared
 inference across threads) occupy a different performance class by design,
 at the cost of not being pyright.
+
+## A second scenario: pre-commit file lists, fully resolved imports
+
+Real-world adoption surfaced two things the tables above do not show, and one
+of them is a correction to how those tables were measured.
+
+**The correction.** The runs above executed without the project's virtual
+environment on PATH, so third-party imports (sqlalchemy, the reflex
+framework, …) resolved as missing and their stubs and sources were never
+inferred. Both implementations ran on the same footing, so every
+pyright-versus-port ratio stands, but the absolute times understate the
+fully-resolved workload, where the checked closure is several times larger.
+
+**The scenario.** A pre-commit hook passes the changed files as command-line
+arguments -- here, 1,779 files of the same project, with the venv active so
+every import resolves (the project is clean at `--level error`; both
+implementations report the identical 0 errors / 2,156 warnings):
+
+| invocation (1,779 files as argv, venv active) | time |
+| --- | --- |
+| pyright 1.1.412, single-threaded | 1m47s |
+| Go port `--threads 8 --cachedir`, cold, **before the spec-index fix** | 3m08s |
+| Go port, warm, **before the fix** | 37.6s |
+| Go port cold, after | 2m13s |
+| Go port warm, after | **5.8s** |
+
+The fix: files named on the command line each become an include file spec,
+and `matchFileSpecs` -- transliterated from upstream, which has the same
+behavior (UPSTREAM-BUGS.md #18) -- scanned all 1,779 spec regexes per
+membership query. That scan was 76% of the warm run. Wildcard-free specs are
+now indexed by path, verified behavior-identical (config.test.ts 78/78, and
+byte-identical diagnostics on this project).
+
+What remains is honest structure: the cold run trails single-threaded
+pyright here because each of the 8 workers re-infers its own copy of the
+huge resolved closure -- per-file isolation's known cost, amplified by a
+project whose files nearly all reach the same framework imports. The warm
+run is the recurring case, and at ~6 s it is 18× faster than the pyright
+this hook previously ran. The warm floor is larger than the first scenario's
+1 s for the same reason the cold run is: with the venv resolving, the
+reachable graph being re-verified every run is several times bigger.

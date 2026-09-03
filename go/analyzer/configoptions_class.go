@@ -24,6 +24,9 @@
 package analyzer
 
 import (
+	"strings"
+	"sync"
+
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/common/uri"
 )
@@ -138,7 +141,49 @@ func NewExecutionEnvironment(
 
 // MatchFileSpecs corresponds to the function of the same name. The TypeScript
 // defaults isFile to true.
+//
+// The answer is the original's -- does any include spec's regex match, with
+// the excludes and the .py/.pyi filter applied -- but a large include list is
+// consulted through an index rather than spec by spec. A command line naming
+// N files becomes N include specs, and the original's scan makes every query
+// O(N): with 1,779 files on the command line, resolving each reachable file's
+// user-file-ness cost 1,779 regex matches, which was 76% of a cached warm
+// run. Literal (wildcard-free) specs can only match their own path or paths
+// beneath it, so they index by path key; any candidate the index yields is
+// still confirmed through the spec's real regex, and wildcard specs are
+// scanned exactly as before. The predicate's spec-independent conjuncts
+// (excludes, the include-file regex) make first-match order unobservable.
 func MatchFileSpecs(configOptions *ConfigOptions, u uri.Uri, isFile bool) bool {
+	// Small lists stay on the original path; the index pays off only when
+	// scanning would hurt.
+	const indexThreshold = 8
+	if len(configOptions.Include) >= indexThreshold {
+		literals, wildcards := configOptions.includeSpecIndex()
+
+		// A literal spec matches its own path or anything under it, so probe
+		// the query path and each of its ancestors.
+		probe := uri.MatchPathKey(u)
+		for {
+			if i, ok := literals[probe]; ok {
+				if uri.FileSpecMatchIncludeFileSpec(configOptions.Include[i].RegExp, configOptions.Exclude, u, isFile) {
+					return true
+				}
+			}
+			slash := strings.LastIndexByte(probe, '/')
+			if slash <= 0 {
+				break
+			}
+			probe = probe[:slash]
+		}
+
+		for _, i := range wildcards {
+			if uri.FileSpecMatchIncludeFileSpec(configOptions.Include[i].RegExp, configOptions.Exclude, u, isFile) {
+				return true
+			}
+		}
+		return false
+	}
+
 	for _, includeSpec := range configOptions.Include {
 		if uri.FileSpecMatchIncludeFileSpec(includeSpec.RegExp, configOptions.Exclude, u, isFile) {
 			return true
@@ -146,6 +191,32 @@ func MatchFileSpecs(configOptions *ConfigOptions, u uri.Uri, isFile bool) bool {
 	}
 
 	return false
+}
+
+// includeSpecIndex builds (once per Include list) the literal-spec index
+// MatchFileSpecs consults. Duplicate literal keys keep the first spec, which
+// is sound: equal keys mean equal regexes, so the outcome cannot differ.
+func (c *ConfigOptions) includeSpecIndex() (map[string]int, []int) {
+	c.includeIndexMu.Lock()
+	defer c.includeIndexMu.Unlock()
+
+	if c.includeIndex == nil || c.includeIndexFor != len(c.Include) {
+		index := make(map[string]int, len(c.Include))
+		wildcards := []int{}
+		for i, spec := range c.Include {
+			if spec.LiteralKey != "" {
+				if _, dup := index[spec.LiteralKey]; !dup {
+					index[spec.LiteralKey] = i
+				}
+			} else {
+				wildcards = append(wildcards, i)
+			}
+		}
+		c.includeIndex = index
+		c.includeWildcards = wildcards
+		c.includeIndexFor = len(c.Include)
+	}
+	return c.includeIndex, c.includeWildcards
 }
 
 // ConfigOptions holds the internal configuration options, derived from a
@@ -176,6 +247,16 @@ type ConfigOptions struct {
 	// contain directories, in which case all "*.py" files within those
 	// directories are included.
 	Include []uri.FileSpec
+
+	// includeIndex maps FileSpec.LiteralKey -> index into Include, and
+	// includeWildcards lists the specs with no LiteralKey. Built lazily by
+	// includeSpecIndex and rebuilt when len(Include) changes; see
+	// MatchFileSpecs. The mutex covers worker goroutines racing the first
+	// build.
+	includeIndexMu   sync.Mutex
+	includeIndex     map[string]int
+	includeWildcards []int
+	includeIndexFor  int
 
 	// Exclude is a list of file specs to exclude from the analysis (overriding
 	// Include if necessary).

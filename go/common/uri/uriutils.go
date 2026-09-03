@@ -22,6 +22,7 @@ package uri
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/microsoft/pyright/go/common"
 )
@@ -40,6 +41,34 @@ type FileSpec struct {
 	// wildcard (**). When present, the search cannot terminate without
 	// exploring to an arbitrary depth.
 	HasDirectoryWildcard bool
+
+	// LiteralKey is non-empty when the spec contains no wildcards at all, in
+	// which case its regex can only match WildcardRoot itself or paths under
+	// it, and this is MatchPathKey(WildcardRoot). It lets a caller holding
+	// many specs -- a command line naming 1,779 files puts 1,779 include
+	// specs in the config -- index them by path instead of trying 1,779
+	// regexes per query. Purely an accelerator: any hit still runs the
+	// spec's real regex. No counterpart upstream.
+	LiteralKey string
+}
+
+// MatchPathKey returns the string the spec regexes are matched against --
+// what MatchesRegex feeds them -- folded for case-insensitive file systems,
+// so equal keys mean "the literal spec's regex would match".
+func MatchPathKey(u Uri) string {
+	var path string
+	switch v := u.(type) {
+	case *FileUri:
+		path = v.getNormalizedPath()
+	case *WebUri:
+		path = v.path
+	default:
+		path = u.Key()
+	}
+	if !u.IsCaseSensitive() {
+		path = strings.ToLower(path)
+	}
+	return path
 }
 
 var (
@@ -195,10 +224,21 @@ func GetFileSpec(root Uri, fileSpec string) FileSpec {
 		panic(err)
 	}
 
+	wildcardRoot := GetWildcardRoot(root, fileSpec)
+
+	// Conservative literal detection: any wildcard character disables the
+	// index and the spec is only ever matched through its regex, exactly as
+	// before.
+	literalKey := ""
+	if !strings.ContainsAny(fileSpec, "*?[]") {
+		literalKey = MatchPathKey(wildcardRoot)
+	}
+
 	return FileSpec{
-		WildcardRoot:         GetWildcardRoot(root, fileSpec),
+		WildcardRoot:         wildcardRoot,
 		RegExp:               regExp,
 		HasDirectoryWildcard: common.IsDirectoryWildcardPatternPresent(fileSpec),
+		LiteralKey:           literalKey,
 	}
 }
 
