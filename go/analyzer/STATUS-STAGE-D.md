@@ -829,3 +829,124 @@ Three techniques did the work and should be reached for first next time:
    validator and re-run to pin it.
 3. **The dependency check, both halves**: grep the target's callees for
    `unported(`, *and* grep each `Shared.X`/`Priv.X` field it reads for a writer.
+
+## 1268 of 1279: what the last 155 failures actually were
+
+The frontier being closed meant nothing was missing *because it was never
+written*. It did not mean the remaining failures were 155 separate bugs. They
+were about a dozen, and all but a few belonged to two families that a compiler
+cannot see.
+
+### Family one: the optional parameter with a non-zero default
+
+The reference declares a parameter optional with a default, and the port made it
+mandatory. Every call site that did not think about it passed the Go zero value,
+which is the *opposite* of what the original does.
+
+| function | default | call sites the port got wrong |
+|---|---|---|
+| `convertToInstance` / `convertToInstantiable` | `includeSubclasses = true` | 125 of 128 |
+| `ClassType.cloneAsInstance` | `includeSubclasses = true` | 111 of 112 |
+| `ClassType.cloneAsInstantiable` | `includeSubclasses = true` | 36 of 36 |
+| `specializeTupleClass` | `isTypeArgExplicit = true` | 7 of 7 |
+| `FunctionType.getEffectiveReturnType` | `includeInferred = true` | 11 of 13 |
+| `TypeVarType.getReadableName` | `includeScope = true` | 7 of 7 |
+| `makeTypeVarsBound` | `scopeIds` defined vs `undefined` | 7 |
+| `DataClassBehaviors.matchArgs` | read as `?? true` | the only reader |
+
+The symptoms were nothing like the causes. Clearing `includeSubclasses` turned
+the guard `boundToType && !boundToType.priv.includeSubclasses` inside out and
+produced 39 spurious "method is abstract and unimplemented" errors, which looked
+for a long time like a bug in `getAbstractSymbolInfo`. Clearing `matchArgs`
+suppressed `__match_args__` on every dataclass, so every positional class pattern
+reported "expected 0 but received N".
+
+**The check that finds these**: enumerate every defaulted parameter in the
+reference (`grep -E "[a-zA-Z]+ *= *true[,)]"` over the analyzer, plus `?? true`
+for the field form), then compare each call site against the port's. It is a
+morning's work and it is not optional. Two of the eight produced no gate
+movement at all — they were wrong in code no current test exercises, and would
+have been found by nothing else.
+
+### Family two: JavaScript semantics with no Go counterpart
+
+- **A shadowed parameter.** `getFlowNodeReachabilityRecursive(flowNode, ...)`
+  shadows the enclosing query's `flowNode`. The cache *check* inside it reads the
+  shadowed one; `cacheReachabilityResult`, defined in the outer scope, writes
+  under the outer one. Reading the outer node in both places let the first
+  antecedent of a branch label answer for every sibling, so one unreachable
+  antecedent made the whole label unreachable. `if 0 or cond:` was enough. Fixing
+  it moved 14 tests.
+- **`nil` is not `[]`.** `makeTupleObject(evaluator, [])` builds the empty tuple;
+  passing a nil slice makes `ClassType.specialize` treat `tupleTypeArgs` as
+  absent, and a tuple with no tupleTypeArgs is not an empty tuple. `Array[()]`
+  printed as `Array[*tuple[Never]]`.
+- **`as any as ExpressionNode`.** patternMatching.ts passes a
+  PatternClassArgumentNode where an ExpressionNode is required, with a comment
+  saying it is fine in that context. Go's ExpressionNode has an unexported marker
+  method, so the port passed nil and recorded that the node was only used for a
+  diagnostic. It is not: it reaches `validateCallArgs`, which a descriptor's
+  `__get__` goes through, so `case complex(real=a)` bound `a` to the property
+  object rather than to `float`.
+- **A bound on the operand instead of on the result.** The literal-math fold
+  declined `**` past a fixed exponent; the original's only limit is BigInt
+  arithmetic throwing, which bounds the *result*. `(2 - 3) ** 100001` folds to
+  `Literal[-1]` in the original and was declined here.
+
+### The stub that outlived its excuse
+
+`processClassBaseArg` ended with a comment -- "the caller records the result;
+this function only reports it through the return of isNamedTupleBase below" --
+followed by `_ = node`. There is no `isNamedTupleBase`. The out-parameter
+threaded down from `getTypeOfClass` was never written, so no class-syntax
+NamedTuple was ever recognized as one and every construction resolved against
+typeshed's own `NamedTuple(typename, fields)`. Five lines, 21 tests.
+
+This is the "stub defaults meeting a new caller" hazard in its purest form: the
+stub was written when nothing consumed the out-parameter and stayed silent when
+something did. **Grep for `_ = ` in the analyzer periodically**; there are four
+such sites and the other three are genuine and documented.
+
+### The one that is still failing
+
+`SolverHigherOrder5`. Minimal repro:
+
+```python
+@overload
+def g1(a: T, *, b: Literal[False] = ...) -> list[T]: ...
+@overload
+def g1(a: T, *, b: Literal[True] = ...) -> set[T]: ...
+def g1(a: Any, b: Any = ...) -> Any: ...
+
+vg = g1(g1, b=True)   # go: set[T@g1]   ts: set[Overload[...]]
+```
+
+Go selects the right overload; `T` is left unsolved. What is known:
+
+- It requires an **overloaded argument passed to a bare TypeVar parameter**, and
+  a **failing overload attempted first**. Reversing the two overloads so the
+  matching one comes first makes it pass. A non-overloaded argument passes.
+- Inside the winning attempt, argument validation's *first* pass sees the
+  argument as `Overload[(a: T(1)@g1, ...)]` -- signature-uniquified -- and its
+  *second* pass sees `Overload[(a: T@g1, ...)]`, un-uniquified. The second form
+  is self-referential against the parameter `T@g1`, so the solver correctly
+  refuses it and `T` stays unsolved.
+- The uniquifier itself is not at fault. `ensureSignatureIsUnique` is reached
+  every time with a tracker on the stack, `findSignature` matches, and the offset
+  index is 1 on all four evaluations -- it returns the `(1)` form each time.
+  `UniqueSignatureTracker`, `useSignatureTracker`, the speculative-mode teardown,
+  `addConstraintSets` and `cloneWithSignature` were each diffed against the
+  original and match.
+
+So the un-uniquified type reaching the second pass comes from somewhere that
+does not go through `getTypeOfExpression`'s Name arm. `argParam.argType` is the
+obvious candidate and is written at only one site in both implementations, which
+matches. That is where the next session should start.
+
+**The harness to start from**: `compare-types.js --dir <dir>` diffs the printed
+type of every name between the two implementations over an arbitrary directory,
+provided the directory is inside the reference tree. Dropping a scratch file into
+`packages/pyright-internal/src/tests/<scratch>/` turns a failing gate test into a
+five-line repro in about a minute per iteration, and it is what reduced this one.
+Remember to delete the scratch directory afterwards -- it is inside the corpus
+the other differentials walk.
