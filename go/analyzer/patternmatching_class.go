@@ -583,14 +583,8 @@ func narrowTypeOfClassPatternArg(
 			// The original's comment: we need to apply a rather ugly cast here
 			// because PatternClassArgumentNode is not technically an ExpressionNode,
 			// but it is OK to use it in this context.
-			// The original passes `arg as any as ExpressionNode` here, an explicit
-			// cast of a node that is not an expression. Go has no such escape
-			// hatch, so nil is passed instead. errorNode is used only to place a
-			// class-definition-cycle diagnostic, and this whole call is inside
-			// speculative mode where diagnostics are discarded, so nothing that
-			// would have surfaced is lost.
 			evaluator.UseSpeculativeMode(arg, func() {
-				if result := evaluator.GetTypeOfBoundMember(nil,
+				if result := evaluator.GetTypeOfBoundMember(parser.AsExpressionNode(arg),
 					ClassTypeCloneAsInstance(matchClass, true), argName, nil, nil, 0, nil); result != nil {
 					argType = result.Type
 				}

@@ -632,15 +632,18 @@ func applyIntLiteralOp(operator parser.OperatorType, left, right *big.Int) *big.
 		if right.Sign() < 0 {
 			return nil
 		}
-		if !right.IsInt64() || right.Int64() > maxLiteralPowerExponent {
-			// The original catches the BigInt exponentiation throwing when the
-			// result exceeds the maximum representable value.
+		// The original catches the BigInt exponentiation throwing when the
+		// result exceeds the maximum representable value. The bound is on the
+		// *result*, not the exponent: `(-1) ** 100001` has a huge exponent and a
+		// one-bit answer, and the original folds it.
+		if !right.IsInt64() || int64(left.BitLen())*right.Int64() > maxLiteralBigIntBits {
 			return nil
 		}
 		return new(big.Int).Exp(left, right, nil)
 
 	case parser.OperatorTypeLeftShift:
-		if right.Sign() < 0 || !right.IsUint64() || right.Uint64() > maxLiteralShiftCount {
+		if right.Sign() < 0 || !right.IsUint64() ||
+			int64(left.BitLen())+int64(right.Uint64()) > maxLiteralBigIntBits {
 			return nil
 		}
 		return new(big.Int).Lsh(left, uint(right.Uint64()))
@@ -649,7 +652,7 @@ func applyIntLiteralOp(operator parser.OperatorType, left, right *big.Int) *big.
 		if right.Sign() < 0 || !right.IsUint64() {
 			return nil
 		}
-		if right.Uint64() > maxLiteralShiftCount {
+		if right.Uint64() > uint64(left.BitLen()) {
 			// Shifting further than the value's bit length yields 0 or -1; the
 			// cap avoids allocating for an answer that is already determined.
 			if left.Sign() < 0 {
@@ -672,11 +675,9 @@ func applyIntLiteralOp(operator parser.OperatorType, left, right *big.Int) *big.
 	return nil
 }
 
-const (
-	// maxLiteralPowerExponent and maxLiteralShiftCount stand in for the
-	// original's reliance on BigInt exponentiation throwing once the result
-	// exceeds what the engine can represent. Go's big.Int has no such limit and
-	// would happily allocate gigabytes, so the fold declines past these instead.
-	maxLiteralPowerExponent = 1024
-	maxLiteralShiftCount    = 1024
-)
+// maxLiteralBigIntBits stands in for the original's reliance on BigInt
+// arithmetic throwing once the result exceeds what the engine can represent.
+// Go's big.Int has no such limit, so the fold declines when the result's bit
+// length would exceed V8's, which is what the original's try/catch is waiting
+// for. Bounding the operand instead would decline folds the original performs.
+const maxLiteralBigIntBits = 1 << 30

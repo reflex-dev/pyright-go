@@ -203,3 +203,32 @@ var _ = []ParseNode{
 	(*YieldNode)(nil),
 	(*YieldFromNode)(nil),
 }
+
+// asExpression wraps a node that is not in the ExpressionNode union so it can
+// be passed where one is required. The embedded ParseNode promotes GetNodeType,
+// NodeBase and the range accessors, so the wrapper behaves as the node it wraps
+// for everything except a type assertion to the concrete node type.
+type asExpression struct{ ParseNode }
+
+func (asExpression) isExpressionNode() {}
+
+// AsExpressionNode stands in for the original's `node as any as ExpressionNode`.
+// pyright uses that cast in exactly one place -- patternMatching.ts passes a
+// PatternClassArgumentNode as the error node of a member lookup, with a comment
+// saying it is "OK to use it in this context" -- and TypeScript's structural
+// typing lets it. Go's ExpressionNode carries an unexported marker method, so
+// the same lie has to be told explicitly.
+//
+// Passing nil instead is not equivalent: the error node reaches
+// validateCallArgs, which a descriptor's __get__ invocation goes through, so a
+// nil node makes a property read return the property object rather than the
+// getter's return type.
+func AsExpressionNode(node ParseNode) ExpressionNode {
+	if node == nil {
+		return nil
+	}
+	if expr, ok := node.(ExpressionNode); ok {
+		return expr
+	}
+	return asExpression{node}
+}
