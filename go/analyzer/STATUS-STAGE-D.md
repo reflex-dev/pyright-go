@@ -786,3 +786,46 @@ function's type more specific is what introduced the bug.
 
 Where the concrete type is genuinely wanted, widen through an explicit helper at
 the call site rather than relying on assignment.
+
+## The frontier is closed
+
+`unported paths reached: none`.
+
+Every path the 1279-test corpus exercises is now real code. The stub file that
+recorded the frontier — `typeevaluator_unported.go`, whose header said "when it
+is empty, Stage D is done" — has been renamed to `typeevaluator_interface.go`,
+because what remains in it are genuine adapters (the original's default arguments
+made explicit) rather than placeholders.
+
+Final state of the port: 283 files, ~114k lines, gate 1114 of 1279 passing
+(87.1%), whole-corpus sweep clean at 1302 files with zero panics and no hangs.
+
+### What "closed" does and does not mean
+
+It means nothing answers Unknown *because it was never written*. It does not
+mean the port is bug-free: 155 tests still fail, and those failures are now
+genuine behavioral differences rather than absent code. That is the distinction
+the frontier existed to draw, and it is why the counter was worth carrying from
+the first commit — an evaluator that returns Unknown everywhere passes every
+test asserting no diagnostics, so a gate number alone could never have told
+these two situations apart.
+
+The remaining failures are spread thin across families rather than concentrated
+in one subsystem: Protocol and ParamSpec at 8 each, NamedTuple 8, Generator 7,
+then a long tail of 3-5. That shape is itself informative. Concentrated failures
+would point at a missing mechanism; a flat distribution points at many small
+divergences in mechanisms that exist, which is what remains to be diffed
+test-by-test.
+
+### The diagnostic methods that survived
+
+Three techniques did the work and should be reached for first next time:
+
+1. **The whole-corpus sweep, not the sample.** Every silent bug this session —
+   the nil OrderedSet, the eagerly-evaluated ternary arm, the typed nil from a
+   concrete return type — was invisible in the 60-file sample and found by the
+   1302-file sweep. The sample is a fast check; it is not evidence.
+2. **Histogram diff plus failing-set diff on a regression**, then disable one
+   validator and re-run to pin it.
+3. **The dependency check, both halves**: grep the target's callees for
+   `unported(`, *and* grep each `Shared.X`/`Priv.X` field it reads for a writer.
