@@ -28,6 +28,12 @@ codebase (16 logical CPUs; full numbers and methodology in
 | `--cachedir`, nothing changed | n/a | **1.0 s / 190 MB** |
 | `--cachedir`, one file changed | n/a | **2.6 s** |
 
+Times scale with the resolved import closure: on the same project with its
+virtual environment active (so every third-party import resolves) and 1,779
+files passed pre-commit-style on the command line, the warm-cache run is
+5.8 s against 1m47s for pyright -- `go/BENCHMARKS.md` has both scenarios and
+the methodology.
+
 `--threads` is pyright's own worker model transliterated — per-worker
 analyzer, one file checked at a time in isolation — with goroutines in place
 of upstream's forked processes. `--cachedir` is a pyright-go extension: a

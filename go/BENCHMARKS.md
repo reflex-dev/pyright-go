@@ -16,6 +16,14 @@ figures, marked as such, come from a 3,135-file revision of the same project.
 
 ## The headline
 
+**Caveat first**: these runs were measured without the project's virtual
+environment active, so third-party imports did not resolve and the checked
+closure was smaller than in production use. Every pyright-versus-port ratio
+stands (both implementations ran on identical footing), but absolute times
+understate a fully-resolved workload -- see "A second scenario" below for
+measurements with imports resolving, including the warm-cache figure for
+that shape (5.8 s rather than 1.0 s).
+
 | mode | pyright 1.1.412 | Go port | speedup |
 | --- | --- | --- | --- |
 | single-threaded | 71.5 s / 3.6 GB | 35 s / 5.4 GB | 2.0× |
