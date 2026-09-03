@@ -90,8 +90,8 @@ changes a diagnostic.
 ## How it is verified
 
 Every check runs against the real pyright 1.1.412 sources rather than against
-expectations written by hand. Run them with `make bridge` (see README.md for the
-prerequisites).
+expectations written by hand. Run them with `make bridge` (see the repository
+README for the prerequisites).
 
 | check | what it covers | result |
 | --- | --- | --- |
