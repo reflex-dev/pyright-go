@@ -129,19 +129,37 @@ func (p *Program) GetParseDiagnostics(fileUri uri.Uri) []*common.Diagnostic {
 }
 
 // handleMemoryHighUsage corresponds to the private method of the same name.
-//
-// The original reads V8 heap statistics and empties the type cache when they
-// cross a high-water mark. Go has no comparable measurement and there is no
-// type cache yet, so this consults the cache manager and stops there. It is
-// kept rather than dropped because it is a call site the evaluator will need.
 func (p *Program) handleMemoryHighUsage() {
 	cacheUsage := p.cacheManager.GetCacheUsage()
+	usedHeapRatio := p.cacheManager.GetUsedHeapRatio()
 
 	const heapRatioHighWaterMark = 0.9
 
-	usedHeapRatio := p.cacheManager.GetUsedHeapRatio()
+	// The original's comment: if the total cache has exceeded 75%, determine
+	// whether we should empty the cache. If the usedHeapRatio has exceeded our
+	// high-water mark, we should definitely empty the cache. This can happen
+	// before the cacheUsage maxes out because we might be on the background
+	// thread and a bunch of the cacheUsage is on the main thread.
 	if cacheUsage > 0.75 || usedHeapRatio > heapRatioHighWaterMark {
-		p.cacheManager.EmptyCache(p.console)
+		// The original's comment: the type cache uses a Map, which has an
+		// absolute limit of 2^24 entries before it will fail. If we cross the
+		// 90% mark, we'll empty the cache.
+		//
+		// Go's map has no such limit, so this bound is inherited rather than
+		// required. It stays because it is half of the condition that decides
+		// whether a 75%-full cache is actually emptied, and dropping it would
+		// empty the cache far more eagerly than the original does.
+		const absoluteMaxCacheEntryCount = float64(int(1)<<24) * 0.9
+
+		typeCacheEntryCount := 0
+		if p.evaluator != nil {
+			typeCacheEntryCount = p.evaluator.GetTypeCacheEntryCount()
+		}
+
+		if float64(typeCacheEntryCount) > absoluteMaxCacheEntryCount ||
+			usedHeapRatio > heapRatioHighWaterMark {
+			p.cacheManager.EmptyCache(p.console)
+		}
 	}
 }
 
@@ -946,15 +964,23 @@ func (p *Program) checkTypes(fileToCheck *SourceFileInfo, chainedByList []*Sourc
 	return true
 }
 
-// checkDependentFiles returns nil where the original returns undefined.
+// checkDependentFiles corresponds to _checkDependentFiles. It returns nil where
+// the original returns undefined.
 //
-// PARTIAL: the original then runs the checker over every earlier cell in the
-// chain. That arm needs the checker, which is Stage D; what remains is the
-// chain lookup, which is what decides *which* files are dependent.
+// "Dependent" reads backwards here and it is worth being explicit about why. In
+// a notebook, a CellDocs cell is chained to the cells *before* it, so those are
+// already in scope by the time this cell is checked. What this collects is the
+// cells *after* it -- the ones whose module scopes an earlier cell may still
+// need to resolve a name through the later-cell declaration fallback. Hence
+// startIndex = index + 1, and hence the checker being run over them first.
 func (p *Program) checkDependentFiles(fileToCheck *SourceFileInfo, chainedByList []*SourceFileInfo) []*parser.ParserOutput {
 	if fileToCheck.IPythonMode() != IPythonModeCellDocs {
 		return nil
 	}
+
+	// The original's comment: if we don't have chainedByList, it means none of
+	// them are checked yet.
+	needToRunChecker := chainedByList == nil
 
 	if chainedByList == nil {
 		chainedByList = p.cellChainIndex.GetCellChainFiles(fileToCheck)
@@ -971,9 +997,42 @@ func (p *Program) checkDependentFiles(fileToCheck *SourceFileInfo, chainedByList
 		return nil
 	}
 
+	startIndex := index + 1
+	if startIndex >= len(chainedByList) {
+		return nil
+	}
+
+	if needToRunChecker {
+		// The original's comment: if the file is already analyzed, it will be no
+		// op. And make sure we don't dump parse tree and etc while calling
+		// checker. Otherwise, checkType can dump parse tree required by outer
+		// check. Checking later cells in reverse order ensures their module
+		// scopes are available before an earlier CellDocs cell resolves nested
+		// or class-header names through the later-cell declaration fallback on
+		// its first diagnostics pass.
+		resume := p.cacheManager.PauseTracking()
+		for i := len(chainedByList) - 1; i >= startIndex; i-- {
+			p.checkTypes(chainedByList[i], chainedByList, false)
+		}
+		resume()
+	}
+
 	dependentFiles := []*parser.ParserOutput{}
-	for i := 0; i < index; i++ {
-		if parserOutput := chainedByList[i].SourceFile.GetParserOutput(); parserOutput != nil {
+	for i := startIndex; i < len(chainedByList); i++ {
+		file := chainedByList[i]
+		parserOutput := file.SourceFile.GetParserOutput()
+		if parserOutput == nil {
+			continue
+		}
+
+		// The original's comment: we might not have the file info if binding
+		// failed for whatever reasons. Check whether the file has been bound.
+		if file.SourceFile.IsBindingRequired() {
+			continue
+		}
+
+		fileInfo := GetFileInfo(parserOutput.ParseTree)
+		if fileInfo.AccessedSymbolSet != nil {
 			dependentFiles = append(dependentFiles, parserOutput)
 		}
 	}

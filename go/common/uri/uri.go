@@ -8,15 +8,11 @@
  * Transliterated from common/uri/uriInterface.ts and common/uri/uri.ts
  * (pyright 1.1.412).
  *
- * Scope note: this package currently provides the Uri interface, the shared
- * BaseUri behavior, and the ConstantUri / EmptyUri implementations. FileUri and
- * WebUri are not ported yet -- they need vscode-uri's parsing and normalization
- * plus the whole of common/pathUtils, and nothing that consumes this package so
- * far constructs one. They belong with the import resolver.
- *
- * The Uri methods that only FileUri and WebUri would ever reach are declared on
- * the interface anyway, so the interface is the real one and adding those two
- * types later is additive.
+ * This package provides the Uri interface, the shared BaseUri behavior, and all
+ * four implementations: ConstantUri, EmptyUri, FileUri and WebUri. The last two
+ * arrived with the import resolver, which is what first needed to construct
+ * one; the interface was declared complete from the start, so adding them was
+ * additive as intended.
  */
 
 package uri

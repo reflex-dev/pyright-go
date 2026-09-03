@@ -12,8 +12,8 @@
  * Each level parses the next one down and folds left, so the chain can be
  * transliterated faithfully on its own. It bottoms out at parseAtomExpression,
  * which is where the grammar stops being linear (calls, subscripts, tuples,
- * dict/set displays, comprehensions, f-strings) and is not ported yet -- see
- * parser_pending.go and PORTING.md.
+ * dict/set displays, comprehensions, f-strings); that half lives in
+ * parser_trailers.go.
  */
 
 package parser

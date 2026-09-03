@@ -209,8 +209,10 @@ type SymbolResolutionStackEntry struct {
 }
 
 // ReturnTypeInferenceContext corresponds to the interface of the same name.
-// CodeFlowAnalyzer is the codeFlowEngine's, which is not ported yet; it is
-// carried as an opaque value so the stack can exist before the engine does.
+// CodeFlowAnalyzer is the codeFlowEngine's. It stays an opaque value here --
+// the engine is ported, but naming its type would put an import back across a
+// seam the package layout exists to keep open, and nothing on this side reads
+// the field.
 type ReturnTypeInferenceContext struct {
 	FunctionNode     *parser.FunctionNode
 	CodeFlowAnalyzer any

@@ -19,6 +19,10 @@
  * in the analyzer calls them: their callers are the language server and the
  * type-stub generator, both out of scope. What remains is the three
  * synchronous queries the import resolver and ConfigOptions actually make.
+ *
+ * NoAccessHost is here; the two hosts that answer those queries for real --
+ * LimitedAccessHost and FullAccessHost -- are in fullaccesshost.go, following
+ * the original's own split across two files.
  */
 
 package analyzer

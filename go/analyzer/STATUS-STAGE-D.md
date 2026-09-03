@@ -970,3 +970,55 @@ zero differences as well: tokenizer (1,302 files), AST (1,343), parseTreeUtils
 (1,343), binder over the samples (752 x 2 modes) and over typeshed (1,504),
 config (78), plus the bridged parser, typePrinter, pathUtils, Uri, importResolver,
 symbolNameUtils and typeCacheUtils suites.
+
+## The tests could not have caught this one
+
+Every check above runs on a synthetic file system -- `vfs`, or the reference's
+own `TestFileSystem`. Neither has symbolic links. So when `cmd/pyright-go` was
+first pointed at a real project, with a real virtualenv, a bug walked straight
+through 1,279 passing tests and eight zero-difference differentials:
+
+```go
+func (fs *FileSystem) RealCasePath(u uri.Uri) uri.Uri {
+    resolved, err := filepath.EvalSymlinks(u.GetFilePath())
+    if err != nil {
+        return u
+    }
+    return fs.uriOf(resolved)   // <- wrong, and only on a real disk
+}
+```
+
+The original's `realCasePath` calls `realpathSync.native`, which resolves
+symlinks *and* recovers the OS's casing, and then throws the symlink half away:
+
+```ts
+if (uri.getFilePath().toLowerCase() !== realCase.toLowerCase()) {
+    return uri;
+}
+```
+
+The name says what it is for -- real *case*, not real *path*. The port kept the
+resolution and dropped the guard, and the header comment asserted the two were
+the same thing ("on a case-sensitive file system the original returns the path
+unchanged after a realpath").
+
+What that costs: `service_config.go` normalizes the configured interpreter with
+`RealCasePath`, and a virtualenv's `bin/python` is a symlink to the system
+interpreter. So `.venv/bin/python` became `/usr/bin/python3.14`, which reports
+the *system* `sys.path`, which contains no venv site-packages. Every
+third-party import in the project came back unresolved -- 20 spurious
+diagnostics in an 84-file sample, and nothing in the failure named this
+function. The symptom looked like an import-resolver bug; the cause was a
+five-line file-system helper two packages away.
+
+Two things generalize:
+
+- **A helper whose name distinguishes two similar operations is distinguishing
+  them for a reason.** `realCasePath` vs `realpath` is not a naming
+  preference. When a transliteration drops a guard, the guard is the point.
+- **A test file system is not a file system.** Symlinks, permissions, case
+  folding and mount boundaries are exactly the properties an in-memory tree does
+  not model, so no amount of corpus coverage will exercise them. The only oracle
+  for that layer is running against a real project -- which is what
+  `cmd/pyright-go` is for, and why it earned its place beyond being a benchmark
+  harness.

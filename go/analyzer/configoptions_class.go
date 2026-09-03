@@ -15,10 +15,10 @@
  * sets and the rule lists are generated -- see configoptions_gen.go and
  * gen/generate_configoptions.py. The two enums are in configoptions.go.
  *
- * PARTIAL: initializeFromJson and setupExecutionEnvironments -- 550 lines that
- * read pyrightconfig.json and pyproject.toml -- are not here. Their only caller
- * is service.ts, and config.test.ts is the test that covers them; both land
- * with the service. Nothing the import resolver does goes through them.
+ * initializeFromJson and setupExecutionEnvironments -- the 550 lines that read
+ * pyrightconfig.json and pyproject.toml -- landed separately with the service,
+ * in configoptions_json.go, because their only caller is service.ts and
+ * config.test.ts is what covers them.
  */
 
 package analyzer

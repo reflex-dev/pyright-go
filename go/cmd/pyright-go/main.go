@@ -86,10 +86,15 @@ func main() {
 	outputJSON := flag.Bool("outputjson", false, "emit diagnostics as JSON")
 	projectRoot := flag.String("project", "", "directory containing the project's config")
 	rootDir := flag.String("rootdir", "", "directory holding typeshed-fallback (defaults to the binary's ../..)")
+	pythonPath := flag.String("pythonpath", "", "path to the Python interpreter")
+	noInterpreter := flag.Bool("nointerpreter", false,
+		"never run a Python interpreter; use a NoAccessHost, so search paths come only from config")
 	flag.Parse()
 
 	if *projectRoot == "" {
-		fmt.Fprintln(os.Stderr, "usage: pyright-go --project <dir> [--outputjson] [file...]")
+		fmt.Fprintln(os.Stderr,
+			"usage: pyright-go --project <dir> --rootdir <dir> [--outputjson] "+
+				"[--pythonpath <file>] [--nointerpreter] [file...]")
 		os.Exit(2)
 	}
 
@@ -124,10 +129,32 @@ func main() {
 	} else {
 		commandLineOptions.ConfigSettings.IncludeFileSpecs = []string{absRoot}
 	}
+	if *pythonPath != "" {
+		// The original resolves this against the process's cwd before storing
+		// it: `combinePaths(process.cwd(), normalizePath(args['pythonpath']))`.
+		resolved := common.NormalizePath(*pythonPath)
+		if cwd, err := os.Getwd(); err == nil {
+			resolved = common.CombinePaths(cwd, resolved)
+		}
+		commandLineOptions.ConfigSettings.PythonPath = &resolved
+	}
+
+	// The original's CLI passes `hostFactory: () => new FullAccessHost(...)`, so
+	// the import resolver can ask the interpreter where its search paths are.
+	// Without it the only paths are the ones the config names, and every
+	// third-party import in a virtualenv goes unresolved -- which is the whole
+	// difference the --nointerpreter flag exists to demonstrate.
+	hostFactory := func() analyzer.Host {
+		return analyzer.NewFullAccessHost(fs, uri.UriExDetector(true))
+	}
+	if *noInterpreter {
+		hostFactory = func() analyzer.Host { return analyzer.NewNoAccessHost() }
+	}
 
 	service := analyzer.NewAnalyzerService("pyright-go", analyzer.AnalyzerServiceOptions{
-		FileSystem: fs,
-		Console:    common.NewStandardConsole(common.LogLevelError),
+		FileSystem:  fs,
+		Console:     common.NewStandardConsole(common.LogLevelError),
+		HostFactory: hostFactory,
 	})
 	// The Program has no evaluator or checker until they are installed. The
 	// original does this inside Program itself; the port keeps the factories at
