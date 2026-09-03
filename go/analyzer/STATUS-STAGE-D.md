@@ -1166,3 +1166,45 @@ leans on a native JavaScript primitive that Go does not have an equivalent of.
 That is a category worth watching for in a transliteration -- `indexOf`,
 `RegExp`, `String` concatenation and `Map` iteration are all places where "the
 same code" costs very different amounts.
+
+## --threads, and the state that was secretly per-process
+
+Porting `--threads` (cmd/pyright-go/threads.go) surfaced a bug family none of
+the differentials could reach: **module-level state that upstream implicitly
+scopes per worker process becomes cross-worker shared state when the workers
+are goroutines.** JavaScript gives every forked worker a fresh copy of every
+module; a transliteration into one address space silently merges them.
+
+The inventory, found by running `go build -race` over a full threaded project
+run (the first attempt produced 1,243 race warnings that collapse into exactly
+three root causes, plus a crash):
+
+- `enums.ts` / `protocols.ts` keep module-level *recursion stacks*. Two workers
+  interleaving push/pop corrupted the shared slice -- the visible symptom was a
+  `[:-1]` slice panic when one worker popped the other's entry off a stack of
+  length zero. Both stacks moved onto the `typeEvaluator`, which is exactly
+  what "module-level" denotes under a process-per-worker model.
+- `typeEvaluator.ts` *mutates a type singleton at prefetch*:
+  `AnyType.createSpecialForm()` returns a module-level instance and every new
+  evaluator re-attaches its own `Any` class to it. Last-write-wins is invisible
+  single-threaded and a data race threaded; the wiring now runs once per
+  process under a mutex.
+- The interned `Uri` instances lazily memoize a dozen properties, including a
+  child-segment map that panics under concurrent writes. The type singletons'
+  `cached` slots have the same shape (prewarm.go fills them at init instead).
+
+The other finding is about the runtime rather than the code. The transliterated
+worker model initially produced **1.03×** over single-threaded -- pyright's own
+`--threads` gets 2.0× -- and the profile said why: 16 workers mutating one
+shared heap several times the single-threaded live set keeps the collector's
+scan work saturated at GOGC=100, where upstream's forked workers each bring an
+independent V8 heap and GC. GOGC=200 in threaded mode (set by threads.go when
+the environment doesn't override) turned 1.03× into 2.6×. The lesson pairs with
+the GC note in PORTING.md: single-threaded, the collector rides free on spare
+cores; threaded, it competes with the workers, and heap policy becomes part of
+the fork-model equivalence.
+
+Fidelity result: the threaded port agrees with `pyright --threads` to the
+diagnostic -- including reproducing upstream's deterministic loss of the same
+two diagnostics (UPSTREAM-BUGS.md #17), which localizes that bug to the
+per-file isolation semantics rather than partitioning or scheduling.

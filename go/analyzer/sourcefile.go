@@ -29,6 +29,7 @@ package analyzer
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/common/uri"
@@ -51,8 +52,8 @@ type resolveImportResult struct {
 }
 
 // nextUniqueFileId is a monotonically increasing number used to create unique
-// file IDs.
-var nextUniqueFileId = 1
+// file IDs. Atomic because --threads runs one Program per worker goroutine.
+var nextUniqueFileId atomic.Int64
 
 // TypeEvaluator is analyzer/typeEvaluatorTypes.ts's 109-member interface; see
 // typeevaluatortypes.go. Nothing in the program loop calls a method on it -- it
@@ -1052,8 +1053,7 @@ func (s *SourceFile) makeFileID(fileUri uri.Uri) string {
 	}
 
 	// Append a number to guarantee uniqueness.
-	uniqueNumber := nextUniqueFileId
-	nextUniqueFileId++
+	uniqueNumber := nextUniqueFileId.Add(1)
 
 	// The original's comment: use a "/" to separate the two components, since
 	// this character will never appear in a file name.

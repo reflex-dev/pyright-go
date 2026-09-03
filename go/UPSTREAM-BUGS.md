@@ -574,6 +574,18 @@ The mechanism is not diagnosed here. `Cannot access attribute` on a narrowed
 an import, which is exactly the state a per-worker `Program` would hold
 differently from a single one -- but that is a hypothesis, not a finding.
 
+**Update, after porting `--threads`:** the port's transliteration of
+`runMultiThreaded` / `runWorkerMessageLoop` (goroutines standing in for the
+forked processes, everything else the same: `checkOnlyOpenFiles`, one file
+opened at a time, per-worker `Program`) drops **exactly the same two
+diagnostics** -- same files, same positions, same message -- and does so
+deterministically across runs and regardless of scheduling. That localizes the
+bug: it is not the affinity partitioning, the work stealing, or a data race.
+Analyzing a file as an *open file* in an otherwise-empty program produces a
+different answer for these two locations than analyzing it as a tracked file in
+a whole-program pass. The isolation semantics themselves lose the narrowing,
+in any faithful implementation, on any partition.
+
 Nothing about this is reproduced in the port, which has no threading. It is
 recorded because the comparison that found it is the port's own verification
 harness, and because it is evidence for how any future parallelism here should

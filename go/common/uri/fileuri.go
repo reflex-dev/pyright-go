@@ -96,31 +96,27 @@ func (u *FileUri) Fragment() string { return u.fragment }
 func (u *FileUri) Query() string { return u.query }
 
 func (u *FileUri) FileName() string {
-	if u.fileName == nil {
+	return *memoize(&u.mu, &u.fileName, func() *string {
 		name := common.GetFileName(u.filePath)
-		u.fileName = &name
-	}
-	return *u.fileName
+		return &name
+	})
 }
 
 func (u *FileUri) LastExtension() string {
-	if u.lastExtension == nil {
+	return *memoize(&u.mu, &u.lastExtension, func() *string {
 		ext := common.GetFileExtension(u.filePath, false)
-		u.lastExtension = &ext
-	}
-	return *u.lastExtension
+		return &ext
+	})
 }
 
 func (u *FileUri) Root() Uri {
-	if u.root == nil {
+	return memoize(&u.mu, &u.root, func() Uri {
 		rootPath := u.getRootPath()
 		if rootPath != u.filePath {
-			u.root = CreateFileUri(rootPath, "", "", "", u.isCaseSensitive)
-		} else {
-			u.root = u
+			return CreateFileUri(rootPath, "", "", "", u.isCaseSensitive)
 		}
-	}
-	return u.root
+		return u
+	})
 }
 
 func (u *FileUri) IsCaseSensitive() bool { return u.isCaseSensitive }
@@ -132,15 +128,13 @@ func (u *FileUri) MatchesRegex(regex Regexp) bool {
 }
 
 func (u *FileUri) String() string {
-	if u.formattedString == "" {
+	return memoize(&u.mu, &u.formattedString, func() string {
 		if u.originalString != "" {
-			u.formattedString = u.originalString
-		} else {
-			q, f := u.query, u.fragment
-			u.formattedString = vsURIFile(u.filePath).with(uriChange{query: &q, fragment: &f}).String()
+			return u.originalString
 		}
-	}
-	return u.formattedString
+		q, f := u.query, u.fragment
+		return vsURIFile(u.filePath).with(uriChange{query: &q, fragment: &f}).String()
+	})
 }
 
 func (u *FileUri) ToUserVisibleString() string { return u.filePath }
@@ -221,15 +215,25 @@ func (u *FileUri) CombinePaths(paths ...string) Uri {
 			!strings.Contains(segment, "..") &&
 			!strings.Contains(segment, fileUriSeparator) &&
 			!strings.Contains(segment, "/") {
+			u.mu.Lock()
 			if cached, ok := u.combineChildren[segment]; ok {
+				u.mu.Unlock()
 				return cached
 			}
+			u.mu.Unlock()
 
 			child := u.CombinePathsUnsafe(segment)
-			if u.combineChildren == nil {
-				u.combineChildren = map[string]Uri{}
+
+			u.mu.Lock()
+			if cached, ok := u.combineChildren[segment]; ok {
+				child = cached
+			} else {
+				if u.combineChildren == nil {
+					u.combineChildren = map[string]Uri{}
+				}
+				u.combineChildren[segment] = child
 			}
-			u.combineChildren[segment] = child
+			u.mu.Unlock()
 			return child
 		}
 	}
@@ -257,19 +261,17 @@ func (u *FileUri) CombinePathsUnsafe(paths ...string) Uri {
 }
 
 func (u *FileUri) GetDirectory() Uri {
-	if u.directory == nil {
+	return memoize(&u.mu, &u.directory, func() Uri {
 		filePath := u.filePath
 		dir := common.GetDirectoryPath(filePath)
 		if common.HasTrailingDirectorySeparator(dir) && len(dir) > 1 {
 			dir = dir[:len(dir)-1]
 		}
 		if dir != filePath {
-			u.directory = CreateFileUri(dir, "", "", "", u.isCaseSensitive)
-		} else {
-			u.directory = u
+			return CreateFileUri(dir, "", "", "", u.isCaseSensitive)
 		}
-	}
-	return u.directory
+		return u
+	})
 }
 
 func (u *FileUri) WithFragment(fragment string) Uri {
@@ -331,6 +333,11 @@ func fileUriCreateKey(filePath, query, fragment string) string {
 // because the original's guard is `=== undefined` here rather than the
 // truthiness test it uses elsewhere -- an empty path is cached.
 func (u *FileUri) getNormalizedPath() string {
+	// The lock is held across the compute: normalizeSlashes is pure, so this
+	// cannot re-enter another lazy getter, and the flag plus value must be
+	// published together.
+	u.mu.Lock()
+	defer u.mu.Unlock()
 	if !u.hasNormalized {
 		u.normalizedPath = normalizeSlashes(u.filePath)
 		u.hasNormalized = true

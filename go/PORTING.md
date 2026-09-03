@@ -33,9 +33,17 @@ the configuration and service layers that decide what gets analyzed.
 `cmd/pyright-go` is a transliteration of `packages/pyright/src/pyright.ts`: the
 same option table, the same parsing rules, the same text and `--outputjson`
 reporters, the same exit codes. It is meant to stand in for the pyright CLI in a
-script or a CI step. Five of pyright's modes are refused rather than silently
+script or a CI step. Four of pyright's modes are refused rather than silently
 ignored, because each rests on a module listed below as out of scope:
-`--watch`, `--createstub`, `--verifytypes`, `--dependencies` and `--threads`.
+`--watch`, `--createstub`, `--verifytypes` and `--dependencies`.
+
+`--threads` is supported (cmd/pyright-go/threads.go). It transliterates
+`runMultiThreaded` and `runWorkerMessageLoop`: the same affinity queues over
+the tracked file list, the same work stealing, the same per-worker service
+running `checkOnlyOpenFiles` with one file opened at a time, the same merge and
+sort. Worker goroutines stand in for the original's forked processes -- which
+is why a pass over the port's package-level state was needed first; see
+"Deliberate divergences".
 
 It finds its typeshed via `--rootdir`, `$PYRIGHT_GO_ROOTDIR`, or a search
 upward from the executable — the original reads `global.__rootDirectory`, which
@@ -49,7 +57,7 @@ changes a diagnostic.
 | module | why |
 | --- | --- |
 | `languageServerBase.ts`, `server.ts`, the providers (hover, completion, rename, …) | the language server |
-| `backgroundAnalysisProgram.ts`, `analysis.ts` worker threads, `cancellationUtils.ts` | scheduling and cancellation; the port analyzes synchronously |
+| `backgroundAnalysisProgram.ts`, `analysis.ts` worker threads, `cancellationUtils.ts` | language-server scheduling and cancellation; the port analyzes synchronously. The CLI's `--threads` does not rest on these -- upstream implements it in pyright.ts with forked processes, ported as goroutines |
 | `common/chokidarFileWatcherProvider.ts`, the service's watchers and reanalysis timer | decide *when* to analyze, not what |
 | `analyzer/typeStubWriter.ts` (`--createstub`) | separate CLI feature |
 | `analyzer/packageTypeVerifier.ts` (`--verifytypes`) | separate CLI feature |
@@ -99,12 +107,24 @@ the printed result — 88,477 names, no sampling.
 
 Beyond the corpus, `cmd/pyright-go` is run against a real project alongside
 pyright 1.1.412 — same working directory, same command line, same config file,
-no arguments invented for either side:
+no arguments invented for either side. In both of pyright's modes:
 
 | | files | errors | warnings | differences |
 | --- | --- | --- | --- | --- |
-| pyright 1.1.412 | 3135 | 10177 | 31675 | — |
-| Go port | 3135 | 10177 | 31675 | **0 missing, 0 spurious** |
+| pyright 1.1.412 | 3138 | 10192 | 31697 | — |
+| Go port | 3138 | 10192 | 31697 | **0 missing, 0 spurious** |
+| pyright `--threads` | 3138 | 10190 | 31697 | — |
+| Go port `--threads` | 3138 | 10190 | 31697 | **0 missing, 0 spurious** |
+
+(The project has grown since earlier revisions of this file quoted 3135 files.)
+
+The threaded rows agreeing at 10190 rather than 10192 is not sloppiness; it is
+fidelity. Upstream's `--threads` deterministically loses two diagnostics
+(UPSTREAM-BUGS.md #17), and the transliterated worker model loses **exactly the
+same two**, which localizes the upstream bug to the per-file isolation
+semantics rather than to partitioning or a race. The port's threaded output is
+identical run to run, and `go build -race` over the full threaded project run
+reports zero data races.
 
 Text output is byte-identical; JSON output differs only in `version` and the
 timestamp; exit codes match across `--level`, `--warnings`, `-p`, stdin file
@@ -124,6 +144,31 @@ analyzer/STATUS-STAGE-D.md.
 | --- | --- | --- |
 | pyright 1.1.412 | 2.34 s / 303 MB | 80.5 s / 3676 MB |
 | Go port | 0.85 s / 202 MB | 39.0 s / 5966 MB |
+
+With `--threads` on 16 logical CPUs (3138-file revision of the same project,
+median of 3 runs, measured the same day on the same machine):
+
+| | single-threaded | `--threads` | scaling |
+| --- | --- | --- | --- |
+| pyright 1.1.412 | 71.5 s / 3608 MB | 37.0 s | 1.9× |
+| Go port | 35.1 s / 6.0 GB | 13.3 s / ~20 GB | 2.6× |
+
+Neither implementation scales to the core count because every worker re-parses,
+re-binds and re-infers the dependency closure of its own files; that redundancy
+is the design being transliterated. The port scales further than the original
+mostly because its front end (the part being redundantly repeated) is 5-9×
+faster. The pyright `--threads` RSS is only the parent process -- its 16 forked
+workers' heaps are not in that number, so the memory comparison across the two
+rows is not apples to apples; the port's ~20 GB is the whole thing.
+
+The GC finding from the single-threaded work inverts under --threads: with 16
+worker goroutines mutating one shared heap several times the single-threaded
+live set, the collector's scan work saturates the cores at the default GOGC,
+and the threaded run was measured at 1.03× single-threaded -- no speedup at
+all. threads.go therefore sets GOGC=200 for the threaded mode (only when the
+environment sets neither GOGC nor GOMEMLIMIT), which is what produces the
+table above; upstream needs no such knob because each forked worker brings its
+own V8 heap and collector.
 
 The port is faster at both sizes — 2.8× and 2.1×. It was *slower* than pyright
 on the large input until two rounds of profiling: three caching problems (a
@@ -155,8 +200,8 @@ At pyright's memory the port is slower; at pyright's speed it wants roughly
 collection, with no application-level hot spot left, so this is the cost of the
 type model as represented in Go rather than a specific mistake.
 
-Both implementations are single-threaded here and neither caches across runs, so
-this measures batch analysis and says nothing about language-server latency.
+Neither implementation caches across runs, so all of this measures batch
+analysis and says nothing about language-server latency.
 
 ## Suspected bugs in the original
 
@@ -178,6 +223,23 @@ Each is commented at the site.
   racing readers. `TestFastTableUnchangedByFullBuild` pins the equivalence.
 - Several lazily-initialized tables are guarded with `sync.Once` or a mutex.
   JavaScript is single-threaded and the original needs no guard.
+- `--threads` shares one address space where the original forks processes, so
+  every piece of module-level mutable state the original relies on had to be
+  found and made goroutine-safe. The full inventory, each commented at the
+  site: the interned `Uri` instances' lazy fields (common/uri -- the
+  `combineChildren` map would panic outright under concurrent use); the type
+  singletons' `cached` slots (pre-filled at init by analyzer/prewarm.go so
+  runtime only reads them); the `anySpecialForm` wiring in
+  typeevaluator_prefetch.go (upstream re-mutates the singleton per evaluator,
+  last write wins; here first write wins, once, under a mutex); the
+  `enumEvalStack` and `protocolAssignmentStack` recursion stacks (module-level
+  upstream, moved onto the typeEvaluator, which is what "module-level" means
+  under a process-per-worker model); the `programNextId` / `nextUniqueFileId`
+  counters (now atomic); and `TimingStatsInstance` (now internally locked; its
+  numbers are still not meaningful under --threads, which upstream acknowledges
+  by rejecting --stats with --threads). Found by `go build -race` over a full
+  threaded project run, which now reports zero races. Single-threaded behavior
+  is unchanged -- every gate below was re-run after the pass.
 - `shallowCopyWithNewID` (`parser/parsenodes.go`) uses reflection where the
   TypeScript uses `Object.assign({}, node)`. Same result; a 78-case type switch
   would only add somewhere for the two to drift apart.

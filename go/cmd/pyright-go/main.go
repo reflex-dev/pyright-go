@@ -15,12 +15,14 @@
  *   --watch        the file watchers and the reanalysis timer
  *   --createstub   typeStubWriter.ts
  *   --verifytypes  packageTypeVerifier.ts
- *   --threads      backgroundAnalysisProgram.ts and the worker threads
  *   --dependencies the service's dependency report
  *
  * Each is rejected with a message saying so, rather than being accepted and
  * quietly ignored -- a drop-in that silently does less than it was asked is
  * worse than one that says what it cannot do.
+ *
+ * --threads is supported; see threads.go. The original forks worker processes,
+ * this runs worker goroutines, one AnalyzerService each.
  */
 
 package main
@@ -77,12 +79,24 @@ func run(argv []string) ExitStatus {
 		{"createstub", "type stub generation is not ported"},
 		{"verifytypes", "package type verification is not ported"},
 		{"dependencies", "the dependency report is not ported"},
-		{"threads", "background analysis threads are not ported; analysis is single-threaded"},
 	} {
 		if args.has(unsupported.name) {
 			fmt.Fprintf(os.Stderr, "'--%s' is not supported by pyright-go: %s\n",
 				unsupported.name, unsupported.why)
 			return ExitParameterError
+		}
+	}
+
+	// The original's quirk, kept: the incompatibility check reads `if
+	// (args.threads)`, so it fires only when an explicit COUNT was given --
+	// a bare `--threads` or `--threads auto` skips it.
+	explicitThreadCount, threadCountIsExplicit := parseThreadsArgValue(args.str("threads"))
+	if threadCountIsExplicit {
+		for _, arg := range []string{"watch", "stats", "dependencies"} {
+			if args.has(arg) {
+				fmt.Fprintf(os.Stderr, "'threads' option cannot be used with '%s' option\n", arg)
+				return ExitParameterError
+			}
 		}
 	}
 
@@ -267,6 +281,30 @@ func run(argv []string) ExitStatus {
 	// original does this inside Program itself; the port keeps the factories at
 	// the seam so the earlier stages could be exercised without them.
 	installFactories(service.Program())
+
+	// The original's comment: if the thread count was unspecified, use the
+	// number of logical CPUs (i.e. hardware threads). We find empirically that
+	// going below 4 threads usually doesn't help.
+	if args.has("threads") {
+		threadCount := explicitThreadCount
+		if !threadCountIsExplicit {
+			threadCount = runtime.NumCPU()
+			if threadCount < 4 {
+				threadCount = 1
+			}
+		}
+
+		if threadCount > 1 {
+			return runMultiThreaded(args, options, threadCount, service, minSeverityLevel, console,
+				workerConfig{
+					options:       options,
+					typeshedRoot:  typeshedRoot,
+					verboseOutput: args.has("verbose"),
+					noInterpreter: args.has("nointerpreter"),
+				})
+		}
+	}
+
 	service.SetOptions(options)
 
 	// Analyze returns false once there is nothing left to do.

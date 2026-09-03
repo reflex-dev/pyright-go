@@ -18,6 +18,7 @@ package uri
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/microsoft/pyright/go/common"
 )
@@ -36,6 +37,12 @@ type baseUri struct {
 	key  string
 	self uriInternals
 
+	// mu guards every lazily memoized field on this instance and on the
+	// embedding FileUri/WebUri. Uris are interned (see memoization.go), so
+	// instances are shared across --threads worker goroutines; JavaScript's
+	// single thread made the original's unguarded writes safe.
+	mu sync.Mutex
+
 	// The @cacheProperty() getters. TypeScript memoizes these on the
 	// instance; the point is not just speed but that repeated reads return
 	// the same object.
@@ -44,6 +51,32 @@ type baseUri struct {
 	initPyUri      Uri
 	initPyiUri     Uri
 	pytypedUri     Uri
+}
+
+// memoize fills a lazily computed slot exactly once. The compute runs with mu
+// released -- lazy getters call one another (WebUri.LastExtension reads
+// FileName) and sync.Mutex does not re-enter -- and the first stored result
+// wins, so repeated reads keep returning the same object, which is the point
+// of @cacheProperty(). A zero-valued result is not stored, matching the
+// original's truthiness guards.
+func memoize[T comparable](mu *sync.Mutex, slot *T, compute func() T) T {
+	var zero T
+	mu.Lock()
+	if *slot != zero {
+		v := *slot
+		mu.Unlock()
+		return v
+	}
+	mu.Unlock()
+
+	v := compute()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if *slot == zero {
+		*slot = v
+	}
+	return *slot
 }
 
 // Key is the unique key for storing in maps.
@@ -61,48 +94,33 @@ func (b *baseUri) FileNameWithoutExtensions() string {
 
 // PackageUri returns a URI where the path contains the path with .py appended.
 func (b *baseUri) PackageUri() Uri {
-	if b.packageUri == nil {
-		// This is assuming that the current path is a file already.
-		b.packageUri = b.self.AddExtension(".py")
-	}
-	return b.packageUri
+	// This is assuming that the current path is a file already.
+	return memoize(&b.mu, &b.packageUri, func() Uri { return b.self.AddExtension(".py") })
 }
 
 // PackageStubUri returns a URI where the path contains the path with .pyi
 // appended.
 func (b *baseUri) PackageStubUri() Uri {
-	if b.packageStubUri == nil {
-		// This is assuming that the current path is a file already.
-		b.packageStubUri = b.self.AddExtension(".pyi")
-	}
-	return b.packageStubUri
+	// This is assuming that the current path is a file already.
+	return memoize(&b.mu, &b.packageStubUri, func() Uri { return b.self.AddExtension(".pyi") })
 }
 
 // InitPyUri returns a URI where the path has __init__.py appended.
 func (b *baseUri) InitPyUri() Uri {
-	if b.initPyUri == nil {
-		// This is assuming that the current path is a directory already.
-		b.initPyUri = b.self.CombinePathsUnsafe("__init__.py")
-	}
-	return b.initPyUri
+	// This is assuming that the current path is a directory already.
+	return memoize(&b.mu, &b.initPyUri, func() Uri { return b.self.CombinePathsUnsafe("__init__.py") })
 }
 
 // InitPyiUri returns a URI where the path has __init__.pyi appended.
 func (b *baseUri) InitPyiUri() Uri {
-	if b.initPyiUri == nil {
-		// This is assuming that the current path is a directory already.
-		b.initPyiUri = b.self.CombinePathsUnsafe("__init__.pyi")
-	}
-	return b.initPyiUri
+	// This is assuming that the current path is a directory already.
+	return memoize(&b.mu, &b.initPyiUri, func() Uri { return b.self.CombinePathsUnsafe("__init__.pyi") })
 }
 
 // PytypedUri returns a URI where the path has py.typed appended.
 func (b *baseUri) PytypedUri() Uri {
-	if b.pytypedUri == nil {
-		// This is assuming that the current path is a directory already.
-		b.pytypedUri = b.self.CombinePathsUnsafe("py.typed")
-	}
-	return b.pytypedUri
+	// This is assuming that the current path is a directory already.
+	return memoize(&b.mu, &b.pytypedUri, func() Uri { return b.self.CombinePathsUnsafe("py.typed") })
 }
 
 func (b *baseUri) IsEmpty() bool { return false }

@@ -53,9 +53,13 @@ type enumEvalStackEntry struct {
 	MemberName string
 }
 
-// enumEvalStack corresponds to the module-level stack of the same name, which
-// breaks cycles among members that alias one another.
-var enumEvalStack []enumEvalStackEntry
+// The module-level enumEvalStack, which breaks cycles among members that alias
+// one another, lives on the typeEvaluator here -- see the field's comment. This
+// helper reaches it from the interface value every caller passes in;
+// *typeEvaluator is the interface's only implementation.
+func enumEvalStackOf(evaluator TypeEvaluator) *[]enumEvalStackEntry {
+	return &evaluator.(*typeEvaluator).enumEvalStack
+}
 
 // TransformTypeForEnumMember corresponds to transformTypeForEnumMember. It
 // returns nil where the original returns undefined, meaning "not a member".
@@ -82,14 +86,15 @@ func transformTypeForEnumMember(
 	recursionCount++
 
 	// The original's comment: avoid infinite recursion.
-	for _, entry := range enumEvalStack {
+	enumEvalStack := enumEvalStackOf(evaluator)
+	for _, entry := range *enumEvalStack {
 		if ClassTypeIsSameGenericClass(entry.ClassType, classType, 0) && entry.MemberName == memberName {
 			return nil
 		}
 	}
 
-	enumEvalStack = append(enumEvalStack, enumEvalStackEntry{ClassType: classType, MemberName: memberName})
-	defer func() { enumEvalStack = enumEvalStack[:len(enumEvalStack)-1] }()
+	*enumEvalStack = append(*enumEvalStack, enumEvalStackEntry{ClassType: classType, MemberName: memberName})
+	defer func() { *enumEvalStack = (*enumEvalStack)[:len(*enumEvalStack)-1] }()
 
 	memberInfo := LookUpClassMember(classType, memberName, MemberAccessFlagsDefault, nil)
 	if memberInfo == nil || !IsClass(memberInfo.ClassType) ||

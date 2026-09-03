@@ -22,6 +22,8 @@
 package analyzer
 
 import (
+	"sync"
+
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/common/uri"
 	"github.com/microsoft/pyright/go/parser"
@@ -99,7 +101,21 @@ func (e *typeEvaluator) initializePrefetchedTypes(node parser.ParseNode) {
 
 	// The original's comment: wire up the `Any` class to the special-form
 	// version of our internal AnyType.
-	if p.ObjectClass != nil && IsInstantiableClass(p.ObjectClass) &&
+	//
+	// AnyType.createSpecialForm returns a module-level singleton, so the
+	// original mutates shared state here: every new evaluator re-attaches its
+	// own freshly built `Any` class, last write wins, and nothing downstream
+	// can tell because the classes are structurally identical. Under --threads
+	// that overwrite is a data race -- worker goroutines share the singleton
+	// where the original's worker processes each had their own -- so the
+	// wiring runs once per process, first evaluator wins, and the mutex gives
+	// every later evaluator a happens-before edge on the written fields. An
+	// evaluator with no builtins (no object/type class) does not consume the
+	// wiring; the next one that has them performs it, as it would upstream.
+	anySpecialFormWiringMu.Lock()
+	defer anySpecialFormWiringMu.Unlock()
+	if !anySpecialFormWired &&
+		p.ObjectClass != nil && IsInstantiableClass(p.ObjectClass) &&
 		p.TypeClass != nil && IsInstantiableClass(p.TypeClass) {
 		anyClass := ClassTypeCreateInstantiable(
 			"Any",
@@ -119,9 +135,17 @@ func (e *typeEvaluator) initializePrefetchedTypes(node parser.ParseNode) {
 		if IsAny(anySpecialForm) {
 			anySpecialForm.Base().SetSpecialForm(anyClass)
 			anySpecialForm.Base().SetTypeForm(ConvertToInstance(anySpecialForm, true))
+			anySpecialFormWired = true
 		}
 	}
 }
+
+// anySpecialFormWiringMu and anySpecialFormWired serialize the singleton
+// mutation above.
+var (
+	anySpecialFormWiringMu sync.Mutex
+	anySpecialFormWired    bool
+)
 
 /*
  * The module lookups. Each returns nil where the original returns undefined.

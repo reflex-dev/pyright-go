@@ -20,6 +20,7 @@ package common
 import (
 	"math"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -44,7 +45,16 @@ func (d *Duration) GetDurationInSeconds() float64 {
 }
 
 // TimingStat corresponds to the TimingStat class.
+//
+// The mutex has no counterpart in the original: TimingStatsInstance is a
+// process-wide singleton, and --threads workers are goroutines here where the
+// original forks processes that each get their own. The callbacks run outside
+// the lock -- holding it across them would serialize the workers -- so under
+// --threads one worker's IsTiming can shunt another onto the uncounted
+// reentrancy path. That only skews numbers never printed: upstream rejects
+// --stats together with --threads.
 type TimingStat struct {
+	mu        sync.Mutex
 	TotalTime int64
 	CallCount int
 	IsTiming  bool
@@ -54,30 +64,46 @@ type TimingStat struct {
 // generic over the callback's return type; the parser only uses the void form,
 // so this takes a plain func().
 func (s *TimingStat) TimeOperation(callback func()) {
+	s.mu.Lock()
 	s.CallCount++
 
 	// Handle reentrancy.
 	if s.IsTiming {
+		s.mu.Unlock()
 		callback()
 		return
 	}
 
 	s.IsTiming = true
+	s.mu.Unlock()
+
 	duration := NewDuration()
 	callback()
-	s.TotalTime += duration.GetDurationInMilliseconds()
+	elapsed := duration.GetDurationInMilliseconds()
+
+	s.mu.Lock()
+	s.TotalTime += elapsed
 	s.IsTiming = false
+	s.mu.Unlock()
 }
 
 // SubtractFromTime corresponds to subtractFromTime().
 func (s *TimingStat) SubtractFromTime(callback func()) {
+	s.mu.Lock()
 	if s.IsTiming {
 		s.IsTiming = false
+		s.mu.Unlock()
+
 		duration := NewDuration()
 		callback()
-		s.TotalTime -= duration.GetDurationInMilliseconds()
+		elapsed := duration.GetDurationInMilliseconds()
+
+		s.mu.Lock()
+		s.TotalTime -= elapsed
 		s.IsTiming = true
+		s.mu.Unlock()
 	} else {
+		s.mu.Unlock()
 		callback()
 	}
 }

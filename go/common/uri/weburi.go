@@ -79,47 +79,42 @@ func (u *WebUri) Fragment() string { return u.fragment }
 func (u *WebUri) Query() string { return u.query }
 
 func (u *WebUri) Root() Uri {
-	if u.root == nil {
+	return memoize(&u.mu, &u.root, func() Uri {
 		rootPath := u.getRootPath()
 		if rootPath != u.path {
-			u.root = CreateWebUri(u.scheme, u.authority, rootPath, "", "", "")
-		} else {
-			u.root = u
+			return CreateWebUri(u.scheme, u.authority, rootPath, "", "", "")
 		}
-	}
-	return u.root
+		return u
+	})
 }
 
 func (u *WebUri) FileName() string {
-	if u.fileName == nil {
+	return *memoize(&u.mu, &u.fileName, func() *string {
 		// Path should already be normalized, just get the last on a split of '/'.
 		components := strings.Split(u.path, "/")
 		name := components[len(components)-1]
-		u.fileName = &name
-	}
-	return *u.fileName
+		return &name
+	})
 }
 
 func (u *WebUri) LastExtension() string {
-	if u.lastExtension == nil {
+	return *memoize(&u.mu, &u.lastExtension, func() *string {
 		basename := u.FileName()
 		ext := ""
 		if index := strings.LastIndex(basename, "."); index >= 0 {
 			ext = basename[index:]
 		}
-		u.lastExtension = &ext
-	}
-	return *u.lastExtension
+		return &ext
+	})
 }
 
 func (u *WebUri) String() string {
-	if u.originalString == "" {
+	return memoize(&u.mu, &u.originalString, func() string {
 		// URI.revive takes the object-form constructor, so the components are
 		// used as-is: no scheme fix, no reference resolution, no validation.
 		revived := newVsURIFromComponents(u.scheme, u.authority, u.path, u.query, u.fragment)
-		u.originalString = revived.String()
-	}
-	return u.originalString
+		return revived.String()
+	})
 }
 
 func (u *WebUri) ToUserVisibleString() string { return u.String() }
@@ -213,22 +208,20 @@ func (u *WebUri) CombinePathsUnsafe(paths ...string) Uri {
 }
 
 func (u *WebUri) GetDirectory() Uri {
-	if u.directory == nil {
+	return memoize(&u.mu, &u.directory, func() Uri {
 		if len(u.path) == 0 {
-			u.directory = u
-		} else {
-			index := strings.LastIndex(u.path, "/")
-			newPath := ""
-			if index > 0 {
-				newPath = u.path[:index]
-			} else if index == 0 {
-				newPath = "/"
-			}
-
-			u.directory = CreateWebUri(u.scheme, u.authority, newPath, u.query, u.fragment, "")
+			return u
 		}
-	}
-	return u.directory
+		index := strings.LastIndex(u.path, "/")
+		newPath := ""
+		if index > 0 {
+			newPath = u.path[:index]
+		} else if index == 0 {
+			newPath = "/"
+		}
+
+		return CreateWebUri(u.scheme, u.authority, newPath, u.query, u.fragment, "")
+	})
 }
 
 func (u *WebUri) WithFragment(fragment string) Uri {

@@ -266,6 +266,15 @@ type typeEvaluator struct {
 	suppressedNodeStack    []*SuppressedNodeStackEntry
 	assignClassToSelfStack []*AssignClassToSelfInfo
 
+	// enumEvalStack and protocolAssignmentStack are module-level stacks in the
+	// original (enums.ts, protocols.ts). They live here because --threads runs
+	// one evaluator per worker goroutine, and a recursion stack shared between
+	// workers is corrupted by interleaved push/pop; upstream's worker processes
+	// each had their own module instances. Every use flows through an
+	// `evaluator TypeEvaluator` parameter, so the stacks follow the evaluator.
+	enumEvalStack           []enumEvalStackEntry
+	protocolAssignmentStack []protocolAssignmentStackEntry
+
 	functionRecursionMap              *common.OrderedMap[int, []*FunctionRecursionInfo]
 	codeFlowAnalyzerCache             *common.OrderedMap[int, []*CodeFlowAnalyzerCacheEntry]
 	typeCache                         *typeCacheMap

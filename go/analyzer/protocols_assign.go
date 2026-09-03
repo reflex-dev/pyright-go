@@ -74,9 +74,13 @@ type protocolAssignmentStackEntry struct {
 	DestType *ClassType
 }
 
-// protocolAssignmentStack corresponds to the module-level stack of the same
-// name, which breaks recursion when a protocol refers to itself.
-var protocolAssignmentStack []protocolAssignmentStackEntry
+// The module-level protocolAssignmentStack, which breaks recursion when a
+// protocol refers to itself, lives on the typeEvaluator here -- see the
+// field's comment. This helper reaches it from the interface value every
+// caller passes in; *typeEvaluator is the interface's only implementation.
+func protocolAssignmentStackOf(evaluator TypeEvaluator) *[]protocolAssignmentStackEntry {
+	return &evaluator.(*typeEvaluator).protocolAssignmentStack
+}
 
 // AssignClassToProtocol corresponds to assignClassToProtocol.
 func AssignClassToProtocol(
@@ -107,7 +111,8 @@ func AssignClassToProtocol(
 
 	// The original's comment: use a stack of pending protocol class evaluations to
 	// detect recursion. This can happen when a protocol class refers to itself.
-	for _, entry := range protocolAssignmentStack {
+	protocolAssignmentStack := protocolAssignmentStackOf(evaluator)
+	for _, entry := range *protocolAssignmentStack {
 		if IsTypeSame(entry.SrcType, srcType, TypeSameOptions{}, 0) &&
 			IsTypeSame(entry.DestType, destType, TypeSameOptions{}, 0) {
 			return !enforceInvariance
@@ -135,7 +140,7 @@ func AssignClassToProtocol(
 		}
 	}
 
-	protocolAssignmentStack = append(protocolAssignmentStack,
+	*protocolAssignmentStack = append(*protocolAssignmentStack,
 		protocolAssignmentStackEntry{SrcType: srcType, DestType: destType})
 
 	var clonedConstraints *ConstraintTracker
@@ -146,7 +151,7 @@ func AssignClassToProtocol(
 	isCompatible := assignToProtocolInternal(evaluator, destType, srcType, diag,
 		constraints, flags, recursionCount)
 
-	protocolAssignmentStack = protocolAssignmentStack[:len(protocolAssignmentStack)-1]
+	*protocolAssignmentStack = (*protocolAssignmentStack)[:len(*protocolAssignmentStack)-1]
 
 	// The original's comment: cache the results for next time.
 	if compat == nil {

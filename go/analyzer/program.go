@@ -42,6 +42,7 @@ package analyzer
 
 import (
 	"strconv"
+	"sync/atomic"
 
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/common/uri"
@@ -127,8 +128,10 @@ func (t *editModeTracker) disable() []*SourceFileInfo {
 	return files
 }
 
-// programNextId backs the `Prog_N` identifiers.
-var programNextId = 0
+// programNextId backs the `Prog_N` identifiers. Atomic because --threads
+// creates one Program per worker goroutine; JavaScript's single thread made
+// the original's plain increment safe.
+var programNextId atomic.Int64
 
 // Program is the container for all of the files that are being analyzed.
 //
@@ -215,11 +218,11 @@ func NewProgram(
 	p.cacheManager.RegisterCacheOwner(p)
 	p.createNewEvaluator()
 
+	nextId := programNextId.Add(1) - 1
 	if id == "" {
-		id = "Prog_" + strconv.Itoa(programNextId)
+		id = "Prog_" + strconv.FormatInt(nextId, 10)
 	}
 	p.id = id
-	programNextId++
 
 	return p
 }
