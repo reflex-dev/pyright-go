@@ -16,6 +16,9 @@
  * slices of the (directory-ordered) file list, one per worker, on the theory
  * that neighboring files share imports and thus type-cache entries. A worker
  * that drains its own queue steals from the next one around the ring.
+ *
+ * The worker pool is shared with the --cachedir mode (cache.go), which runs
+ * it over cache misses only.
  */
 
 package main
@@ -99,18 +102,22 @@ func newWorkerService(config workerConfig) *analyzer.AnalyzerService {
 	return service
 }
 
-// runMultiThreaded corresponds to the function of the same name.
-func runMultiThreaded(
-	args *parsedArgs,
-	options *analyzer.CommandLineOptions,
+// checkFilesInIsolation runs the worker pool over the given files: affinity
+// chunks cut from the list's order, one goroutine per worker, work stealing
+// around the ring, one file opened at a time under checkOnlyOpenFiles. It
+// returns every produced FileDiagnostics (order unspecified; callers sort)
+// and ExitNoErrors, or nil and the failure's exit status.
+func checkFilesInIsolation(
+	filesToCheck []uri.Uri,
 	maxThreadCount int,
-	service *analyzer.AnalyzerService,
-	minSeverityLevel SeverityLevel,
-	output common.ConsoleInterface,
 	config workerConfig,
-) ExitStatus {
-	startTime := time.Now()
-	treatWarningsAsErrors := args.has("warnings")
+	output common.ConsoleInterface,
+) ([]common.FileDiagnostics, ExitStatus) {
+	// The original's comment: don't create more workers than there are files.
+	workerCount := min(maxThreadCount, len(filesToCheck))
+	if workerCount == 0 {
+		return nil, ExitNoErrors
+	}
 
 	// No counterpart upstream, where each forked worker gets its own V8 heap
 	// and collector. Here the workers share one Go heap several times the
@@ -118,31 +125,9 @@ func runMultiThreaded(
 	// work saturates the cores the workers need: measured on a 3135-file
 	// project, GOGC=100 gave 1.03x over single-threaded and GOGC=200 gave
 	// 2.3x. An explicit GOGC (or GOMEMLIMIT) from the environment wins.
-	if os.Getenv("GOGC") == "" && os.Getenv("GOMEMLIMIT") == "" {
+	if workerCount > 1 && os.Getenv("GOGC") == "" && os.Getenv("GOMEMLIMIT") == "" {
 		debug.SetGCPercent(200)
 	}
-
-	// The original's comment: specify that only open files should be checked.
-	// This will allow us to control which files are checked by which workers.
-	checkOnlyOpenFiles := true
-	options.LanguageServerSettings.CheckOnlyOpenFiles = &checkOnlyOpenFiles
-
-	// The original's comment: this will trigger discovery of files in the
-	// project.
-	service.SetOptions(options)
-	program := service.Program()
-
-	// The original's comment: get the list of "tracked" source files -- those
-	// that will be type checked.
-	sourceFilesToAnalyze := []uri.Uri{}
-	for _, info := range program.GetSourceFileInfoList() {
-		if info.IsTracked() {
-			sourceFilesToAnalyze = append(sourceFilesToAnalyze, info.Uri())
-		}
-	}
-
-	// The original's comment: don't create more workers than there are files.
-	workerCount := min(maxThreadCount, len(sourceFilesToAnalyze))
 
 	// The original's comment: split the source files into affinity queues, one
 	// for each worker. We assume that files that are next to each other in the
@@ -150,16 +135,11 @@ func runMultiThreaded(
 	// analyze them with the same worker if possible to maximize type cache
 	// hits.
 	affinityQueues := make([][]uri.Uri, workerCount)
-	if workerCount > 0 {
-		filesPerAffinityQueue := float64(len(sourceFilesToAnalyze)) / float64(workerCount)
-		for i, fileUri := range sourceFilesToAnalyze {
-			affinityIndex := int(float64(i) / filesPerAffinityQueue)
-			affinityQueues[affinityIndex] = append(affinityQueues[affinityIndex], fileUri)
-		}
+	filesPerAffinityQueue := float64(len(filesToCheck)) / float64(workerCount)
+	for i, fileUri := range filesToCheck {
+		affinityIndex := int(float64(i) / filesPerAffinityQueue)
+		affinityQueues[affinityIndex] = append(affinityQueues[affinityIndex], fileUri)
 	}
-
-	output.Info(fmt.Sprintf("Found %d files to analyze", len(sourceFilesToAnalyze)))
-	output.Info(fmt.Sprintf("Using %d threads", workerCount))
 
 	// The queue mutex stands in for the parent process's message loop, which
 	// serialized assignment the same way. analyzeNextFile's stealing order is
@@ -234,17 +214,14 @@ func runMultiThreaded(
 	// one file's analysis on this goroutine performs the wiring, and spawning
 	// the workers afterwards makes it visible to all of them. The work is not
 	// duplicated; worker 0 simply starts from its second file.
-	var firstWorkerService *analyzer.AnalyzerService
-	if workerCount > 0 {
-		firstWorkerService = newWorkerService(config)
-		if firstWorkerService.ConfigParseErrorOccurred() {
-			return ExitConfigFileParseError
-		}
-		if fileUri, ok := takeNextFile(0); ok {
-			if !analyzeOneFile(0, firstWorkerService, fileUri) {
-				output.Error("Fatal error from worker")
-				return ExitFatalError
-			}
+	firstWorkerService := newWorkerService(config)
+	if firstWorkerService.ConfigParseErrorOccurred() {
+		return nil, ExitConfigFileParseError
+	}
+	if fileUri, ok := takeNextFile(0); ok {
+		if !analyzeOneFile(0, firstWorkerService, fileUri) {
+			output.Error("Fatal error from worker")
+			return nil, ExitFatalError
 		}
 	}
 
@@ -287,17 +264,31 @@ func runMultiThreaded(
 	wg.Wait()
 
 	if configParseErrorOccurred.Load() {
-		return ExitConfigFileParseError
+		return nil, ExitConfigFileParseError
 	}
 	if fatalErrorOccurred.Load() {
 		output.Error("Fatal error from worker")
-		return ExitFatalError
+		return nil, ExitFatalError
 	}
 
 	fileDiagnostics := []common.FileDiagnostics{}
 	for _, workerDiags := range perWorkerDiagnostics {
 		fileDiagnostics = append(fileDiagnostics, workerDiags...)
 	}
+	return fileDiagnostics, ExitNoErrors
+}
+
+// reportPooledDiagnostics is the tail every pooled mode shares: sort, report
+// in the requested format, print the elapsed time, and derive the exit code.
+func reportPooledDiagnostics(
+	args *parsedArgs,
+	fileDiagnostics []common.FileDiagnostics,
+	filesAnalyzed int,
+	startTime time.Time,
+	minSeverityLevel SeverityLevel,
+	output common.ConsoleInterface,
+) ExitStatus {
+	treatWarningsAsErrors := args.has("warnings")
 
 	// The original's comment: sort all file diagnostics by the file URI so we
 	// have a deterministic ordering.
@@ -312,7 +303,7 @@ func runMultiThreaded(
 
 	if args.has("outputjson") {
 		report := reportDiagnosticsAsJSON(
-			fileDiagnostics, minSeverityLevel, len(sourceFilesToAnalyze), elapsedTime)
+			fileDiagnostics, minSeverityLevel, filesAnalyzed, elapsedTime)
 		errorCount += report.errorCount
 		if treatWarningsAsErrors {
 			errorCount += report.warningCount
@@ -333,4 +324,47 @@ func runMultiThreaded(
 		return ExitErrorsReported
 	}
 	return ExitNoErrors
+}
+
+// runMultiThreaded corresponds to the function of the same name.
+func runMultiThreaded(
+	args *parsedArgs,
+	options *analyzer.CommandLineOptions,
+	maxThreadCount int,
+	service *analyzer.AnalyzerService,
+	minSeverityLevel SeverityLevel,
+	output common.ConsoleInterface,
+	config workerConfig,
+) ExitStatus {
+	startTime := time.Now()
+
+	// The original's comment: specify that only open files should be checked.
+	// This will allow us to control which files are checked by which workers.
+	checkOnlyOpenFiles := true
+	options.LanguageServerSettings.CheckOnlyOpenFiles = &checkOnlyOpenFiles
+
+	// The original's comment: this will trigger discovery of files in the
+	// project.
+	service.SetOptions(options)
+	program := service.Program()
+
+	// The original's comment: get the list of "tracked" source files -- those
+	// that will be type checked.
+	sourceFilesToAnalyze := []uri.Uri{}
+	for _, info := range program.GetSourceFileInfoList() {
+		if info.IsTracked() {
+			sourceFilesToAnalyze = append(sourceFilesToAnalyze, info.Uri())
+		}
+	}
+
+	output.Info(fmt.Sprintf("Found %d files to analyze", len(sourceFilesToAnalyze)))
+	output.Info(fmt.Sprintf("Using %d threads", min(maxThreadCount, len(sourceFilesToAnalyze))))
+
+	fileDiagnostics, status := checkFilesInIsolation(sourceFilesToAnalyze, maxThreadCount, config, output)
+	if status != ExitNoErrors {
+		return status
+	}
+
+	return reportPooledDiagnostics(args, fileDiagnostics, len(sourceFilesToAnalyze),
+		startTime, minSeverityLevel, output)
 }

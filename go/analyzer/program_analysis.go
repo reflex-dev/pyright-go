@@ -172,6 +172,55 @@ func (p *Program) discardCachedParseResults() {
 	}
 }
 
+// ParseReachableFilesForImportGraph parses every file reachable from the
+// tracked set by following imports -- typeshed and site-packages included --
+// so that Imports() is populated on each, and returns them, tracked files
+// first, in a deterministic order. The parse trees are dropped again before
+// returning; the caller wants the import graph, not the trees.
+//
+// No counterpart upstream. It serves the CLI's --cachedir mode, which
+// fingerprints each tracked file's transitive dependency closure to decide
+// whether its previous diagnostics can be replayed.
+func (p *Program) ParseReachableFilesForImportGraph() []*SourceFileInfo {
+	visited := map[*SourceFileInfo]bool{}
+	queue := []*SourceFileInfo{}
+
+	// Snapshot first: parsing resolves imports, which appends the imported
+	// files to sourceFileList.
+	for _, info := range p.sourceFileList {
+		if info.IsTracked() {
+			visited[info] = true
+			queue = append(queue, info)
+		}
+	}
+
+	order := []*SourceFileInfo{}
+	for len(queue) > 0 {
+		info := queue[0]
+		queue = queue[1:]
+		order = append(order, info)
+
+		p.parseFile(info, "", false, true)
+
+		neighbors := info.Imports()
+		if builtins := info.BuiltinsImport(); builtins != nil {
+			neighbors = append(neighbors[:len(neighbors):len(neighbors)], builtins)
+		}
+		if chained := info.ChainedSourceFile(); chained != nil {
+			neighbors = append(neighbors[:len(neighbors):len(neighbors)], chained)
+		}
+		for _, neighbor := range neighbors {
+			if !visited[neighbor] {
+				visited[neighbor] = true
+				queue = append(queue, neighbor)
+			}
+		}
+	}
+
+	p.discardCachedParseResults()
+	return order
+}
+
 // removeUnneededFiles returns a list of empty file diagnostic entries for the
 // files that have been removed.
 //

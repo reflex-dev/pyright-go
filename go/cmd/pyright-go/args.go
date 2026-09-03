@@ -94,6 +94,9 @@ var optionDefs = []optionDef{
 	// what happens when it is not.
 	{name: "rootdir", kind: optionString},
 
+	// Also not pyright's: a run-to-run diagnostic cache -- see cache.go.
+	{name: "cachedir", kind: optionString},
+
 	// Also not pyright's: an escape hatch for reproducing a run without letting
 	// the analyzer execute a Python interpreter, and the two Go profilers.
 	{name: "nointerpreter", kind: optionBool},
@@ -319,6 +322,10 @@ const usageText = `Usage: pyright-go [options] files...
 
   Additional to this port:
   --rootdir <DIRECTORY>              Directory holding typeshed-fallback
+  --cachedir <DIRECTORY>             Reuse diagnostics for files whose
+                                     dependency closure is unchanged since the
+                                     previous run (per-file isolation
+                                     semantics, as with --threads)
   --nointerpreter                    Never run a Python interpreter
   --cpuprofile <FILE>                Write a Go CPU profile
   --memprofile <FILE>                Write a Go heap profile

@@ -285,24 +285,33 @@ func run(argv []string) ExitStatus {
 	// The original's comment: if the thread count was unspecified, use the
 	// number of logical CPUs (i.e. hardware threads). We find empirically that
 	// going below 4 threads usually doesn't help.
+	threadCount := 1
 	if args.has("threads") {
-		threadCount := explicitThreadCount
+		threadCount = explicitThreadCount
 		if !threadCountIsExplicit {
 			threadCount = runtime.NumCPU()
 			if threadCount < 4 {
 				threadCount = 1
 			}
 		}
+	}
 
-		if threadCount > 1 {
-			return runMultiThreaded(args, options, threadCount, service, minSeverityLevel, console,
-				workerConfig{
-					options:       options,
-					typeshedRoot:  typeshedRoot,
-					verboseOutput: args.has("verbose"),
-					noInterpreter: args.has("nointerpreter"),
-				})
-		}
+	config := workerConfig{
+		options:       options,
+		typeshedRoot:  typeshedRoot,
+		verboseOutput: args.has("verbose"),
+		noInterpreter: args.has("nointerpreter"),
+	}
+
+	// --cachedir composes with --threads: the pool runs over the cache misses
+	// with however many workers --threads asks for (one, if absent).
+	if args.truthy("cachedir") {
+		return runCached(args, options, args.str("cachedir"), threadCount, service,
+			minSeverityLevel, console, config)
+	}
+
+	if threadCount > 1 {
+		return runMultiThreaded(args, options, threadCount, service, minSeverityLevel, console, config)
 	}
 
 	service.SetOptions(options)

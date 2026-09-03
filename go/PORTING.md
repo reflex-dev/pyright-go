@@ -45,6 +45,21 @@ sort. Worker goroutines stand in for the original's forked processes -- which
 is why a pass over the port's package-level state was needed first; see
 "Deliberate divergences".
 
+`--cachedir <dir>` (cmd/pyright-go/cache.go) is an extension with no pyright
+counterpart: a run-to-run diagnostic cache, off unless the flag is given. It
+rests on the property the --threads port established -- under per-file
+isolation, a file's diagnostics are a function of its transitive dependency
+closure plus configuration -- so each tracked file is fingerprinted over the
+contents of its closure (typeshed and site-packages included, resolution
+recomputed every run), unchanged files replay their stored diagnostics, and
+the rest go through the --threads worker pool. On the 3138-file project with
+8 workers: a cold run costs ~15s (the ~12.6s check plus fingerprinting), a
+no-change rerun 3.8s at 1.5 GB RSS, and a single-file change ~4s while
+correctly rechecking the file and its reverse import closure. Cached output
+is byte-identical to the equivalent uncached --threads run and carries the
+same isolation semantics (UPSTREAM-BUGS.md #17); the reference remains the
+single-threaded mode.
+
 It finds its typeshed via `--rootdir`, `$PYRIGHT_GO_ROOTDIR`, or a search
 upward from the executable — the original reads `global.__rootDirectory`, which
 a Go binary has no counterpart for.
