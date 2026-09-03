@@ -172,16 +172,29 @@ func (p *Program) discardCachedParseResults() {
 	}
 }
 
+// ImportGraphCacheHooks lets the CLI's --cachedir mode replay import
+// descriptors for files whose content it knows is unchanged, so
+// ParseReachableFilesForImportGraph can rebuild their import-graph edges
+// without parsing them. Resolution always runs fresh either way.
+type ImportGraphCacheHooks struct {
+	// Lookup returns the stored import descriptors for the file, or false
+	// when the file's content changed (or was never seen), in which case the
+	// file is parsed and Store is called with what the parse found.
+	Lookup func(fileUri uri.Uri) ([]*parser.ModuleImport, bool)
+	Store  func(fileUri uri.Uri, moduleImports []*parser.ModuleImport)
+}
+
 // ParseReachableFilesForImportGraph parses every file reachable from the
 // tracked set by following imports -- typeshed and site-packages included --
 // so that Imports() is populated on each, and returns them, tracked files
 // first, in a deterministic order. The parse trees are dropped again before
-// returning; the caller wants the import graph, not the trees.
+// returning; the caller wants the import graph, not the trees. Files the
+// hooks can answer for skip the parse entirely.
 //
 // No counterpart upstream. It serves the CLI's --cachedir mode, which
 // fingerprints each tracked file's transitive dependency closure to decide
 // whether its previous diagnostics can be replayed.
-func (p *Program) ParseReachableFilesForImportGraph() []*SourceFileInfo {
+func (p *Program) ParseReachableFilesForImportGraph(hooks *ImportGraphCacheHooks) []*SourceFileInfo {
 	visited := map[*SourceFileInfo]bool{}
 	queue := []*SourceFileInfo{}
 
@@ -200,7 +213,22 @@ func (p *Program) ParseReachableFilesForImportGraph() []*SourceFileInfo {
 		queue = queue[1:]
 		order = append(order, info)
 
-		p.parseFile(info, "", false, true)
+		replayed := false
+		if hooks != nil {
+			if moduleImports, ok := hooks.Lookup(info.Uri()); ok {
+				info.SourceFile.ResolveImportsFromDescriptors(p.configOptions, p.importResolver, moduleImports)
+				p.updateSourceFileImports(info, p.configOptions)
+				replayed = true
+			}
+		}
+		if !replayed {
+			p.parseFile(info, "", false, true)
+			if hooks != nil {
+				if descriptors := info.SourceFile.GetImportedModuleDescriptors(); descriptors != nil {
+					hooks.Store(info.Uri(), descriptors)
+				}
+			}
+		}
 
 		neighbors := info.Imports()
 		if builtins := info.BuiltinsImport(); builtins != nil {

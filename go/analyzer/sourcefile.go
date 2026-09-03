@@ -1196,6 +1196,13 @@ func (s *SourceFile) resolveImports(
 		// The original's comment: associate the import results with the module
 		// import name node in the parse tree so we can access it later (for
 		// hover and definition support).
+		//
+		// A nil NameNode means the descriptors came from the --cachedir replay
+		// (ResolveImportsFromDescriptors) rather than from a parse; there is
+		// no tree to annotate and nothing reads the annotation.
+		if moduleImport.NameNode == nil {
+			continue
+		}
 		if len(moduleImport.NameParts) == len(moduleImport.NameNode.D.NameParts) {
 			SetImportInfo(moduleImport.NameNode, importResult)
 		} else {
@@ -1211,6 +1218,49 @@ func (s *SourceFile) resolveImports(
 	}
 
 	return resolveImportResult{Imports: imports, BuiltinsImportResult: builtinsImportResult}
+}
+
+// ResolveImportsFromDescriptors performs exactly the "Resolve imports" step of
+// parseContents -- same resolveImports call, same execution environment, same
+// writableData fields -- but from replayed import descriptors instead of a
+// fresh parse. No counterpart upstream; it serves the CLI's --cachedir mode,
+// which stores each file's import descriptors keyed by content hash so an
+// unchanged file's import-graph edges can be rebuilt without parsing it.
+// Resolution itself is NOT replayed: it runs against the live file system, so
+// a new file shadowing a module is still detected.
+func (s *SourceFile) ResolveImportsFromDescriptors(
+	configOptions *ConfigOptions,
+	importResolver *ImportResolver,
+	moduleImports []*parser.ModuleImport,
+) {
+	execEnvironment := configOptions.FindExecEnvironment(s.uri)
+	common.TimingStatsInstance.ResolveImportsTime.TimeOperation(func() {
+		importResult := s.resolveImports(importResolver, moduleImports, execEnvironment)
+
+		s.writableData.Imports = importResult.Imports
+		s.writableData.HasImports = true
+		s.writableData.BuiltinsImport = importResult.BuiltinsImportResult
+	})
+}
+
+// GetImportedModuleDescriptors returns copies of the parsed import
+// descriptors with the parse-tree pointers stripped -- the serializable
+// subset ResolveImportsFromDescriptors consumes -- or nil when the file has
+// no parser output. No counterpart upstream; see
+// ResolveImportsFromDescriptors.
+func (s *SourceFile) GetImportedModuleDescriptors() []*parser.ModuleImport {
+	if s.writableData.ParserOutput == nil {
+		return nil
+	}
+	out := make([]*parser.ModuleImport, 0, len(s.writableData.ParserOutput.ImportedModules))
+	for _, moduleImport := range s.writableData.ParserOutput.ImportedModules {
+		out = append(out, &parser.ModuleImport{
+			LeadingDots:     moduleImport.LeadingDots,
+			NameParts:       moduleImport.NameParts,
+			ImportedSymbols: moduleImport.ImportedSymbols,
+		})
+	}
+	return out
 }
 
 func (s *SourceFile) getPathForLogging(fileUri uri.Uri) uri.Uri {

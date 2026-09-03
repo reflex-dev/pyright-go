@@ -31,16 +31,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/microsoft/pyright/go/analyzer"
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/common/uri"
+	"github.com/microsoft/pyright/go/parser"
 )
 
 // cacheFormatVersion invalidates every entry when the format or anything
 // about diagnostic production changes shape.
-const cacheFormatVersion = 1
+const cacheFormatVersion = 2
 
 const cacheFileName = "pyright-go-cache.json"
 
@@ -67,10 +69,27 @@ type cacheEntry struct {
 	Diagnostics []cachedDiag `json:"d"`
 }
 
+// cachedImport is the serializable subset of parser.ModuleImport that
+// SourceFile.resolveImports consumes. HasSymbols preserves the nil-versus-
+// empty distinction: nil means a plain `import X`, empty means
+// `from X import *`.
+type cachedImport struct {
+	LeadingDots int      `json:"d,omitempty"`
+	NameParts   []string `json:"n"`
+	HasSymbols  bool     `json:"h,omitempty"`
+	Symbols     []string `json:"s,omitempty"`
+}
+
 type cacheFile struct {
 	FormatVersion int                   `json:"formatVersion"`
 	GlobalKey     string                `json:"globalKey"`
 	Entries       map[string]cacheEntry `json:"entries"`
+
+	// ImportLists stores each seen file's import descriptors keyed by the
+	// file's pure content hash, so an unchanged file skips parsing on the
+	// next run. Content-keyed, not path-keyed: a file's imports are a pure
+	// function of its content, and resolution always reruns fresh.
+	ImportLists map[string][]cachedImport `json:"importLists"`
 }
 
 // runCached is the --cachedir counterpart of runMultiThreaded: same service
@@ -96,14 +115,68 @@ func runCached(
 		return ExitConfigFileParseError
 	}
 
-	// Parse the reachable graph and fingerprint every tracked file's closure.
-	reachable := service.Program().ParseReachableFilesForImportGraph()
-	fingerprints, tracked, ok := fingerprintClosures(service, reachable, globalCacheKey(args, config), output)
-	if !ok {
+	previous := loadCache(cacheDir, globalCacheKey(args, config))
+
+	// Walk the reachable import graph. Files whose content hash appears in
+	// the previous run's descriptor store skip parsing: their import
+	// descriptors are replayed and only resolution reruns. Everything is read
+	// and hashed exactly once here; fingerprintClosures reuses the hashes.
+	fs := service.FS()
+	pathedHashes := map[string][32]byte{}
+	contentHashes := map[string]string{}
+	newImportLists := map[string][]cachedImport{}
+	unreadable := false
+	hashFile := func(fileUri uri.Uri) (string, bool) {
+		if contentHash, ok := contentHashes[fileUri.Key()]; ok {
+			return contentHash, true
+		}
+		content, err := fs.ReadFileSync(fileUri)
+		if err != nil {
+			unreadable = true
+			return "", false
+		}
+		h := sha256.New()
+		fmt.Fprintf(h, "%s\x00", fileUri.Key())
+		h.Write(content)
+		var pathed [32]byte
+		copy(pathed[:], h.Sum(nil))
+		pathedHashes[fileUri.Key()] = pathed
+		contentHash := sha256.Sum256(content)
+		contentHashes[fileUri.Key()] = hex.EncodeToString(contentHash[:])
+		return contentHashes[fileUri.Key()], true
+	}
+	hooks := &analyzer.ImportGraphCacheHooks{
+		Lookup: func(fileUri uri.Uri) ([]*parser.ModuleImport, bool) {
+			contentHash, ok := hashFile(fileUri)
+			if !ok {
+				return nil, false
+			}
+			stored, hit := previous.ImportLists[contentHash]
+			if !hit {
+				return nil, false
+			}
+			newImportLists[contentHash] = stored
+			return decodeImports(stored), true
+		},
+		Store: func(fileUri uri.Uri, moduleImports []*parser.ModuleImport) {
+			contentHash, ok := hashFile(fileUri)
+			if !ok {
+				return
+			}
+			newImportLists[contentHash] = encodeImports(moduleImports)
+		},
+	}
+	reachable := service.Program().ParseReachableFilesForImportGraph(hooks)
+	if unreadable {
+		output.Error("Cannot read a reachable file for cache fingerprinting")
 		return ExitFatalError
 	}
 
-	previous := loadCache(cacheDir, globalCacheKey(args, config))
+	fingerprints, tracked, ok := fingerprintClosures(service, reachable, pathedHashes,
+		globalCacheKey(args, config), output)
+	if !ok {
+		return ExitFatalError
+	}
 
 	// Split into replayable hits and files that need checking.
 	fileDiagnostics := []common.FileDiagnostics{}
@@ -139,6 +212,7 @@ func runCached(
 		FormatVersion: cacheFormatVersion,
 		GlobalKey:     globalCacheKey(args, config),
 		Entries:       make(map[string]cacheEntry, len(tracked)),
+		ImportLists:   newImportLists,
 	}
 	diagsByKey := map[string][]cachedDiag{}
 	for _, fileDiag := range fileDiagnostics {
@@ -183,33 +257,31 @@ func globalCacheKey(args *parsedArgs, config workerConfig) string {
 // member's (path, content) hash. Cycles need no special casing -- the
 // closure sets are computed as a bitset fixpoint over the import graph, which
 // converges with cycles present. The effective config file content and the
-// global key are mixed into every fingerprint.
+// global key are mixed into every fingerprint. The per-file hashes were
+// computed during the graph walk; a reachable file missing from them means a
+// read failed, and the fingerprints cannot be trusted.
 func fingerprintClosures(
 	service *analyzer.AnalyzerService,
 	reachable []*analyzer.SourceFileInfo,
+	pathedHashes map[string][32]byte,
 	globalKey string,
 	output common.ConsoleInterface,
 ) (map[string]string, []*analyzer.SourceFileInfo, bool) {
 	fs := service.FS()
 
-	// Index the reachable files and hash their contents.
+	// Index the reachable files and collect their hashes.
 	index := make(map[*analyzer.SourceFileInfo]int, len(reachable))
 	for i, info := range reachable {
 		index[info] = i
 	}
 	contentHashes := make([][32]byte, len(reachable))
 	for i, info := range reachable {
-		content, err := fs.ReadFileSync(info.Uri())
-		if err != nil {
-			// A reachable file that cannot be read (deleted mid-run?) makes
-			// the fingerprints unreliable; fall back to a full check.
+		hash, ok := pathedHashes[info.Uri().Key()]
+		if !ok {
 			output.Error(fmt.Sprintf("Cannot read %s for cache fingerprinting", info.Uri().String()))
 			return nil, nil, false
 		}
-		h := sha256.New()
-		fmt.Fprintf(h, "%s\x00", info.Uri().Key())
-		h.Write(content)
-		copy(contentHashes[i][:], h.Sum(nil))
+		contentHashes[i] = hash
 	}
 
 	// Closure bitsets by fixpoint: closure(i) = {i} ∪ closure(imports of i).
@@ -289,6 +361,47 @@ func configFileContent(service *analyzer.AnalyzerService, fs uri.FileSystem) str
 	return configOptions.ConfigFileSource.Key() + "\x00" + string(content)
 }
 
+// encodeImports and decodeImports round-trip the serializable subset of
+// parser.ModuleImport. Symbols are sorted for a deterministic cache file;
+// resolveImports consumes them as a set.
+func encodeImports(moduleImports []*parser.ModuleImport) []cachedImport {
+	out := make([]cachedImport, 0, len(moduleImports))
+	for _, moduleImport := range moduleImports {
+		entry := cachedImport{
+			LeadingDots: moduleImport.LeadingDots,
+			NameParts:   moduleImport.NameParts,
+		}
+		if moduleImport.ImportedSymbols != nil {
+			entry.HasSymbols = true
+			entry.Symbols = make([]string, 0, len(moduleImport.ImportedSymbols))
+			for symbol := range moduleImport.ImportedSymbols {
+				entry.Symbols = append(entry.Symbols, symbol)
+			}
+			sort.Strings(entry.Symbols)
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func decodeImports(cached []cachedImport) []*parser.ModuleImport {
+	out := make([]*parser.ModuleImport, 0, len(cached))
+	for _, entry := range cached {
+		moduleImport := &parser.ModuleImport{
+			LeadingDots: entry.LeadingDots,
+			NameParts:   entry.NameParts,
+		}
+		if entry.HasSymbols {
+			moduleImport.ImportedSymbols = make(map[string]bool, len(entry.Symbols))
+			for _, symbol := range entry.Symbols {
+				moduleImport.ImportedSymbols[symbol] = true
+			}
+		}
+		out = append(out, moduleImport)
+	}
+	return out
+}
+
 func encodeDiagnostics(diags []*common.Diagnostic) []cachedDiag {
 	out := make([]cachedDiag, 0, len(diags))
 	for _, d := range diags {
@@ -336,6 +449,9 @@ func loadCache(cacheDir string, globalKey string) *cacheFile {
 		loaded.GlobalKey != globalKey ||
 		loaded.Entries == nil {
 		return empty
+	}
+	if loaded.ImportLists == nil {
+		loaded.ImportLists = map[string][]cachedImport{}
 	}
 	return loaded
 }

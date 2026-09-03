@@ -52,12 +52,17 @@ isolation, a file's diagnostics are a function of its transitive dependency
 closure plus configuration -- so each tracked file is fingerprinted over the
 contents of its closure (typeshed and site-packages included, resolution
 recomputed every run), unchanged files replay their stored diagnostics, and
-the rest go through the --threads worker pool. On the 3138-file project with
-8 workers: a cold run costs ~15s (the ~12.6s check plus fingerprinting), a
-no-change rerun 3.8s at 1.5 GB RSS, and a single-file change ~4s while
-correctly rechecking the file and its reverse import closure. Cached output
-is byte-identical to the equivalent uncached --threads run and carries the
-same isolation semantics (UPSTREAM-BUGS.md #17); the reference remains the
+the rest go through the --threads worker pool. The cache also stores each
+file's *import descriptors* keyed by its pure content hash -- imports are a
+function of content alone -- so unchanged files skip even the parse;
+resolution still reruns fresh every time, which is what catches a new file
+shadowing a module. On the 3138-file project with 8 workers: a cold run
+costs ~16s (the ~12.6s check plus fingerprinting), a no-change rerun **1.0s
+at 190 MB RSS**, and a single-file change ~2.6s while correctly rechecking
+the file and its reverse import closure. Reverting an edit is a hit again --
+the store is content-addressed, not mtime-based. Cached output is
+byte-identical to the equivalent uncached --threads run and carries the same
+isolation semantics (UPSTREAM-BUGS.md #17); the reference remains the
 single-threaded mode.
 
 It finds its typeshed via `--rootdir`, `$PYRIGHT_GO_ROOTDIR`, or a search
