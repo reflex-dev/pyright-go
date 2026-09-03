@@ -171,7 +171,7 @@ func (e *typeEvaluator) superCallBindToFromSecondArg(
 		case IsClassInstance(secondArgSubtype):
 			if IsInstantiableClass(concreteTargetClassType) {
 				if !DerivesFromClassRecursive(
-					ClassTypeCloneAsInstantiable(secondArgSubtype.(*ClassType), false),
+					ClassTypeCloneAsInstantiable(secondArgSubtype.(*ClassType), true),
 					concreteTargetClassType.(*ClassType), true) {
 					reportError = true
 				}
@@ -271,7 +271,7 @@ func (e *typeEvaluator) superCallForMemberAccess(
 	if bindToType != nil && ClassTypeIsProtocolClass(bindToType) && effectiveTargetClass != nil {
 		comparand := bindToType
 		if bindToType.Base().IsInstance() {
-			comparand = ClassTypeCloneAsInstantiable(bindToType, false)
+			comparand = ClassTypeCloneAsInstantiable(bindToType, true)
 		}
 		if !ClassTypeIsSameGenericClass(comparand, effectiveTargetClass, 0) {
 			isProtocolClass = true
@@ -357,7 +357,7 @@ func (e *typeEvaluator) superCallOutsideMemberAccess(
 
 		comparand := bindToType
 		if bindToType.Base().IsInstance() {
-			comparand = ClassTypeCloneAsInstantiable(bindToType, false)
+			comparand = ClassTypeCloneAsInstantiable(bindToType, true)
 		}
 
 		if ClassTypeIsSameGenericClass(comparand, targetClass, 0) {

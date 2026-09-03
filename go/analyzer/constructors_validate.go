@@ -452,7 +452,7 @@ func validateInitMethod(
 				if subtypeClass, ok := specializedInitSelfSubtype.(*ClassType); ok &&
 					IsClassInstance(specializedInitSelfSubtype) &&
 					ClassTypeIsSameGenericClass(subtypeClass, adjustedClassType, 0) {
-					adjustedClassType = ClassTypeCloneAsInstantiable(subtypeClass, false)
+					adjustedClassType = ClassTypeCloneAsInstantiable(subtypeClass, true)
 				}
 
 				if !boolValue(classType.Priv.IsTypeArgExplicit) &&
@@ -700,7 +700,7 @@ func shouldSkipInitEvaluation(
 
 		if IsClassInstance(subtype) {
 			inheritanceChain := []Type{}
-			if !ClassTypeIsDerivedFrom(ClassTypeCloneAsInstantiable(subtype.(*ClassType), false),
+			if !ClassTypeIsDerivedFrom(ClassTypeCloneAsInstantiable(subtype.(*ClassType), true),
 				classType, &inheritanceChain) {
 				skipInitCheck = true
 			}

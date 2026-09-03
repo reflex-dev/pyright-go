@@ -94,7 +94,7 @@ func (e *typeEvaluator) VerifyRaiseExceptionType(node parser.ExpressionNode, all
 
 		if IsClassInstance(concreteSubtype) {
 			if !DerivesFromClassRecursive(
-				ClassTypeCloneAsInstantiable(concreteSubtype.(*ClassType), false),
+				ClassTypeCloneAsInstantiable(concreteSubtype.(*ClassType), true),
 				baseExceptionClass, false) {
 				diag.AddMessage(localization.LocMessage.ExceptionTypeIncorrect().Format(
 					e.PrintType(subtype, nil)))

@@ -77,7 +77,7 @@ func (e *typeEvaluator) CreateSubclass(
 	result = AddConditionToType(result, propsCondition(type2), nil)
 
 	if createClassObject {
-		return ClassTypeCloneAsInstantiable(result.(*ClassType), false)
+		return ClassTypeCloneAsInstantiable(result.(*ClassType), true)
 	}
 
 	return result.(*ClassType)

@@ -275,12 +275,12 @@ func assignClassPatternTargets(
 				positionalArgNames := []string{}
 				if patternHasPositionalArg(pattern) {
 					positionalArgNames = getPositionalMatchArgNames(evaluator,
-						ClassTypeCloneAsInstantiable(expandedClass, false))
+						ClassTypeCloneAsInstantiable(expandedClass, true))
 				}
 
 				for index, arg := range pattern.D.Args {
 					narrowedArgType := narrowTypeOfClassPatternArg(evaluator, arg, index,
-						positionalArgNames, ClassTypeCloneAsInstantiable(expandedClass, false), true)
+						positionalArgNames, ClassTypeCloneAsInstantiable(expandedClass, true), true)
 					argTypes[index] = append(argTypes[index], narrowedArgType)
 				}
 			})

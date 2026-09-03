@@ -101,7 +101,7 @@ func (e *typeEvaluator) BindFunctionToClassOrObject(
 			(treatConstructorAsClassMethod && FunctionTypeIsConstructorMethod(functionType)) {
 			baseClass := baseType
 			if !IsInstantiableClass(baseType) {
-				baseClass = ClassTypeCloneAsInstantiable(baseType, false)
+				baseClass = ClassTypeCloneAsInstantiable(baseType, true)
 			}
 
 			var firstParamType Type = baseClass
@@ -116,7 +116,7 @@ func (e *typeEvaluator) BindFunctionToClassOrObject(
 		if FunctionTypeIsStaticMethod(functionType) {
 			baseClass := baseType
 			if !IsInstantiableClass(baseType) {
-				baseClass = ClassTypeCloneAsInstantiable(baseType, false)
+				baseClass = ClassTypeCloneAsInstantiable(baseType, true)
 			}
 
 			return e.partiallySpecializeBoundMethod(

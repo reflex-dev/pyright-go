@@ -601,7 +601,7 @@ func (e *typeEvaluator) literalTypeFromExpression(
 	// The original's comment: is this an enum type?
 	if exprClass, ok := exprType.Type.(*ClassType); ok && IsClassInstance(exprType.Type) &&
 		ClassTypeIsEnumClass(exprClass) && exprClass.Priv.LiteralValue != nil {
-		return ClassTypeCloneAsInstantiable(exprClass, false)
+		return ClassTypeCloneAsInstantiable(exprClass, true)
 	}
 
 	// The original's comment: is this a type alias to an existing literal type?

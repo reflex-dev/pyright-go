@@ -246,8 +246,8 @@ func (e *typeEvaluator) declaredTypeForMemberAccess(
 		if firstMemberDeclaredType == nil ||
 			!IsClassInstance(firstMemberDeclaredType) || !IsClassInstance(subtypeDeclaredType) ||
 			!ClassTypeIsSameGenericClass(
-				ClassTypeCloneAsInstantiable(firstMemberDeclaredType.(*ClassType), false),
-				ClassTypeCloneAsInstantiable(subtypeDeclaredType.(*ClassType), false),
+				ClassTypeCloneAsInstantiable(firstMemberDeclaredType.(*ClassType), true),
+				ClassTypeCloneAsInstantiable(subtypeDeclaredType.(*ClassType), true),
 				0,
 			) {
 			divergesOnlyByTypeArgs = false

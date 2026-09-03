@@ -156,7 +156,7 @@ func (e *typeEvaluator) getTypeOfName(node *parser.NameNode, flags EvalFlags) *T
 	// sentinel literal instance, treat it as its instantiable counterpart. This
 	// is similar to how None is treated in a type expression context.
 	if (flags&EvalFlagsInstantiableType) != 0 && IsClassInstance(t) && e.isSentinelLiteral(t) {
-		t = ClassTypeCloneAsInstantiable(t.(*ClassType), false)
+		t = ClassTypeCloneAsInstantiable(t.(*ClassType), true)
 	}
 
 	t = e.convertSpecialFormToRuntimeValue(t, flags)

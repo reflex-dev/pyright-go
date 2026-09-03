@@ -248,7 +248,7 @@ func (e *typeEvaluator) AssignType(
 	if IsNoneInstance(srcType) && IsClassInstance(destType) && ClassTypeIsProtocolClass(destType.(*ClassType)) {
 		if e.prefetched != nil && e.prefetched.NoneTypeClass != nil && IsInstantiableClass(e.prefetched.NoneTypeClass) {
 			return e.assignClassToProtocol(
-				ClassTypeCloneAsInstantiable(destType.(*ClassType), false),
+				ClassTypeCloneAsInstantiable(destType.(*ClassType), true),
 				ClassTypeCloneAsInstance(e.prefetched.NoneTypeClass.(*ClassType), true),
 				diag, constraints, flags, recursionCount,
 			)
@@ -841,7 +841,7 @@ func (e *typeEvaluator) assignToClassInstance(
 
 		if ClassTypeIsProtocolClass(destType) {
 			return true, e.assignModuleToProtocol(
-				ClassTypeCloneAsInstantiable(destType, false),
+				ClassTypeCloneAsInstantiable(destType, true),
 				concreteSrcType.(*ModuleType),
 				diag, constraints, flags, recursionCount,
 			)
@@ -860,7 +860,7 @@ func (e *typeEvaluator) assignToClassInstance(
 		// Protocol, see if the class type itself satisfies the protocol.
 		if ClassTypeIsProtocolClass(destType) {
 			return true, e.assignClassToProtocol(
-				ClassTypeCloneAsInstantiable(destType, false),
+				ClassTypeCloneAsInstantiable(destType, true),
 				concreteSrcType.(*ClassType),
 				diag, constraints, flags, recursionCount,
 			)
@@ -871,7 +871,7 @@ func (e *typeEvaluator) assignToClassInstance(
 		if metaclass := concreteSrcType.(*ClassType).Shared.EffectiveMetaclass; metaclass != nil {
 			if !IsAnyOrUnknown(metaclass) {
 				if asClass, ok := metaclass.(*ClassType); ok {
-					if e.assignClass(ClassTypeCloneAsInstantiable(destType, false), asClass,
+					if e.assignClass(ClassTypeCloneAsInstantiable(destType, true), asClass,
 						nil, constraints, flags, recursionCount, true) {
 						return true, true
 					}
@@ -938,8 +938,8 @@ func (e *typeEvaluator) assignClassInstanceToClassInstance(
 	}
 
 	return e.assignClass(
-		ClassTypeCloneAsInstantiable(destType, false),
-		ClassTypeCloneAsInstantiable(concreteSrcType, false),
+		ClassTypeCloneAsInstantiable(destType, true),
+		ClassTypeCloneAsInstantiable(concreteSrcType, true),
 		diag, constraints, flags, recursionCount, true,
 	)
 }

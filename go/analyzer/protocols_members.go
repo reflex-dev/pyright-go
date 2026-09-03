@@ -422,8 +422,8 @@ func (w *protocolWalk) compareProperty(
 	if srcIsClass && IsClassInstance(member.SrcMemberType) &&
 		ClassTypeIsPropertyClass(srcClass) && !w.sourceIsClassObject {
 		if !AssignProperty(w.evaluator,
-			ClassTypeCloneAsInstantiable(destClass, false),
-			ClassTypeCloneAsInstantiable(srcClass, false),
+			ClassTypeCloneAsInstantiable(destClass, true),
+			ClassTypeCloneAsInstantiable(srcClass, true),
 			mroClass, w.srcType, createAddendumOrNil(subDiag),
 			w.protocolConstraints, w.selfSolution, w.recursionCount) {
 			addMessageOrNil(subDiag, localization.LocAddendum.MemberTypeMismatch().Format(name))

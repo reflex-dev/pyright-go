@@ -1261,7 +1261,7 @@ func (e *typeEvaluator) classMaterializationsAssignable(
 	} else {
 		instantiableDestType := destClass
 		if IsClassInstance(destClass) {
-			instantiableDestType = ClassTypeCloneAsInstantiable(destClass, false)
+			instantiableDestType = ClassTypeCloneAsInstantiable(destClass, true)
 		}
 		for _, mroClass := range srcClass.Shared.Mro {
 			if mroClassType, ok := mroClass.(*ClassType); ok && IsClass(mroClass) &&

@@ -122,7 +122,7 @@ func (e *typeEvaluator) declareMemberVariable(
 
 	if baseClass, ok := baseType.(*ClassType); ok {
 		if IsClassInstance(baseType) {
-			if ClassTypeIsSameGenericClass(ClassTypeCloneAsInstantiable(baseClass, false),
+			if ClassTypeIsSameGenericClass(ClassTypeCloneAsInstantiable(baseClass, true),
 				classTypeResults.ClassType, 0) {
 				e.assignTypeToMemberVariable(target, typeResult, true, srcExpr)
 			}

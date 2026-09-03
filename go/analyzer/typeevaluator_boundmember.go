@@ -150,7 +150,7 @@ func (e *typeEvaluator) getTypeOfBoundMember(
 
 		var effectiveSelfType Type = objectType
 		if !objectTypeIsInstantiable {
-			effectiveSelfType = ClassTypeCloneAsInstantiable(objectType, false)
+			effectiveSelfType = ClassTypeCloneAsInstantiable(objectType, true)
 		}
 
 		memberInfo = e.getTypeOfClassMemberName(errorNode,

@@ -236,7 +236,7 @@ func narrowMappingEntries(
 					// new entries.
 					mappingSubtypeInfo.Subtype = ClassTypeCloneAsInstance(
 						ClassTypeCloneForNarrowedTypedDictEntries(
-							ClassTypeCloneAsInstantiable(mappingSubtypeInfo.TypedDict, false),
+							ClassTypeCloneAsInstantiable(mappingSubtypeInfo.TypedDict, true),
 							newNarrowedEntriesMap), true)
 					mappingSubtypeInfo.TypedDict = mappingSubtypeInfo.Subtype.(*ClassType)
 				}

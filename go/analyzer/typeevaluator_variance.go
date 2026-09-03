@@ -178,8 +178,8 @@ func (e *typeEvaluator) assignSelfMembers(
 		if IsClassInstance(destMemberType) && ClassTypeIsPropertyClass(destMemberType.(*ClassType)) &&
 			IsClassInstance(srcMemberType) && ClassTypeIsPropertyClass(srcMemberType.(*ClassType)) {
 			if !e.assignProperty(
-				ClassTypeCloneAsInstantiable(destMemberType.(*ClassType), false),
-				ClassTypeCloneAsInstantiable(srcMemberType.(*ClassType), false),
+				ClassTypeCloneAsInstantiable(destMemberType.(*ClassType), true),
+				ClassTypeCloneAsInstantiable(srcMemberType.(*ClassType), true),
 				destType, srcType, recursionCount,
 			) {
 				isAssignable = false

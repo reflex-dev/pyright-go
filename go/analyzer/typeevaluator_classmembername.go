@@ -164,7 +164,7 @@ func (e *typeEvaluator) getTypeOfClassMemberName(
 		if errorNode != nil && IsInstantiableClass(memberInfo.ClassType) {
 			comparisonClass := classType
 			if isAccessedThroughObject {
-				comparisonClass = ClassTypeCloneAsInstantiable(classType, false)
+				comparisonClass = ClassTypeCloneAsInstantiable(classType, true)
 			}
 			if ClassTypeIsSameGenericClass(memberInfo.ClassType.(*ClassType), comparisonClass, 0) {
 				e.setSymbolAccessed(GetFileInfo(errorNode), memberInfo.Symbol, errorNode)

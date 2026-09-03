@@ -460,7 +460,7 @@ func (e *typeEvaluator) IsTypeComparable(leftType Type, rightType Type, assumeIs
 
 		// The original's comment: does the class have an operator overload for eq?
 		eqMethod := LookUpClassMember(
-			ClassTypeCloneAsInstantiable(leftClass, false), "__eq__",
+			ClassTypeCloneAsInstantiable(leftClass, true), "__eq__",
 			MemberAccessFlagsSkipObjectBaseClass, nil)
 
 		if eqMethod != nil {

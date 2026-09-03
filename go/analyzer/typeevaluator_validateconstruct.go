@@ -361,8 +361,8 @@ func (e *typeEvaluator) rebuildInstantiatedTypeAsClass(
 		GetFileInfo(errorNode).FileUri,
 		ClassTypeFlagsNone,
 		GetTypeSourceID(errorNode),
-		ClassTypeCloneAsInstantiable(returnClass, false),
-		ClassTypeCloneAsInstantiable(returnClass, false),
+		ClassTypeCloneAsInstantiable(returnClass, true),
+		ClassTypeCloneAsInstantiable(returnClass, true),
 		nil,
 	)
 	newClassType.Shared.BaseClasses = append(newClassType.Shared.BaseClasses,

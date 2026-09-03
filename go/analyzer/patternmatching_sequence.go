@@ -602,7 +602,7 @@ func appendAbstractSequenceInfo(
 	if AddConstraintsForExpectedType(evaluator, ClassTypeCloneAsInstance(sequenceClass, true), subtype,
 		sequenceConstraints, GetTypeVarScopesForNode(pattern), pattern.NodeBase().TextRange.Start) {
 		if specialized, ok := evaluator.SolveAndApplyConstraints(
-			ClassTypeCloneAsInstantiable(sequenceClass, false), sequenceConstraints, nil, nil).(*ClassType); ok {
+			ClassTypeCloneAsInstantiable(sequenceClass, true), sequenceConstraints, nil, nil).(*ClassType); ok {
 			if len(specialized.Priv.TypeArgs) > 0 {
 				*sequenceInfo = append(*sequenceInfo, &SequencePatternInfo{
 					Subtype:               subtype,

@@ -170,7 +170,7 @@ func (e *typeEvaluator) applyDescriptorAccessMethod(
 		// The original's comment: handle "class properties" as a special case. We
 		// need to pass the class rather than the object instance in this case.
 		if isAccessedThroughObject {
-			objArgType = ClassTypeCloneAsInstantiable(classType, false)
+			objArgType = ClassTypeCloneAsInstantiable(classType, true)
 		} else {
 			objArgType = classType
 		}
@@ -193,7 +193,7 @@ func (e *typeEvaluator) applyDescriptorAccessMethod(
 		if selfType != nil {
 			classArgType = ConvertToInstantiable(selfType, true)
 		} else if isAccessedThroughObject {
-			classArgType = ClassTypeCloneAsInstantiable(classType, false)
+			classArgType = ClassTypeCloneAsInstantiable(classType, true)
 		} else {
 			classArgType = classType
 		}
