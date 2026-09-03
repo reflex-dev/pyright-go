@@ -221,3 +221,124 @@ func BenchmarkOrderedMapDelete(b *testing.B) {
 		}
 	}
 }
+
+// TestOrderedMapSmallModeSemantics pins the JavaScript Map semantics in the
+// small representation and across the promotion boundary.
+func TestOrderedMapSmallModeSemantics(t *testing.T) {
+	// Delete + reinsert lands at the end, small mode.
+	m := NewOrderedMap[string, int]()
+	for _, k := range []string{"a", "b", "c"} {
+		m.Set(k, 1)
+	}
+	m.Delete("a")
+	m.Set("a", 2)
+	if got := m.Keys(); got[0] != "b" || got[1] != "c" || got[2] != "a" {
+		t.Fatalf("small-mode reinsert order = %v", got)
+	}
+
+	// Overwrite keeps position, small mode.
+	m.Set("b", 9)
+	if got := m.Keys(); got[0] != "b" {
+		t.Fatalf("small-mode overwrite moved key: %v", got)
+	}
+	if v, _ := m.Get("b"); v != 9 {
+		t.Fatalf("small-mode overwrite lost value")
+	}
+
+	// Promotion preserves order and contents.
+	for i := 0; i < 20; i++ {
+		m.Set(string(rune('h'+i)), i)
+	}
+	keys := m.Keys()
+	if keys[0] != "b" || keys[1] != "c" || keys[2] != "a" || len(keys) != 23 {
+		t.Fatalf("promotion broke order: %v", keys[:4])
+	}
+
+	// A walk that mutates in small mode: deletes ahead are skipped, adds are
+	// visited, nothing is visited twice.
+	m2 := NewOrderedMap[string, int]()
+	for _, k := range []string{"p", "q", "r", "s"} {
+		m2.Set(k, 1)
+	}
+	var visited []string
+	m2.ForEach(func(_ int, k string) {
+		visited = append(visited, k)
+		if k == "p" {
+			m2.Delete("r") // ahead: must not be visited
+			m2.Set("t", 1) // added: must be visited
+		}
+	})
+	want := []string{"p", "q", "s", "t"}
+	if len(visited) != len(want) {
+		t.Fatalf("mutating small walk visited %v", visited)
+	}
+	for i := range want {
+		if visited[i] != want[i] {
+			t.Fatalf("mutating small walk visited %v, want %v", visited, want)
+		}
+	}
+}
+
+// TestOrderedMapMatchesReferenceModel drives random operation sequences
+// through the map and a naive slice-based model of a JavaScript Map, at sizes
+// straddling the small/map boundary.
+func TestOrderedMapMatchesReferenceModel(t *testing.T) {
+	type refEntry struct {
+		k string
+		v int
+	}
+	seed := uint64(12345)
+	next := func(n int) int {
+		seed = seed*6364136223846793005 + 1442695040888963407
+		return int((seed >> 33) % uint64(n))
+	}
+
+	for trial := 0; trial < 200; trial++ {
+		m := NewOrderedMap[string, int]()
+		var ref []refEntry
+		refSet := func(k string, v int) {
+			for i := range ref {
+				if ref[i].k == k {
+					ref[i].v = v
+					return
+				}
+			}
+			ref = append(ref, refEntry{k, v})
+		}
+		refDelete := func(k string) {
+			for i := range ref {
+				if ref[i].k == k {
+					ref = append(ref[:i], ref[i+1:]...)
+					return
+				}
+			}
+		}
+
+		keyPool := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"}
+		for op := 0; op < 60; op++ {
+			k := keyPool[next(len(keyPool))]
+			switch next(3) {
+			case 0, 1:
+				v := next(1000)
+				m.Set(k, v)
+				refSet(k, v)
+			case 2:
+				m.Delete(k)
+				refDelete(k)
+			}
+
+			if m.Size() != len(ref) {
+				t.Fatalf("trial %d op %d: size %d, want %d", trial, op, m.Size(), len(ref))
+			}
+			keys := m.Keys()
+			for i, e := range ref {
+				if keys[i] != e.k {
+					t.Fatalf("trial %d op %d: key order %v, want %v", trial, op, keys, ref)
+				}
+				if v, ok := m.Get(e.k); !ok || v != e.v {
+					t.Fatalf("trial %d op %d: Get(%q) = %d,%v want %d", trial, op, e.k, v, ok, e.v)
+				}
+			}
+		}
+	}
+}

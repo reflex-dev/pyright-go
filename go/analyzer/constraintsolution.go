@@ -19,11 +19,14 @@ type ConstraintSolutionSet struct {
 	// typeVarMap is indexed by TypeVar ID. A key can be present with a nil
 	// value, which HasType distinguishes from absent, so this cannot collapse
 	// into a plain lookup.
-	typeVarMap *common.OrderedMap[string, Type]
+	// Held by value: constraint solution sets are created tens of millions
+	// of times per large-project run, and a pointer field made each one two
+	// allocations instead of one. The zero OrderedMap is ready to use.
+	typeVarMap common.OrderedMap[string, Type]
 }
 
 func NewConstraintSolutionSet() *ConstraintSolutionSet {
-	return &ConstraintSolutionSet{typeVarMap: common.NewOrderedMap[string, Type]()}
+	return &ConstraintSolutionSet{}
 }
 
 func (s *ConstraintSolutionSet) IsEmpty() bool {

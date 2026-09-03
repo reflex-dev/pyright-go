@@ -42,7 +42,9 @@ type ConstraintSet struct {
 	// typeVarMap maps type variable IDs to their current constraints. The
 	// original is a Map, whose iteration order is insertion order, and that
 	// order is observable through getScore and doForEachTypeVar.
-	typeVarMap *common.OrderedMap[string, *TypeVarConstraints]
+	// Held by value for the same reason as ConstraintSolutionSet's map: one
+	// allocation per set, not two, at tens of millions of sets per run.
+	typeVarMap common.OrderedMap[string, *TypeVarConstraints]
 
 	// scopeIds is a set of one or more TypeVar scope IDs that identify this
 	// constraint set. The original's comment: this corresponds to the scope ID
@@ -58,7 +60,7 @@ type ConstraintSet struct {
 }
 
 func NewConstraintSet() *ConstraintSet {
-	return &ConstraintSet{typeVarMap: common.NewOrderedMap[string, *TypeVarConstraints]()}
+	return &ConstraintSet{}
 }
 
 func (c *ConstraintSet) Clone() *ConstraintSet {

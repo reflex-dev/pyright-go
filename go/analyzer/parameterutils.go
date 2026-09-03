@@ -140,6 +140,33 @@ func GetParamListDetails(t *FunctionType, options *ParamListDetailsOptions) *Par
 
 	sawKeywordOnlySeparator := false
 
+	// The virtual param details are chunk-allocated: this function runs for
+	// every call-site validation and one heap object per parameter was 6% of
+	// the whole run's allocation. Chunks are never grown in place, so the
+	// pointers handed out stay valid; everything shares the result's lifetime.
+	var detailsChunk []VirtualParamDetails
+	newDetails := func() *VirtualParamDetails {
+		if len(detailsChunk) == cap(detailsChunk) {
+			size := cap(detailsChunk) * 2
+			if size == 0 {
+				// Exactly the named parameters, which is what addVirtualParam
+				// appends for in the common case; only the tuple and
+				// TypedDict expansions overflow into a second chunk.
+				for i := range t.Shared.Parameters {
+					if name := t.Shared.Parameters[i].Name; name != nil && *name != "" {
+						size++
+					}
+				}
+				if size == 0 {
+					size = 1
+				}
+			}
+			detailsChunk = make([]VirtualParamDetails, 0, size)
+		}
+		detailsChunk = append(detailsChunk, VirtualParamDetails{})
+		return &detailsChunk[len(detailsChunk)-1]
+	}
+
 	// addVirtualParam corresponds to the closure of the same name. A nil
 	// sourceOverride stands in for `undefined`.
 	addVirtualParam := func(
@@ -175,14 +202,14 @@ func GetParamListDetails(t *FunctionType, options *ParamListDetailsOptions) *Par
 			defaultType = FunctionTypeGetParamDefaultType(t, index)
 		}
 
-		result.Params = append(result.Params, &VirtualParamDetails{
-			Param:        param,
-			Index:        index,
-			Type:         paramType,
-			DeclaredType: FunctionTypeGetDeclaredParamType(t, index),
-			DefaultType:  defaultType,
-			Kind:         kind,
-		})
+		details := newDetails()
+		details.Param = param
+		details.Index = index
+		details.Type = paramType
+		details.DeclaredType = FunctionTypeGetDeclaredParamType(t, index)
+		details.DefaultType = defaultType
+		details.Kind = kind
+		result.Params = append(result.Params, details)
 	}
 
 	expandedArgs := ParamKindExpandedArgs

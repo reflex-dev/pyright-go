@@ -25,7 +25,7 @@ runs and vary ±10% with thermal state; treat small deltas as noise.
 | pyright, single-threaded | 111 s | 5.3 GB |
 | pyright `--threads` | **59 s** | multi-process (parent 1.7 GB) |
 | pyright-go, single-threaded | 191 s | 7.9 GB |
-| pyright-go `--threads 2` | 163 s | 19 GB |
+| pyright-go `--threads 2` | 148 s | 19 GB |
 | pyright-go `--threads 4` | 173 s | 26 GB |
 | pyright-go `--threads 8` | 197 s | 31 GB |
 | pyright-go `--threads 16` | exceeds this machine's memory | — |
