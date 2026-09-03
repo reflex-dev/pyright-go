@@ -159,6 +159,9 @@ the 88,477-name type differential contains either construct.
 
 ### Speed and memory
 
+BENCHMARKS.md carries the full numbers, the worker-count sweep, the cache
+scenarios and the methodology; what follows is the porting-relevant story.
+
 | | 84 files | 3135 files |
 | --- | --- | --- |
 | pyright 1.1.412 | 2.34 s / 303 MB | 80.5 s / 3676 MB |

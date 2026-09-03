@@ -10,8 +10,40 @@ Where the Go differs, the reason is written down at the point of difference.
 The port lives in [`go/`](go/); everything else in the repository is the
 unmodified pyright 1.1.412 tree it was transliterated from and is verified
 against. [`go/PORTING.md`](go/PORTING.md) is the authoritative status
-document; [`go/UPSTREAM-BUGS.md`](go/UPSTREAM-BUGS.md) collects the pyright
-bugs found along the way.
+document; [`go/BENCHMARKS.md`](go/BENCHMARKS.md) has the performance
+numbers and methodology; [`go/UPSTREAM-BUGS.md`](go/UPSTREAM-BUGS.md)
+collects the pyright bugs found along the way.
+
+## Performance
+
+Same project, same command line, same config, identical diagnostics —
+measured against pyright 1.1.412 under Node on a 3,138-file production
+codebase (16 logical CPUs; full numbers and methodology in
+[`go/BENCHMARKS.md`](go/BENCHMARKS.md)):
+
+| mode | pyright 1.1.412 | Go port |
+| --- | --- | --- |
+| single-threaded | 71.5 s / 3.6 GB | 35 s / 5.4 GB |
+| `--threads` | 37.0 s | ~12 s (best at 8 workers) |
+| `--cachedir`, nothing changed | n/a | **1.0 s / 190 MB** |
+| `--cachedir`, one file changed | n/a | **2.6 s** |
+
+`--threads` is pyright's own worker model transliterated — per-worker
+analyzer, one file checked at a time in isolation — with goroutines in place
+of upstream's forked processes. `--cachedir` is a pyright-go extension: a
+run-to-run cache keyed by each file's transitive dependency closure, so an
+unchanged file replays its previous diagnostics and a changed file recheck
+touches only its reverse import closure. Import resolution reruns fresh
+every time, so a new file shadowing a module still invalidates correctly.
+The two compose:
+
+```bash
+pyright-go --threads 8 --cachedir .pyright-cache --outputjson
+```
+
+The trade is memory: the port is faster than pyright at every point but
+hungrier, and `GOMEMLIMIT` bounds it (with identical diagnostics) when that
+matters.
 
 ## What is ported
 
