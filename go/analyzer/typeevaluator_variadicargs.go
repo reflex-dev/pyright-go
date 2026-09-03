@@ -129,8 +129,14 @@ func (e *typeEvaluator) adjustTypeArgsForTypeVarTuple(
 		if !variadicTypeVar.Shared.IsDefaultExplicit {
 			// The original's comment: add an empty tuple that maps to the
 			// TypeVarTuple type parameter.
+			//
+			// The empty slice is not interchangeable with nil here: ClassType
+			// .specialize stores tupleTypeArgs only when it is defined, and a nil
+			// slice reads as absent. A tuple with no tupleTypeArgs is not an
+			// empty tuple -- it is a tuple whose element types are unknown, and
+			// it prints as `tuple[Never]` rather than `tuple[()]`.
 			typeArgs = append(typeArgs, &TypeResultWithNode{
-				TypeResult: TypeResult{Type: MakeTupleObject(e, nil, true)},
+				TypeResult: TypeResult{Type: MakeTupleObject(e, []*TupleTypeArg{}, true)},
 				Node:       errorNode,
 			})
 		}
