@@ -94,7 +94,7 @@ func CreateEnumType(
 	if intClassType == nil || !IsInstantiableClass(intClassType) {
 		return nil
 	}
-	classInstanceType := ClassTypeCloneAsInstance(classType, false)
+	classInstanceType := ClassTypeCloneAsInstance(classType, true)
 
 	b := &enumMemberBuilder{
 		evaluator:         evaluator,
@@ -161,7 +161,7 @@ func (b *enumMemberBuilder) addMember(entryName string, valueType Type) {
 
 // intLiteral is the implicit 1-based value the runtime assigns to a bare name.
 func (b *enumMemberBuilder) intLiteral(index int) Type {
-	return ClassTypeCloneWithLiteral(ClassTypeCloneAsInstance(b.intClassType, false),
+	return ClassTypeCloneWithLiteral(ClassTypeCloneAsInstance(b.intClassType, true),
 		LiteralInt{Value: big.NewInt(int64(index + 1))})
 }
 
@@ -346,7 +346,7 @@ func CreateSentinelType(
 	classType = ClassTypeCloneWithLiteral(classType,
 		&SentinelLiteral{ClassFullName: fullClassName, ClassName: className})
 
-	instanceType := ClassTypeCloneAsInstance(classType, false)
+	instanceType := ClassTypeCloneAsInstance(classType, true)
 
 	// A sentinel is its own type: usable as a value and in a type expression.
 	return CloneWithTypeForm(instanceType, instanceType)

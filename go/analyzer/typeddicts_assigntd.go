@@ -74,7 +74,7 @@ func AssignTypedDictToTypedDict(
 		if !hasSrcEntry || srcEntry == nil {
 			if destEntry.IsRequired || !destEntry.IsReadOnly {
 				addTypedDictAddendum(diag, localization.LocAddendum.TypedDictFieldMissing().Format(
-					name, evaluator.PrintType(ClassTypeCloneAsInstance(srcType, false), nil)))
+					name, evaluator.PrintType(ClassTypeCloneAsInstance(srcType, true), nil)))
 				typesAreConsistent = false
 				return
 			}
@@ -95,10 +95,10 @@ func AssignTypedDictToTypedDict(
 
 		if destEntry.IsRequired != srcEntry.IsRequired && !destEntry.IsReadOnly {
 			message := localization.LocAddendum.TypedDictFieldNotRequired().Format(
-				name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil))
+				name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil))
 			if destEntry.IsRequired {
 				message = localization.LocAddendum.TypedDictFieldRequired().Format(
-					name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil))
+					name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil))
 			}
 			addTypedDictAddendum(diag, message)
 			typesAreConsistent = false
@@ -106,7 +106,7 @@ func AssignTypedDictToTypedDict(
 
 		if !destEntry.IsReadOnly && srcEntry.IsReadOnly {
 			addTypedDictAddendum(diag, localization.LocAddendum.TypedDictFieldNotReadOnly().Format(
-				name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil)))
+				name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil)))
 			typesAreConsistent = false
 		}
 
@@ -155,14 +155,14 @@ func AssignTypedDictToTypedDict(
 			subDiag := createTypedDictSubAddendum(diag)
 			addTypedDictMessage(subDiag,
 				localization.LocAddendum.TypedDictExtraFieldNotAllowed().Format(
-					name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil)))
+					name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil)))
 			typesAreConsistent = false
 			return
 		}
 
 		if srcEntry.IsRequired && !destEntries.ExtraItems.IsReadOnly {
 			addTypedDictAddendum(diag, localization.LocAddendum.TypedDictFieldNotRequired().Format(
-				name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil)))
+				name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil)))
 			typesAreConsistent = false
 		}
 
@@ -177,11 +177,11 @@ func AssignTypedDictToTypedDict(
 			createTypedDictSubAddendum(subDiag), constraints, entryFlags, recursionCount) {
 			addTypedDictMessage(subDiag,
 				localization.LocAddendum.TypedDictExtraFieldTypeMismatch().Format(
-					name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil)))
+					name, evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil)))
 			typesAreConsistent = false
 		} else if !destEntries.ExtraItems.IsReadOnly && srcEntry.IsReadOnly {
 			addTypedDictAddendum(diag, localization.LocAddendum.TypedDictFieldNotReadOnly().Format(
-				name, evaluator.PrintType(ClassTypeCloneAsInstance(srcType, false), nil)))
+				name, evaluator.PrintType(ClassTypeCloneAsInstance(srcType, true), nil)))
 			typesAreConsistent = false
 		}
 	})
@@ -196,11 +196,11 @@ func AssignTypedDictToTypedDict(
 		createTypedDictSubAddendum(subDiag), constraints, extraFlags, recursionCount) {
 		addTypedDictMessage(subDiag,
 			localization.LocAddendum.TypedDictExtraFieldTypeMismatch().Format(
-				"extra_items", evaluator.PrintType(ClassTypeCloneAsInstance(srcType, false), nil)))
+				"extra_items", evaluator.PrintType(ClassTypeCloneAsInstance(srcType, true), nil)))
 		typesAreConsistent = false
 	} else if !extraDestEntries.IsReadOnly && extraSrcEntries.IsReadOnly {
 		addTypedDictAddendum(diag, localization.LocAddendum.TypedDictFieldNotReadOnly().Format(
-			"extra_items", evaluator.PrintType(ClassTypeCloneAsInstance(destType, false), nil)))
+			"extra_items", evaluator.PrintType(ClassTypeCloneAsInstance(destType, true), nil)))
 		typesAreConsistent = false
 	}
 

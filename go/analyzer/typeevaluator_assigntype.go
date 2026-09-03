@@ -63,7 +63,7 @@ func (e *typeEvaluator) AssignType(
 	if IsInstantiableClass(srcType) && ClassTypeIsNewTypeClass(srcType.(*ClassType)) &&
 		!srcType.(*ClassType).Priv.IncludeSubclasses {
 		if e.prefetched != nil && e.prefetched.FunctionClass != nil && IsInstantiableClass(e.prefetched.FunctionClass) {
-			srcType = ClassTypeCloneAsInstance(e.prefetched.FunctionClass.(*ClassType), false)
+			srcType = ClassTypeCloneAsInstance(e.prefetched.FunctionClass.(*ClassType), true)
 		}
 	}
 
@@ -249,7 +249,7 @@ func (e *typeEvaluator) AssignType(
 		if e.prefetched != nil && e.prefetched.NoneTypeClass != nil && IsInstantiableClass(e.prefetched.NoneTypeClass) {
 			return e.assignClassToProtocol(
 				ClassTypeCloneAsInstantiable(destType.(*ClassType), false),
-				ClassTypeCloneAsInstance(e.prefetched.NoneTypeClass.(*ClassType), false),
+				ClassTypeCloneAsInstance(e.prefetched.NoneTypeClass.(*ClassType), true),
 				diag, constraints, flags, recursionCount,
 			)
 		}
@@ -934,7 +934,7 @@ func (e *typeEvaluator) assignClassInstanceToClassInstance(
 	} else if ClassTypeIsBuiltInNamed(concreteSrcType, "LiteralString") &&
 		e.prefetched != nil && e.prefetched.StrClass != nil && IsInstantiableClass(e.prefetched.StrClass) &&
 		(flags&AssignTypeFlagsInvariant) == 0 {
-		concreteSrcType = ClassTypeCloneAsInstance(e.prefetched.StrClass.(*ClassType), false)
+		concreteSrcType = ClassTypeCloneAsInstance(e.prefetched.StrClass.(*ClassType), true)
 	}
 
 	return e.assignClass(

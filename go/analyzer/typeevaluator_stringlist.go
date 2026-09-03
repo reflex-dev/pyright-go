@@ -122,7 +122,7 @@ func (e *typeEvaluator) stringListValueType(
 	if isTemplate {
 		var templateType Type = UnknownTypeCreate(false)
 		if e.prefetched != nil && IsInstantiableClass(e.prefetched.TemplateClass) {
-			templateType = ClassTypeCloneAsInstance(e.prefetched.TemplateClass.(*ClassType), false)
+			templateType = ClassTypeCloneAsInstance(e.prefetched.TemplateClass.(*ClassType), true)
 		}
 		return &TypeResult{Type: templateType, IsIncomplete: isIncomplete}
 	}
@@ -140,7 +140,7 @@ func (e *typeEvaluator) stringListValueType(
 		// string then the result is still known to be one.
 		if isLiteralString {
 			if literalStringType := e.getTypingType(node, "LiteralString"); IsInstantiableClass(literalStringType) {
-				return &TypeResult{Type: ClassTypeCloneAsInstance(literalStringType.(*ClassType), false)}
+				return &TypeResult{Type: ClassTypeCloneAsInstance(literalStringType.(*ClassType), true)}
 			}
 		}
 
@@ -296,7 +296,7 @@ func (e *typeEvaluator) getTypeOfString(node parser.StringOrFormatStringNode) *T
 	if isTemplateString {
 		var templateType Type = UnknownTypeCreate(false)
 		if e.prefetched != nil && IsInstantiableClass(e.prefetched.TemplateClass) {
-			templateType = ClassTypeCloneAsInstance(e.prefetched.TemplateClass.(*ClassType), false)
+			templateType = ClassTypeCloneAsInstance(e.prefetched.TemplateClass.(*ClassType), true)
 		}
 		return &TypeResult{Type: templateType, IsIncomplete: isIncomplete}
 	}
@@ -304,7 +304,7 @@ func (e *typeEvaluator) getTypeOfString(node parser.StringOrFormatStringNode) *T
 	if !isBytes && isLiteralString {
 		if literalStringType := e.getTypingType(formatNode, "LiteralString"); IsInstantiableClass(literalStringType) {
 			return &TypeResult{
-				Type:         ClassTypeCloneAsInstance(literalStringType.(*ClassType), false),
+				Type:         ClassTypeCloneAsInstance(literalStringType.(*ClassType), true),
 				IsIncomplete: isIncomplete,
 			}
 		}

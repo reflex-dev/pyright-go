@@ -283,7 +283,7 @@ func (e *typeEvaluator) declInfoForKeywordArg(
 		baseClass := baseType.(*ClassType)
 		var initMethodType Type
 		if result := GetBoundInitMethod(e, callNode.D.LeftExpr,
-			ClassTypeCloneAsInstance(baseClass, false), nil,
+			ClassTypeCloneAsInstance(baseClass, true), nil,
 			MemberAccessFlagsSkipObjectBaseClass); result != nil {
 			initMethodType = result.Type
 		}

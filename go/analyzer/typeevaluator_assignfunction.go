@@ -859,7 +859,7 @@ func (a *functionAssigner) matchReturnType(
 		a.e.prefetched != nil && a.e.prefetched.BoolClass != nil &&
 		IsInstantiableClass(a.e.prefetched.BoolClass) {
 		if a.e.AssignType(destReturnType,
-			ClassTypeCloneAsInstance(a.e.prefetched.BoolClass.(*ClassType), false),
+			ClassTypeCloneAsInstance(a.e.prefetched.BoolClass.(*ClassType), true),
 			createAddendumOrNil(returnDiag), constraints, flags, recursionCount) {
 			return true
 		}

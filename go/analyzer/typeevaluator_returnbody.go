@@ -304,7 +304,7 @@ func (e *typeEvaluator) wrapReturnTypeInGenerator(
 	}
 
 	return ClassTypeCloneAsInstance(
-		ClassTypeSpecialize(generatorType.(*ClassType), typeArgs, nil, false, nil, nil), false)
+		ClassTypeSpecialize(generatorType.(*ClassType), typeArgs, nil, false, nil, nil), true)
 }
 
 // methodAlwaysRaisesNotImplemented corresponds to the function of the same name.

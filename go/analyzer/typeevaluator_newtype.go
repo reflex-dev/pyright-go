@@ -150,7 +150,7 @@ func (e *typeEvaluator) createNewType(
 		parser.ParamCategorySimple, AnyTypeCreate(false), FunctionParamFlagsTypeDeclared,
 		&selfName, nil, nil))
 	FunctionTypeAddParam(initType, FunctionParamCreate(
-		parser.ParamCategorySimple, ClassTypeCloneAsInstance(baseClassType, false),
+		parser.ParamCategorySimple, ClassTypeCloneAsInstance(baseClassType, true),
 		FunctionParamFlagsTypeDeclared, &xName, nil, nil))
 	initType.Shared.DeclaredReturnType = e.GetNoneType()
 	ClassTypeGetSymbolTable(classType).Set("__init__",
@@ -162,7 +162,7 @@ func (e *typeEvaluator) createNewType(
 		parser.ParamCategorySimple, AnyTypeCreate(false), FunctionParamFlagsTypeDeclared,
 		&clsName, nil, nil))
 	FunctionTypeAddDefaultParams(newType, false)
-	newType.Shared.DeclaredReturnType = ClassTypeCloneAsInstance(classType, false)
+	newType.Shared.DeclaredReturnType = ClassTypeCloneAsInstance(classType, true)
 	newType.Priv.ConstructorTypeVarScopeID = GetTypeVarScopeID(classType)
 	ClassTypeGetSymbolTable(classType).Set("__new__",
 		SymbolCreateWithType(SymbolFlagsClassMember, newType, nil))

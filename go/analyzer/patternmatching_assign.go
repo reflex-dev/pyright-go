@@ -191,7 +191,7 @@ func assignMappingPatternTargets(
 			var dictType Type = UnknownTypeCreate(false)
 			if dictClass != nil && IsInstantiableClass(dictClass) && IsClassInstance(strType) {
 				dictType = ClassTypeCloneAsInstance(ClassTypeSpecialize(dictClass.(*ClassType),
-					[]Type{keyType, valueType}, nil, false, nil, nil), false)
+					[]Type{keyType, valueType}, nil, false, nil, nil), true)
 			}
 			evaluator.AssignTypeToExpression(mappingEntry.D.Target,
 				&TypeResult{Type: dictType, IsIncomplete: isTypeIncomplete},

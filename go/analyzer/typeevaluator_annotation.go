@@ -226,7 +226,7 @@ func (e *typeEvaluator) convertToTypeFormType(expectedType Type, srcType Type) T
 		srcClass := srcType.(*ClassType)
 		if srcType.Base().IsInstantiable() {
 			if !ClassTypeIsSpecialBuiltIn(srcClass) {
-				srcTypeFormType = ClassTypeCloneAsInstance(srcClass, false)
+				srcTypeFormType = ClassTypeCloneAsInstance(srcClass, true)
 			}
 		} else if ClassTypeIsBuiltInNamed(srcClass, "type") {
 			if len(srcClass.Priv.TypeArgs) > 0 {

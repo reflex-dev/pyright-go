@@ -84,7 +84,7 @@ func (e *typeEvaluator) createTypeVarTupleType(
 
 	typeVar := CloneAsSpecialForm(
 		TypeVarTypeCreateInstantiable(typeVarName, TypeVarKindTypeVarTuple),
-		ClassTypeCloneAsInstance(classType, false))
+		ClassTypeCloneAsInstance(classType, true))
 	typeVar.Shared.DefaultType = MakeTupleObject(e,
 		[]*TupleTypeArg{{Type: UnknownTypeCreate(false), IsUnbounded: true}}, false)
 
@@ -151,7 +151,7 @@ func (e *typeEvaluator) createParamSpecType(
 
 	paramSpec := CloneAsSpecialForm(
 		TypeVarTypeCreateInstantiable(paramSpecName, TypeVarKindParamSpec),
-		ClassTypeCloneAsInstance(classType, false))
+		ClassTypeCloneAsInstance(classType, true))
 
 	paramSpec.Shared.DefaultType = ParamSpecTypeGetUnknown()
 

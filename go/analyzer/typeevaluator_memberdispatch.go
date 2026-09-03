@@ -247,7 +247,7 @@ func (e *typeEvaluator) memberAccessOnClass(
 	// NewType, treat it like a function for purposes of member accesses.
 	if ClassTypeIsNewTypeClass(baseType) && !baseType.Priv.IncludeSubclasses &&
 		e.prefetched != nil && e.prefetched.FunctionClass != nil && IsClass(e.prefetched.FunctionClass) {
-		baseType = ClassTypeCloneAsInstance(e.prefetched.FunctionClass.(*ClassType), false)
+		baseType = ClassTypeCloneAsInstance(e.prefetched.FunctionClass.(*ClassType), true)
 	}
 
 	var typeResult *TypeResult
@@ -258,7 +258,7 @@ func (e *typeEvaluator) memberAccessOnClass(
 			typeResult = enumMemberResult
 		} else if enumClass, ok := enumMemberResult.Type.(*ClassType); ok &&
 			IsClassInstance(enumMemberResult.Type) &&
-			ClassTypeIsSameGenericClass(enumClass, ClassTypeCloneAsInstance(baseType, false), 0) &&
+			ClassTypeIsSameGenericClass(enumClass, ClassTypeCloneAsInstance(baseType, true), 0) &&
 			enumClass.Priv.LiteralValue != nil {
 			// The original's comment: is this an attempt to delete or overwrite an
 			// enum member?

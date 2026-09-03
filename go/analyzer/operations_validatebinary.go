@@ -357,7 +357,7 @@ func combineTupleAdd(
 		rightClass.Priv.TupleTypeArgs...)
 
 	return ClassTypeCloneAsInstance(
-		SpecializeTupleClass(tupleClassType, combined, false, false), false)
+		SpecializeTupleClass(tupleClassType, combined, true, false), true)
 }
 
 // tryArithmeticMagicMethods is the original's six-attempt cascade: the forward

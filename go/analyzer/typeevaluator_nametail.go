@@ -73,7 +73,7 @@ func (e *typeEvaluator) convertSpecialFormToRuntimeValueEx(t Type, flags EvalFla
 
 	if convertModule && IsModule(t) && e.prefetched != nil &&
 		e.prefetched.ModuleTypeClass != nil && IsInstantiableClass(e.prefetched.ModuleTypeClass) {
-		return ClassTypeCloneAsInstance(e.prefetched.ModuleTypeClass.(*ClassType), false)
+		return ClassTypeCloneAsInstance(e.prefetched.ModuleTypeClass.(*ClassType), true)
 	}
 
 	// The original's comment: isinstance treats traditional (non-PEP 695) type
@@ -206,7 +206,7 @@ func (e *typeEvaluator) addTypeFormForSymbol(
 			t = CloneWithTypeForm(t, AnyTypeCreate(false))
 		} else {
 			specialized := SpecializeWithDefaultTypeArgs(t.(*ClassType))
-			t = CloneWithTypeForm(t, ClassTypeCloneAsInstance(specialized, false))
+			t = CloneWithTypeForm(t, ClassTypeCloneAsInstance(specialized, true))
 		}
 	}
 

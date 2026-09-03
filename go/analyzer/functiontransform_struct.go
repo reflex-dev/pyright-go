@@ -137,7 +137,7 @@ func ApplyStructUnpackTransform(
 	}
 
 	iteratorInstance := ClassTypeCloneAsInstance(ClassTypeSpecialize(
-		iteratorType.(*ClassType), []Type{tupleType}, nil, false, nil, nil), false)
+		iteratorType.(*ClassType), []Type{tupleType}, nil, false, nil, nil), true)
 
 	transformed := *result
 	transformed.ReturnType = iteratorInstance

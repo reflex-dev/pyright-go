@@ -255,7 +255,7 @@ func (e *typeEvaluator) indexInstantiableClass(
 			e.AddDiagnostic(
 				DiagnosticRuleReportInvalidTypeArguments,
 				localization.LocMessage.TypeArgsExpectingNone().Format(
-					e.PrintType(ClassTypeCloneAsInstance(concreteSubtype, false), nil),
+					e.PrintType(ClassTypeCloneAsInstance(concreteSubtype, true), nil),
 				),
 				node,
 				nil,
@@ -284,7 +284,7 @@ func (e *typeEvaluator) indexInstantiableClass(
 	if ClassTypeIsEnumClass(concreteSubtype) {
 		// The original's comment: special-case Enum types. It carries two TODOs
 		// here about validating the index entry.
-		return ClassTypeCloneAsInstance(concreteSubtype, false)
+		return ClassTypeCloneAsInstance(concreteSubtype, true)
 	}
 
 	isAnnotatedClass := ClassTypeIsBuiltInNamed(concreteSubtype, "Annotated")
@@ -444,7 +444,7 @@ func (e *typeEvaluator) createLiteralType(
 		if t == nil {
 			if (flags & EvalFlagsTypeExpression) == 0 {
 				// Outside a type expression this is just the `Literal` object.
-				return ClassTypeCloneAsInstance(classType, false)
+				return ClassTypeCloneAsInstance(classType, true)
 			}
 			e.AddDiagnostic(DiagnosticRuleReportInvalidTypeForm,
 				localization.LocMessage.LiteralUnsupportedType(), item, nil)
@@ -460,7 +460,7 @@ func (e *typeEvaluator) createLiteralType(
 	if IsUnion(result) && e.prefetched != nil && e.prefetched.UnionTypeClass != nil &&
 		IsInstantiableClass(e.prefetched.UnionTypeClass) {
 		result = CloneAsSpecialForm(result,
-			ClassTypeCloneAsInstance(e.prefetched.UnionTypeClass.(*ClassType), false))
+			ClassTypeCloneAsInstance(e.prefetched.UnionTypeClass.(*ClassType), true))
 	}
 
 	if isValidTypeForm {

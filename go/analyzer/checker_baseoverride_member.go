@@ -78,7 +78,7 @@ func (c *Checker) validateBaseClassOverride(
 
 	baseClass := baseClassAndSymbol.ClassType.(*ClassType)
 	childClassSelf := ClassTypeCloneAsInstance(
-		SelfSpecializeClass(childClassType, &SelfSpecializeOptions{UseBoundTypeVars: true}), false)
+		SelfSpecializeClass(childClassType, &SelfSpecializeOptions{UseBoundTypeVars: true}), true)
 
 	// The original's comment: the "Self" value for the base class depends on
 	// whether it's a protocol or not. It's not clear from the typing spec whether
@@ -86,7 +86,7 @@ func (c *Checker) validateBaseClassOverride(
 	baseClassSelf := childClassSelf
 	if !ClassTypeIsProtocolClass(baseClass) {
 		baseClassSelf = ClassTypeCloneAsInstance(
-			SelfSpecializeClass(baseClass, &SelfSpecializeOptions{UseBoundTypeVars: true}), false)
+			SelfSpecializeClass(baseClass, &SelfSpecializeOptions{UseBoundTypeVars: true}), true)
 	}
 
 	baseType := PartiallySpecializeType(

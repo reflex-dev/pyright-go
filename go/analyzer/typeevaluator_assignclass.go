@@ -86,7 +86,7 @@ func (e *typeEvaluator) assignClass(
 			addendum = diag.CreateAddendum()
 		}
 
-		if !e.assignClassToProtocol(destType, ClassTypeCloneAsInstance(srcType, false),
+		if !e.assignClassToProtocol(destType, ClassTypeCloneAsInstance(srcType, true),
 			addendum, constraints, flags, recursionCount) {
 			if diag != nil {
 				diag.AddMessage(localization.LocAddendum.ProtocolIncompatible().Format(
@@ -161,7 +161,7 @@ func (e *typeEvaluator) assignTypedDictSrc(
 			e.prefetched.StrClass != nil && IsInstantiableClass(e.prefetched.StrClass) {
 			srcType = ClassTypeSpecialize(
 				e.prefetched.MappingClass.(*ClassType),
-				[]Type{ClassTypeCloneAsInstance(e.prefetched.StrClass.(*ClassType), false), mappingValueType},
+				[]Type{ClassTypeCloneAsInstance(e.prefetched.StrClass.(*ClassType), true), mappingValueType},
 				nil, false, nil, nil,
 			)
 		}
@@ -173,7 +173,7 @@ func (e *typeEvaluator) assignTypedDictSrc(
 			e.prefetched.StrClass != nil && IsInstantiableClass(e.prefetched.StrClass) {
 			srcType = ClassTypeSpecialize(
 				e.prefetched.DictClass.(*ClassType),
-				[]Type{ClassTypeCloneAsInstance(e.prefetched.StrClass.(*ClassType), false), dictValueType},
+				[]Type{ClassTypeCloneAsInstance(e.prefetched.StrClass.(*ClassType), true), dictValueType},
 				nil, false, nil, nil,
 			)
 		}
@@ -249,8 +249,8 @@ func (e *typeEvaluator) reportClassIncompatible(
 
 	var destErrorType, srcErrorType Type = destType, srcType
 	if reportErrorsUsingObjType {
-		destErrorType = ClassTypeCloneAsInstance(destType, false)
-		srcErrorType = ClassTypeCloneAsInstance(srcType, false)
+		destErrorType = ClassTypeCloneAsInstance(destType, true)
+		srcErrorType = ClassTypeCloneAsInstance(srcType, true)
 	}
 
 	destErrorTypeText := e.PrintType(destErrorType, nil)

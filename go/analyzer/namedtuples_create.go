@@ -262,12 +262,12 @@ func CreateNamedTupleType(
 		for _, name := range matchArgsNames {
 			literalTypes = append(literalTypes, &TupleTypeArg{
 				Type: ClassTypeCloneAsInstance(
-					ClassTypeCloneWithLiteral(strType.(*ClassType), LiteralString(name)), false),
+					ClassTypeCloneWithLiteral(strType.(*ClassType), LiteralString(name)), true),
 				IsUnbounded: false,
 			})
 		}
 		matchArgsType := ClassTypeCloneAsInstance(
-			SpecializeTupleClass(tupleClassType.(*ClassType), literalTypes, false, false), false)
+			SpecializeTupleClass(tupleClassType.(*ClassType), literalTypes, true, false), true)
 		classFields.Set("__match_args__",
 			SymbolCreateWithType(SymbolFlagsClassMember, matchArgsType, nil))
 	}

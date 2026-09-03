@@ -61,7 +61,7 @@ func SpecializeWithUnknownTypeArgs(t *ClassType, tupleClassType *ClassType) *Cla
 			SpecializeTupleClass(
 				t,
 				[]*TupleTypeArg{{Type: UnknownTypeCreate(false), IsUnbounded: true}},
-				false, // isTypeArgExplicit
+				true,  // isTypeArgExplicit
 				false, // isUnpacked, defaulted in the original
 			),
 			t.Priv.IncludeSubclasses,

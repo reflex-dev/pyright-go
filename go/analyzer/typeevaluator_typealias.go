@@ -147,7 +147,7 @@ func (e *typeEvaluator) transformTypeForTypeAliasEx(
 		typeAliasTypeClass := e.getTypingType(errorNode, "TypeAliasType")
 		if typeAliasTypeClass != nil && IsInstantiableClass(typeAliasTypeClass) {
 			typeAlias = CloneAsSpecialForm(typeAlias,
-				ClassTypeCloneAsInstance(typeAliasTypeClass.(*ClassType), false))
+				ClassTypeCloneAsInstance(typeAliasTypeClass.(*ClassType), true))
 		}
 	}
 

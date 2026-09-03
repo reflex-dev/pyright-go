@@ -78,7 +78,7 @@ func (e *typeEvaluator) BindFunctionToClassOrObject(
 			if IsClassInstance(baseType) {
 				baseObj = baseType
 			} else {
-				baseObj = ClassTypeCloneAsInstance(SpecializeWithDefaultTypeArgs(baseType), false)
+				baseObj = ClassTypeCloneAsInstance(SpecializeWithDefaultTypeArgs(baseType), true)
 			}
 
 			stripFirstParam := false

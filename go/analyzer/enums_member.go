@@ -143,7 +143,7 @@ func transformTypeForEnumMember(
 		if aliasClass, isClass := aliasedEnumType.(*ClassType); isClass &&
 			IsClassInstance(aliasedEnumType) &&
 			ClassTypeIsSameGenericClass(aliasClass,
-				ClassTypeCloneAsInstance(memberInfo.ClassType.(*ClassType), false), 0) &&
+				ClassTypeCloneAsInstance(memberInfo.ClassType.(*ClassType), true), 0) &&
 			aliasClass.Priv.LiteralValue != nil {
 			return aliasedEnumType
 		}
@@ -212,7 +212,7 @@ func transformTypeForEnumMember(
 	enumLiteral := NewEnumLiteral(memberClass.Shared.FullName, memberClass.Shared.Name,
 		memberName, valueType, isReprEnumClass(classType))
 
-	return ClassTypeCloneAsInstance(ClassTypeCloneWithLiteral(memberClass, enumLiteral), false)
+	return ClassTypeCloneAsInstance(ClassTypeCloneWithLiteral(memberClass, enumLiteral), true)
 }
 
 // enumMemberShape is what the original reads out of the declaration node before
@@ -440,7 +440,7 @@ func enumNameMember(
 
 	makeNameType := func(value *EnumLiteral) Type {
 		return ClassTypeCloneAsInstance(
-			ClassTypeCloneWithLiteral(strClass.(*ClassType), LiteralString(value.ItemName)), false)
+			ClassTypeCloneWithLiteral(strClass.(*ClassType), LiteralString(value.ItemName)), true)
 	}
 
 	if literalValue != nil {
@@ -563,7 +563,7 @@ func GetEnumAutoValueType(evaluator TypeEvaluator, node parser.ExpressionNode) T
 	if containingClassNode != nil {
 		if classTypeInfo := evaluator.GetTypeOfClass(containingClassNode); classTypeInfo != nil {
 			memberInfo := evaluator.GetTypeOfBoundMember(node,
-				ClassTypeCloneAsInstance(classTypeInfo.ClassType, false),
+				ClassTypeCloneAsInstance(classTypeInfo.ClassType, true),
 				"_generate_next_value_", nil, nil, MemberAccessFlagsDefault, nil)
 
 			// The original's comment: did we find a custom _generate_next_value_

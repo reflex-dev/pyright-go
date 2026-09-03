@@ -154,7 +154,7 @@ func (e *typeEvaluator) getTypeOfBoundMember(
 		}
 
 		memberInfo = e.getTypeOfClassMemberName(errorNode,
-			ClassTypeCloneAsInstance(metaclass.(*ClassType), false), memberName, usage,
+			ClassTypeCloneAsInstance(metaclass.(*ClassType), true), memberName, usage,
 			metaclassDiag, effectiveFlags, effectiveSelfType, recursionCount)
 
 		// The original's comment: if there was a descriptor error (as opposed to an

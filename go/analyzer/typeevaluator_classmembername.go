@@ -275,7 +275,7 @@ func (e *typeEvaluator) getTypeOfClassMemberName(
 			ClassTypeIsDataClassFrozen(memberInfo.ClassType.(*ClassType)) && isAccessedThroughObject {
 			if diag != nil {
 				diag.AddMessage(localization.LocAddendum.DataClassFrozen().Format(
-					e.PrintType(ClassTypeCloneAsInstance(memberInfo.ClassType.(*ClassType), false), nil)))
+					e.PrintType(ClassTypeCloneAsInstance(memberInfo.ClassType.(*ClassType), true), nil)))
 			}
 
 			isDescriptorError = true
@@ -327,7 +327,7 @@ func (e *typeEvaluator) declaredTypeForMemberWrite(
 
 	comparisonClass := containingClassType
 	if isAccessedThroughObject {
-		comparisonClass = ClassTypeCloneAsInstance(containingClassType, false)
+		comparisonClass = ClassTypeCloneAsInstance(containingClassType, true)
 	}
 	if !ClassTypeIsSameGenericClass(comparisonClass, classType, 0) {
 		return nil, flags

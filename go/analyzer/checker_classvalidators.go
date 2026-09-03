@@ -375,9 +375,9 @@ func (c *Checker) validateMultipleInheritanceBaseClasses(
 
 			scopeIds := GetTypeVarScopeIds(classType)
 			matchingMroObject := MakeTypeVarsBound(
-				ClassTypeCloneAsInstance(matchingMroClass.(*ClassType), true), scopeIds, false)
+				ClassTypeCloneAsInstance(matchingMroClass.(*ClassType), true), scopeIds, true)
 			baseClassMroObject := MakeTypeVarsBound(
-				ClassTypeCloneAsInstance(specialized, true), scopeIds, false)
+				ClassTypeCloneAsInstance(specialized, true), scopeIds, true)
 
 			if c.evaluator.AssignType(matchingMroObject, baseClassMroObject,
 				nil, nil, AssignTypeFlagsDefault, 0) {

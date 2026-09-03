@@ -238,7 +238,7 @@ func (e *typeEvaluator) getExpectedEntryTypeForIterable(
 	}
 
 	constraints := NewConstraintTracker()
-	if !AddConstraintsForExpectedType(e, ClassTypeCloneAsInstance(expectedClass, false),
+	if !AddConstraintsForExpectedType(e, ClassTypeCloneAsInstance(expectedClass, true),
 		inferenceContext.ExpectedType, constraints, GetTypeVarScopesForNode(node),
 		node.NodeBase().TextRange.Start) {
 		return nil
@@ -334,7 +334,7 @@ func (e *typeEvaluator) getTypeOfListOrSetInferred(
 	if IsInstantiableClass(listOrSetClass) {
 		isTypeArgExplicit := true
 		t = ClassTypeCloneAsInstance(ClassTypeSpecialize(listOrSetClass.(*ClassType),
-			[]Type{inferredEntryType}, &isTypeArgExplicit, false, nil, &isEmptyContainer), false)
+			[]Type{inferredEntryType}, &isTypeArgExplicit, false, nil, &isEmptyContainer), true)
 	}
 
 	if isIncomplete && GetContainerDepth(t, 0) > maxInferredContainerDepth {

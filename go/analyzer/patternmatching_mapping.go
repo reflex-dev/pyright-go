@@ -237,7 +237,7 @@ func narrowMappingEntries(
 					mappingSubtypeInfo.Subtype = ClassTypeCloneAsInstance(
 						ClassTypeCloneForNarrowedTypedDictEntries(
 							ClassTypeCloneAsInstantiable(mappingSubtypeInfo.TypedDict, false),
-							newNarrowedEntriesMap), false)
+							newNarrowedEntriesMap), true)
 					mappingSubtypeInfo.TypedDict = mappingSubtypeInfo.Subtype.(*ClassType)
 				}
 
@@ -307,7 +307,7 @@ func getMappingPatternInfo(
 		if mappingType == nil || !IsInstantiableClass(mappingType) {
 			return
 		}
-		mappingObject := ClassTypeCloneAsInstance(mappingType.(*ClassType), false)
+		mappingObject := ClassTypeCloneAsInstance(mappingType.(*ClassType), true)
 
 		// The original's comment: is it a subtype of Mapping?
 		constraints := NewConstraintTracker()

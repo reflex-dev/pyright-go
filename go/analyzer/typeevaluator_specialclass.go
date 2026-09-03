@@ -716,7 +716,7 @@ func (e *typeEvaluator) createAnnotatedType(
 	// Outside a type expression, `Annotated` is an ordinary runtime object.
 	typeExprFlags := EvalFlagsTypeExpression | EvalFlagsNoConvertSpecialForm
 	if (flags & typeExprFlags) == 0 {
-		t = ClassTypeCloneAsInstance(classType, false)
+		t = ClassTypeCloneAsInstance(classType, true)
 
 		if len(typeArgs) >= 1 {
 			if props := typeArgs[0].Type.Base().Props; props != nil && props.TypeForm != nil {
@@ -748,7 +748,7 @@ func (e *typeEvaluator) createAnnotatedType(
 	}
 
 	return &TypeResult{
-		Type:          CloneAsSpecialForm(t, ClassTypeCloneAsInstance(classType, false)),
+		Type:          CloneAsSpecialForm(t, ClassTypeCloneAsInstance(classType, true)),
 		IsReadOnly:    typeArgs[0].IsReadOnly,
 		IsRequired:    typeArgs[0].IsRequired,
 		IsNotRequired: typeArgs[0].IsNotRequired,

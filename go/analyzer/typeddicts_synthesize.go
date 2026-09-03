@@ -58,20 +58,20 @@ func SynthesizeTypedDictClassMethods(
 	FunctionTypeAddParam(newType, FunctionParamCreate(
 		parser.ParamCategorySimple, classType, FunctionParamFlagsTypeDeclared, &clsName, nil, nil))
 	FunctionTypeAddDefaultParams(newType, false)
-	newType.Shared.DeclaredReturnType = ClassTypeCloneAsInstance(classType, false)
+	newType.Shared.DeclaredReturnType = ClassTypeCloneAsInstance(classType, true)
 	newType.Priv.ConstructorTypeVarScopeID = classScopeID
 
 	// The original's comment: synthesize an __init__ method with two overrides.
 	initOverride1 := FunctionTypeCreateSynthesizedInstance("__init__", FunctionTypeFlagsOverloaded)
 	FunctionTypeAddParam(initOverride1, FunctionParamCreate(
-		parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, false),
+		parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, true),
 		FunctionParamFlagsTypeDeclared, &selfName, nil, nil))
 	initOverride1.Shared.DeclaredReturnType = evaluator.GetNoneType()
 	initOverride1.Priv.ConstructorTypeVarScopeID = classScopeID
 
 	// The original's comment: the first parameter must be positional-only.
 	FunctionTypeAddParam(initOverride1, FunctionParamCreate(
-		parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, false),
+		parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, true),
 		FunctionParamFlagsTypeDeclared, &mapName, nil, nil))
 
 	entries := GetTypedDictMembersForClass(evaluator, classType, false)
@@ -91,7 +91,7 @@ func SynthesizeTypedDictClassMethods(
 
 	initOverride2 := FunctionTypeCreateSynthesizedInstance("__init__", FunctionTypeFlagsOverloaded)
 	FunctionTypeAddParam(initOverride2, FunctionParamCreate(
-		parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, false),
+		parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, true),
 		FunctionParamFlagsTypeDeclared, &selfName, nil, nil))
 	initOverride2.Shared.DeclaredReturnType = evaluator.GetNoneType()
 	initOverride2.Priv.ConstructorTypeVarScopeID = classScopeID
@@ -157,7 +157,7 @@ func SynthesizeTypedDictClassMethods(
 		allEntriesAreReadOnly: allEntriesAreReadOnly,
 		strClass:              strClassType,
 		selfParam: FunctionParamCreate(
-			parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, false),
+			parser.ParamCategorySimple, ClassTypeCloneAsInstance(classType, true),
 			FunctionParamFlagsTypeDeclared, &selfName, nil, nil),
 		kName:       kName,
 		defaultName: defaultName,
@@ -169,7 +169,7 @@ func SynthesizeTypedDictClassMethods(
 
 	entries.KnownItems.ForEach(func(entry *TypedDictEntry, name string) {
 		nameLiteralType := ClassTypeCloneAsInstance(
-			ClassTypeCloneWithLiteral(strClassType, LiteralString(name)), false)
+			ClassTypeCloneWithLiteral(strClassType, LiteralString(name)), true)
 
 		getOverloads = append(getOverloads,
 			s.createGetMethod(nameLiteralType, entry.ValueType, false, entry.IsRequired, false))
@@ -189,7 +189,7 @@ func SynthesizeTypedDictClassMethods(
 		}
 	})
 
-	strType := ClassTypeCloneAsInstance(strClassType, false)
+	strType := ClassTypeCloneAsInstance(strClassType, true)
 
 	// The original's comment: if the class is closed, we can assume that any
 	// other keys that are present will return the default parameter value or the
@@ -258,7 +258,7 @@ func SynthesizeTypedDictClassMethods(
 
 		var tupleType Type = UnknownTypeCreate(false)
 		if tc := evaluator.GetTupleClassType(); tc != nil && IsInstantiableClass(tc) {
-			tupleType = SpecializeTupleClass(ClassTypeCloneAsInstance(tc, false), []*TupleTypeArg{
+			tupleType = SpecializeTupleClass(ClassTypeCloneAsInstance(tc, true), []*TupleTypeArg{
 				{Type: strType, IsUnbounded: false},
 				{Type: dictValueType, IsUnbounded: false},
 			}, true, false)
@@ -296,7 +296,7 @@ func SynthesizeTypedDictClassMethods(
 		if returnTypeClass != nil && IsInstantiableClass(returnTypeClass) &&
 			len(returnTypeClass.(*ClassType).Shared.TypeParams) == 2 {
 			method.Shared.DeclaredReturnType = ClassTypeSpecialize(
-				ClassTypeCloneAsInstance(returnTypeClass.(*ClassType), false),
+				ClassTypeCloneAsInstance(returnTypeClass.(*ClassType), true),
 				[]Type{keyValueType, mappingValueType}, nil, false, nil, nil)
 
 			symbolTable.Set(methodName, SymbolCreateWithType(SymbolFlagsClassMember, method, nil))
@@ -463,7 +463,7 @@ func (s *typedDictSynthesizer) createUpdateMethod(strType *ClassType) Type {
 		mapParamType = NeverTypeCreateNever()
 	} else {
 		mapParamType = ClassTypeCloneAsInstance(
-			ClassTypeCloneForPartialTypedDict(s.classType), false)
+			ClassTypeCloneForPartialTypedDict(s.classType), true)
 	}
 	FunctionTypeAddParam(updateMethod1, FunctionParamCreate(
 		parser.ParamCategorySimple, mapParamType, FunctionParamFlagsTypeDeclared, &mapName, nil, nil))
@@ -489,11 +489,11 @@ func (s *typedDictSynthesizer) createUpdateMethod(strType *ClassType) Type {
 		// The original's comment: for writable entries, add a tuple entry.
 		if tupleClass != nil && IsInstantiableClass(tupleClass) {
 			tupleType := SpecializeTupleClass(
-				ClassTypeCloneAsInstance(tupleClass.(*ClassType), false),
+				ClassTypeCloneAsInstance(tupleClass.(*ClassType), true),
 				[]*TupleTypeArg{
 					{Type: ClassTypeCloneWithLiteral(strType, LiteralString(entryName)), IsUnbounded: false},
 					{Type: entry.ValueType, IsUnbounded: false},
-				}, false, false)
+				}, true, false)
 
 			tuplesToCombine = append(tuplesToCombine, tupleType)
 		}
@@ -506,7 +506,7 @@ func (s *typedDictSynthesizer) createUpdateMethod(strType *ClassType) Type {
 
 	iterableClass := s.evaluator.GetTypingType(s.node, "Iterable")
 	if iterableClass != nil && IsInstantiableClass(iterableClass) {
-		iterableType := ClassTypeCloneAsInstance(iterableClass.(*ClassType), false)
+		iterableType := ClassTypeCloneAsInstance(iterableClass.(*ClassType), true)
 
 		FunctionTypeAddParam(updateMethod2, FunctionParamCreate(
 			parser.ParamCategorySimple,

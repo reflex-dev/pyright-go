@@ -199,7 +199,7 @@ func (e *typeEvaluator) GetBuiltInObject(node parser.ParseNode, name string, typ
 			classType = ClassTypeSpecialize(classType, typeArgs, nil, false, nil, nil)
 		}
 
-		return ClassTypeCloneAsInstance(classType, false)
+		return ClassTypeCloneAsInstance(classType, true)
 	}
 
 	return nameType

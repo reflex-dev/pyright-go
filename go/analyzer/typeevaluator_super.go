@@ -211,7 +211,7 @@ func (e *typeEvaluator) superCallBindToFromSecondArg(
 func (e *typeEvaluator) superCallImplicitBindTo(
 	node *parser.CallNode, enclosingClassType *ClassType,
 ) *ClassType {
-	bindToType := ClassTypeCloneAsInstance(enclosingClassType, false)
+	bindToType := ClassTypeCloneAsInstance(enclosingClassType, true)
 
 	// The original's comment: get the type from the self or cls parameter if it
 	// is explicitly annotated. If it's a TypeVar, change the bindToType into a
@@ -413,7 +413,7 @@ func (e *typeEvaluator) superCallOutsideMemberAccess(
 	if len(baseClasses) > 0 {
 		if baseClassType := baseClasses[0]; IsInstantiableClass(baseClassType) {
 			if resultIsInstance {
-				return &TypeResult{Type: ClassTypeCloneAsInstance(baseClassType.(*ClassType), false)}
+				return &TypeResult{Type: ClassTypeCloneAsInstance(baseClassType.(*ClassType), true)}
 			}
 			return &TypeResult{Type: baseClassType}
 		}

@@ -214,11 +214,11 @@ func validateNewAndInitMethods(
 		// The original's comment: if there is no __new__ method or it uses a default
 		// signature, (cls, *args, **kwargs) -> Self, allow the __init__ method to
 		// determine the specialized type of the class.
-		newMethodReturnType = ClassTypeCloneAsInstance(classType, false)
+		newMethodReturnType = ClassTypeCloneAsInstance(classType, true)
 	} else if IsUnknown(newMethodReturnType) || (newMethodType != nil && IsAny(newMethodType)) {
 		// The original's comment: if the __new__ method returns Unknown, we'll ignore
 		// its return type and assume that it returns Self.
-		newMethodReturnType = ApplySolvedTypeVars(ClassTypeCloneAsInstance(classType, false),
+		newMethodReturnType = ApplySolvedTypeVars(ClassTypeCloneAsInstance(classType, true),
 			NewConstraintSolution(nil), &ApplyTypeVarOptions{
 				ReplaceUnsolved: &ReplaceUnsolvedOptions{
 					ScopeIDs:       GetTypeVarScopeIDs(classType),
@@ -248,7 +248,7 @@ func validateNewAndInitMethods(
 		// the type arguments instead.
 		initMethodBindToType := newMethodReturnType.(*ClassType)
 		if hasUnknownTypeArg(initMethodBindToType) {
-			initMethodBindToType = ClassTypeCloneAsInstance(classType, false)
+			initMethodBindToType = ClassTypeCloneAsInstance(classType, true)
 		}
 
 		// The original's comment: determine whether the class overrides the
@@ -393,7 +393,7 @@ func validateNewMethod(
 			IsTupleClass(returnClass) && returnClass.Priv.TupleTypeArgs == nil {
 			if len(returnClass.Priv.TypeArgs) == 1 {
 				returnClass = SpecializeTupleClass(returnClass,
-					[]*TupleTypeArg{{Type: returnClass.Priv.TypeArgs[0], IsUnbounded: true}}, false, false)
+					[]*TupleTypeArg{{Type: returnClass.Priv.TypeArgs[0], IsUnbounded: true}}, true, false)
 			}
 
 			newReturnType = applyExpectedTypeForTupleConstructor(returnClass, inferenceContext)
@@ -565,7 +565,7 @@ func applyExpectedSubtypeForConstructor(
 	constraints *ConstraintTracker,
 ) Type {
 	specializedType := evaluator.SolveAndApplyConstraints(
-		ClassTypeCloneAsInstance(classType, false), constraints, &ApplyTypeVarOptions{
+		ClassTypeCloneAsInstance(classType, true), constraints, &ApplyTypeVarOptions{
 			ReplaceUnsolved: &ReplaceUnsolvedOptions{
 				ScopeIDs:       []TypeVarScopeId{},
 				TupleClassType: evaluator.GetTupleClassType(),
@@ -599,7 +599,7 @@ func applyExpectedTypeForConstructor(
 	// The original's comment: if this isn't a generic type or it's a type that has
 	// already been explicitly specialized, the expected type isn't applicable.
 	if len(classType.Shared.TypeParams) == 0 || classType.Priv.TypeArgs != nil {
-		return evaluator.SolveAndApplyConstraints(ClassTypeCloneAsInstance(classType, false),
+		return evaluator.SolveAndApplyConstraints(ClassTypeCloneAsInstance(classType, true),
 			constraints, &ApplyTypeVarOptions{
 				ReplaceUnsolved: &ReplaceUnsolvedOptions{
 					ScopeIDs:       []TypeVarScopeId{},
@@ -642,7 +642,7 @@ func applyExpectedTypeForConstructor(
 
 	specializedType := evaluator.SolveAndApplyConstraints(classType, constraints, applyOptions, nil)
 	if specializedClass, ok := specializedType.(*ClassType); ok {
-		return ClassTypeCloneAsInstance(specializedClass, false)
+		return ClassTypeCloneAsInstance(specializedClass, true)
 	}
 	return specializedType
 }
@@ -663,7 +663,7 @@ func applyExpectedTypeForTupleConstructor(classType *ClassType, inferenceContext
 		return classType
 	}
 
-	return SpecializeTupleClass(classType, expectedClass.Priv.TupleTypeArgs, false, false)
+	return SpecializeTupleClass(classType, expectedClass.Priv.TupleTypeArgs, true, false)
 }
 
 // shouldSkipNewAndInitEvaluation corresponds to the function of the same name.

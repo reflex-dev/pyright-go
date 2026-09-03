@@ -809,13 +809,13 @@ func SynthesizeDataClassMethods(
 				// has one).
 				literalTypes = append(literalTypes, &TupleTypeArg{
 					Type: ClassTypeCloneAsInstance(
-						ClassTypeCloneWithLiteral(strType.(*ClassType), LiteralString(entry.Name)), false),
+						ClassTypeCloneWithLiteral(strType.(*ClassType), LiteralString(entry.Name)), true),
 					IsUnbounded: false,
 				})
 			}
 		}
 		matchArgsType := ClassTypeCloneAsInstance(
-			SpecializeTupleClass(tupleClassType.(*ClassType), literalTypes, false, false), false)
+			SpecializeTupleClass(tupleClassType.(*ClassType), literalTypes, true, false), true)
 		symbolTable.Set("__match_args__",
 			SymbolCreateWithType(SymbolFlagsClassMember, matchArgsType, nil))
 	}
@@ -879,7 +879,7 @@ func SynthesizeDataClassMethods(
 		dictType = ClassTypeCloneAsInstance(ClassTypeSpecialize(
 			dictType.(*ClassType),
 			[]Type{evaluator.GetBuiltInObject(node, "str", nil), AnyTypeCreate(false)},
-			nil, false, nil, nil), false)
+			nil, false, nil, nil), true)
 	}
 
 	if !isNamedTuple {
@@ -920,7 +920,7 @@ func SynthesizeDataClassMethods(
 			iterableType = ClassTypeCloneAsInstance(ClassTypeSpecialize(
 				iterableType.(*ClassType),
 				[]Type{evaluator.GetBuiltInObject(node, "str", nil)},
-				nil, false, nil, nil), false)
+				nil, false, nil, nil), true)
 		}
 
 		symbolTable.Set("__slots__", SymbolCreateWithType(

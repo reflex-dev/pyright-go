@@ -217,7 +217,7 @@ func narrowSequenceEntry(
 						tupleArgs = append(tupleArgs, &TupleTypeArg{Type: et, IsUnbounded: false})
 					}
 					expanded = append(expanded, ClassTypeCloneAsInstance(
-						SpecializeTupleClass(tupleClassType.(*ClassType), tupleArgs, false, false), false))
+						SpecializeTupleClass(tupleClassType.(*ClassType), tupleArgs, true, false), true))
 				}
 
 				entry.Subtype = CombineTypes(expanded, nil)
@@ -243,7 +243,7 @@ func narrowSequenceEntry(
 					tupleArgs = append(tupleArgs, &TupleTypeArg{Type: et, IsUnbounded: false})
 				}
 				entry.Subtype = ClassTypeCloneAsInstance(
-					SpecializeTupleClass(tupleClassType.(*ClassType), tupleArgs, false, false), false)
+					SpecializeTupleClass(tupleClassType.(*ClassType), tupleArgs, true, false), true)
 			}
 		}
 
@@ -262,7 +262,7 @@ func narrowSequenceEntry(
 				}
 
 				entry.Subtype = ClassTypeCloneAsInstance(ClassTypeSpecialize(
-					sequenceType.(*ClassType), []Type{typeArgType}, nil, false, nil, nil), false)
+					sequenceType.(*ClassType), []Type{typeArgType}, nil, false, nil, nil), true)
 			}
 		}
 	}
@@ -575,7 +575,7 @@ func appendAbstractSequenceInfo(
 		return false
 	}
 	sequenceClass := sequenceType.(*ClassType)
-	sequenceObject := ClassTypeCloneAsInstance(sequenceClass, false)
+	sequenceObject := ClassTypeCloneAsInstance(sequenceClass, true)
 
 	// The original's comment: is it a subtype of Sequence?
 	constraints := NewConstraintTracker()
@@ -599,7 +599,7 @@ func appendAbstractSequenceInfo(
 	// supertype. A supertype only *might* be a sequence at runtime, hence
 	// isPotentialNoMatch below.
 	sequenceConstraints := NewConstraintTracker()
-	if AddConstraintsForExpectedType(evaluator, ClassTypeCloneAsInstance(sequenceClass, false), subtype,
+	if AddConstraintsForExpectedType(evaluator, ClassTypeCloneAsInstance(sequenceClass, true), subtype,
 		sequenceConstraints, GetTypeVarScopesForNode(pattern), pattern.NodeBase().TextRange.Start) {
 		if specialized, ok := evaluator.SolveAndApplyConstraints(
 			ClassTypeCloneAsInstantiable(sequenceClass, false), sequenceConstraints, nil, nil).(*ClassType); ok {
@@ -617,7 +617,7 @@ func appendAbstractSequenceInfo(
 	}
 
 	if evaluator.AssignType(subtype, ClassTypeSpecialize(
-		ClassTypeCloneAsInstance(sequenceClass, false),
+		ClassTypeCloneAsInstance(sequenceClass, true),
 		[]Type{UnknownTypeCreate(false)}, nil, false, nil, nil),
 		nil, nil, AssignTypeFlagsDefault, 0) {
 		*sequenceInfo = append(*sequenceInfo, &SequencePatternInfo{

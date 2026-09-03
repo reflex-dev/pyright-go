@@ -177,7 +177,7 @@ func (e *typeEvaluator) applyDescriptorAccessMethod(
 	} else if isAccessedThroughObject {
 		objArgType = selfType
 		if objArgType == nil {
-			objArgType = ClassTypeCloneAsInstance(classType, false)
+			objArgType = ClassTypeCloneAsInstance(classType, true)
 		}
 	} else {
 		objArgType = e.GetNoneType()
@@ -315,8 +315,8 @@ func (e *typeEvaluator) specializePropertyAccessMethod(
 
 	constraints := NewConstraintTracker()
 	accessMethodClass = SelfSpecializeClass(accessMethodClass, nil)
-	e.AssignType(ClassTypeCloneAsInstance(accessMethodClass, false),
-		ClassTypeCloneAsInstance(declaringClass, false), nil, constraints, AssignTypeFlagsDefault, 0)
+	e.AssignType(ClassTypeCloneAsInstance(accessMethodClass, true),
+		ClassTypeCloneAsInstance(declaringClass, true), nil, constraints, AssignTypeFlagsDefault, 0)
 
 	solved := e.SolveAndApplyConstraints(accessMethodClass, constraints, nil, nil)
 	solvedClass, ok := solved.(*ClassType)
@@ -444,7 +444,7 @@ func (e *typeEvaluator) applyAttributeAccessOverride(
 	// The original's comment: provide "name" argument.
 	var nameArgType Type
 	if strClass := e.GetStrClassType(); strClass != nil {
-		nameArgType = ClassTypeCloneWithLiteral(ClassTypeCloneAsInstance(strClass, false), LiteralString(memberName))
+		nameArgType = ClassTypeCloneWithLiteral(ClassTypeCloneAsInstance(strClass, true), LiteralString(memberName))
 	} else {
 		nameArgType = AnyTypeCreate(false)
 	}

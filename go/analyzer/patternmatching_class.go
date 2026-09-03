@@ -247,7 +247,7 @@ func narrowTypeBasedOnClassPatternNegative(
 		classType = ClassTypeSpecialize(classType, nil, nil, false, nil, nil)
 	}
 
-	classInstance := ClassTypeCloneAsInstance(classType, false)
+	classInstance := ClassTypeCloneAsInstance(classType, true)
 	isPatternMetaclass := IsMetaclassInstance(classInstance)
 
 	return evaluator.MapSubtypesExpandTypeVars(t,
@@ -445,7 +445,7 @@ func classPatternResultType(
 ) (Type, bool) {
 	var resultType Type
 
-	if evaluator.AssignType(ClassTypeCloneAsInstance(expandedSubtype, false), subjectSubtypeExpanded,
+	if evaluator.AssignType(ClassTypeCloneAsInstance(expandedSubtype, true), subjectSubtypeExpanded,
 		nil, nil, AssignTypeFlagsDefault, 0) {
 		// The subject is already at least as narrow as the pattern class.
 		resultType = subjectSubtypeExpanded
@@ -453,7 +453,7 @@ func classPatternResultType(
 			subjectSubtypeExpanded), true
 	}
 
-	if !evaluator.AssignType(subjectSubtypeExpanded, ClassTypeCloneAsInstance(expandedSubtype, false),
+	if !evaluator.AssignType(subjectSubtypeExpanded, ClassTypeCloneAsInstance(expandedSubtype, true),
 		nil, nil, AssignTypeFlagsDefault, 0) {
 		return nil, false
 	}
@@ -469,7 +469,7 @@ func classPatternResultType(
 			constraints := NewConstraintTracker()
 			unspecializedMatchType := ClassTypeSpecialize(unexpandedClass, nil, nil, false, nil, nil)
 
-			matchTypeInstance := ClassTypeCloneAsInstance(unspecializedMatchType, false)
+			matchTypeInstance := ClassTypeCloneAsInstance(unspecializedMatchType, true)
 			if AddConstraintsForExpectedType(evaluator, matchTypeInstance, subjectSubtypeExpanded,
 				constraints, nil, 0) {
 				if solved, ok := evaluator.SolveAndApplyConstraints(matchTypeInstance, constraints,
@@ -506,7 +506,7 @@ func classPatternApplyBoundedParams(
 	unexpandedClass := unexpandedSubtype.(*ClassType)
 
 	if !ClassTypeIsSameGenericClass(resultType.(*ClassType),
-		ClassTypeCloneAsInstance(unexpandedClass, false), 0) {
+		ClassTypeCloneAsInstance(unexpandedClass, true), 0) {
 		return resultType
 	}
 
@@ -577,7 +577,7 @@ func narrowTypeOfClassPatternArg(
 	var argType Type
 
 	if useSelfForPattern {
-		argType = ClassTypeCloneAsInstance(selfForPatternType, false)
+		argType = ClassTypeCloneAsInstance(selfForPatternType, true)
 	} else {
 		if argName != "" {
 			// The original's comment: we need to apply a rather ugly cast here
@@ -591,7 +591,7 @@ func narrowTypeOfClassPatternArg(
 			// would have surfaced is lost.
 			evaluator.UseSpeculativeMode(arg, func() {
 				if result := evaluator.GetTypeOfBoundMember(nil,
-					ClassTypeCloneAsInstance(matchClass, false), argName, nil, nil, 0, nil); result != nil {
+					ClassTypeCloneAsInstance(matchClass, true), argName, nil, nil, 0, nil); result != nil {
 					argType = result.Type
 				}
 			}, nil)

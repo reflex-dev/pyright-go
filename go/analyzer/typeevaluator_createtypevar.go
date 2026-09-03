@@ -68,7 +68,7 @@ func (e *typeEvaluator) createTypeVarType(
 
 	typeVar := CloneAsSpecialForm(
 		TypeVarTypeCreateInstantiable(typeVarName, TypeVarKindTypeVar),
-		ClassTypeCloneAsInstance(classType, false))
+		ClassTypeCloneAsInstance(classType, true))
 
 	// The original's comment: parse the remaining parameters.
 	paramNameMap := common.NewOrderedMap[string, string]()

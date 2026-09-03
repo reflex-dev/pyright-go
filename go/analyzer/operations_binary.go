@@ -438,7 +438,7 @@ func CreateUnionTypeFromOperands(
 
 	unionClass := evaluator.GetUnionClassType()
 	if IsInstantiableClass(unionClass) && (flags&EvalFlagsIsinstanceArg) == 0 {
-		newUnion = CloneAsSpecialForm(newUnion, ClassTypeCloneAsInstance(unionClass.(*ClassType), false))
+		newUnion = CloneAsSpecialForm(newUnion, ClassTypeCloneAsInstance(unionClass.(*ClassType), true))
 	}
 
 	leftProps := leftTypeResult.Type.Base().Props

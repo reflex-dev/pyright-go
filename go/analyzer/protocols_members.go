@@ -349,7 +349,7 @@ func (w *protocolWalk) bindSourceMethod(srcClass *ClassType, name string, member
 		return true
 	}
 
-	baseType := ClassTypeCloneAsInstance(srcClass, false)
+	baseType := ClassTypeCloneAsInstance(srcClass, true)
 	if w.sourceIsClassObject && !member.IsMemberFromMetaclass {
 		baseType = srcClass
 	}
@@ -394,12 +394,12 @@ func (w *protocolWalk) bindDestMember(destMemberType Type, member *protocolMembe
 			}
 
 			boundDeclaredType = w.evaluator.BindFunctionToClassOrObject(
-				ClassTypeCloneAsInstance(srcClass, false), destMemberType, memberClass,
+				ClassTypeCloneAsInstance(srcClass, true), destMemberType, memberClass,
 				false, firstParamType, w.diag, w.recursionCount)
 		}
 	} else {
 		boundDeclaredType = w.evaluator.BindFunctionToClassOrObject(
-			ClassTypeCloneAsInstance(w.destType, false), destMemberType, w.destType,
+			ClassTypeCloneAsInstance(w.destType, true), destMemberType, w.destType,
 			false, nil, w.diag, w.recursionCount)
 	}
 

@@ -167,7 +167,7 @@ func (e *typeEvaluator) validateCallForBuiltInClass(
 		// The class is built above; the arguments are still validated against the
 		// synthesized __init__ so a bad field list is reported.
 		initTypeResult := GetBoundInitMethod(e, errorNode,
-			ClassTypeCloneAsInstance(expandedCallType, false), nil, MemberAccessFlagsDefault)
+			ClassTypeCloneAsInstance(expandedCallType, true), nil, MemberAccessFlagsDefault)
 
 		if initTypeResult != nil {
 			if overloaded, ok := initTypeResult.Type.(*OverloadedType); ok {
@@ -258,7 +258,7 @@ func (e *typeEvaluator) validateCallForMetaclass(
 				return ConvertToInstantiable(subtype, true)
 			}
 
-			return ClassTypeSpecialize(ClassTypeCloneAsInstance(expandedCallType, false),
+			return ClassTypeSpecialize(ClassTypeCloneAsInstance(expandedCallType, true),
 				[]Type{UnknownTypeCreate(false)}, nil, false, nil, nil)
 		}, nil)
 

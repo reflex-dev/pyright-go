@@ -392,7 +392,7 @@ func getDescriptorForConverterField(
 		dataclassTypeParams = append(dataclassTypeParams, tp)
 	}
 	descriptorInstance := ClassTypeSpecialize(
-		ClassTypeCloneAsInstance(descriptorClass, false), dataclassTypeParams, nil, false, nil, nil)
+		ClassTypeCloneAsInstance(descriptorClass, true), dataclassTypeParams, nil, false, nil, nil)
 
 	return SymbolCreateWithType(SymbolFlagsClassMember, descriptorInstance, fieldNameNode)
 }

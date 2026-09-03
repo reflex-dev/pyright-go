@@ -228,7 +228,7 @@ func (e *typeEvaluator) StripLiteralValue(t Type) Type {
 		// The original's comment: handle "LiteralString" specially.
 		if ClassTypeIsBuiltInNamed(cls, "LiteralString") {
 			if strClass := e.GetStrClassType(); strClass != nil {
-				strInstance := ClassTypeCloneAsInstance(strClass, false)
+				strInstance := ClassTypeCloneAsInstance(strClass, true)
 				return CloneForCondition(strInstance, GetTypeCondition(cls))
 			}
 		}

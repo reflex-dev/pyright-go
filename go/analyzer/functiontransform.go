@@ -73,7 +73,7 @@ func applyTotalOrderingTransform(
 		return result
 	}
 
-	instanceType := ClassTypeCloneAsInstance(classType, false)
+	instanceType := ClassTypeCloneAsInstance(classType, true)
 
 	// The original's comment: verify that the class has at least one of the
 	// required functions.

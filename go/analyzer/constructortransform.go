@@ -490,7 +490,7 @@ func buildPartialParamList(
 			})
 
 			newType = ClassTypeCloneAsInstance(
-				ClassTypeCloneForNarrowedTypedDictEntries(tdClass, narrowedEntriesMap), false)
+				ClassTypeCloneForNarrowedTypedDictEntries(tdClass, narrowedEntriesMap), true)
 		}
 
 		// The original's comment: if it's a keyword parameter that has been

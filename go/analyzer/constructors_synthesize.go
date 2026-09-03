@@ -251,7 +251,7 @@ func createFunctionFromNewMethod(
 // object.__new__ method.
 func createFunctionFromObjectNewMethod(classType *ClassType) *FunctionType {
 	constructorFunction := FunctionTypeCreateSynthesizedInstance("__new__", FunctionTypeFlagsNone)
-	constructorFunction.Shared.DeclaredReturnType = ClassTypeCloneAsInstance(classType, false)
+	constructorFunction.Shared.DeclaredReturnType = ClassTypeCloneAsInstance(classType, true)
 
 	// The original's comment: if this is type[T] or a protocol, we don't know what
 	// parameters are accepted by the constructor, so add the default parameters.
@@ -281,7 +281,7 @@ func createFunctionFromInitMethod(
 	}
 
 	initType := evaluator.GetTypeOfMember(initInfo)
-	objectType := ClassTypeCloneAsInstance(classType, false)
+	objectType := ClassTypeCloneAsInstance(classType, true)
 
 	convertInitToConstructor := func(initSubtype *FunctionType) *FunctionType {
 		var memberClass *ClassType

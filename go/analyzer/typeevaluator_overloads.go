@@ -1432,7 +1432,7 @@ func ExpandTuple(tupleType *ClassType, maxExpansion int) []Type {
 					newTypeArgs[index] = &TupleTypeArg{Type: subtype}
 					newTypesToCombine = append(newTypesToCombine,
 						ClassTypeCloneAsInstance(
-							SpecializeTupleClass(typeToCombine, newTypeArgs, false, false), false))
+							SpecializeTupleClass(typeToCombine, newTypeArgs, true, false), true))
 				})
 			}
 			typesToCombine = newTypesToCombine

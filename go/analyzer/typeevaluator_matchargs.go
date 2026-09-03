@@ -1270,7 +1270,7 @@ func (m *argMatcher) matchMappingKwargs(argType Type) ([]string, bool, Type) {
 	// classes), don't emit this error.
 	if IsTypeVar(argType) {
 		isValidMappingType = true
-	} else if m.e.AssignType(ClassTypeCloneAsInstance(supportsClass, false), argType,
+	} else if m.e.AssignType(ClassTypeCloneAsInstance(supportsClass, true), argType,
 		nil, mappingConstraints, AssignTypeFlagsDefault, 0) {
 		solved := m.e.SolveAndApplyConstraints(supportsClass, mappingConstraints, nil, nil)
 		specializedMapping, ok := solved.(*ClassType)

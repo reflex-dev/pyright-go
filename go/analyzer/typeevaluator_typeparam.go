@@ -80,7 +80,7 @@ func (e *typeEvaluator) getTypeOfTypeParam(node *parser.TypeParameterNode) Type 
 
 	typeVar := TypeVarTypeCreateInstantiable(node.D.Name.D.Value, kind)
 	if runtimeClass != nil {
-		typeVar = CloneAsSpecialForm(typeVar, ClassTypeCloneAsInstance(runtimeClass, false))
+		typeVar = CloneAsSpecialForm(typeVar, ClassTypeCloneAsInstance(runtimeClass, true))
 	}
 	typeVar.Shared.IsTypeParamSyntax = true
 
@@ -413,7 +413,7 @@ func (e *typeEvaluator) createCallableType(
 	var paramSpec *TypeVarType
 	isValidTypeForm := true
 
-	functionType.Base().SetSpecialForm(ClassTypeCloneAsInstance(classType, false))
+	functionType.Base().SetSpecialForm(ClassTypeCloneAsInstance(classType, true))
 	functionType.Shared.DeclaredReturnType = UnknownTypeCreate(false)
 	functionType.Shared.TypeVarScopeID = TypeVarScopeId(GetScopeIdForNode(errorNode))
 

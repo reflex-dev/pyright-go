@@ -179,7 +179,7 @@ func (e *typeEvaluator) getTypeOfMagicMethodCall(
 			// The original's comment: use 'object' for 'None'.
 			if e.prefetched != nil && e.prefetched.ObjectClass != nil &&
 				IsInstantiableClass(e.prefetched.ObjectClass) {
-				return handleSubtype(ClassTypeCloneAsInstance(e.prefetched.ObjectClass.(*ClassType), false))
+				return handleSubtype(ClassTypeCloneAsInstance(e.prefetched.ObjectClass.(*ClassType), true))
 			}
 		}
 
@@ -187,7 +187,7 @@ func (e *typeEvaluator) getTypeOfMagicMethodCall(
 			// The original's comment: use 'type' for 'type[None]'.
 			if e.prefetched != nil && e.prefetched.TypeClass != nil &&
 				IsInstantiableClass(e.prefetched.TypeClass) {
-				return handleSubtype(ClassTypeCloneAsInstance(e.prefetched.TypeClass.(*ClassType), false))
+				return handleSubtype(ClassTypeCloneAsInstance(e.prefetched.TypeClass.(*ClassType), true))
 			}
 		}
 

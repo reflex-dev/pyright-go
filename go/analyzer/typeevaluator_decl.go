@@ -243,7 +243,7 @@ func (e *typeEvaluator) getTypeForIntrinsicDeclaration(decl *IntrinsicDeclaratio
 			sequenceType := e.GetBuiltInType(decl.Node, "MutableSequence")
 			if IsInstantiableClass(sequenceType) {
 				specialized := ClassTypeSpecialize(sequenceType.(*ClassType), []Type{strType}, nil, false, nil, nil)
-				return &DeclaredSymbolTypeInfo{Type: ClassTypeCloneAsInstance(specialized, false)}
+				return &DeclaredSymbolTypeInfo{Type: ClassTypeCloneAsInstance(specialized, true)}
 			}
 
 		case IntrinsicTypeDictStrAny:
@@ -254,7 +254,7 @@ func (e *typeEvaluator) getTypeForIntrinsicDeclaration(decl *IntrinsicDeclaratio
 					[]Type{strType, AnyTypeCreate(false)},
 					nil, false, nil, nil,
 				)
-				return &DeclaredSymbolTypeInfo{Type: ClassTypeCloneAsInstance(specialized, false)}
+				return &DeclaredSymbolTypeInfo{Type: ClassTypeCloneAsInstance(specialized, true)}
 			}
 		}
 	}
@@ -438,7 +438,7 @@ func (e *typeEvaluator) transformVariadicParamType(
 
 		if IsInstantiableClass(dictType) && IsClassInstance(strType) {
 			specialized := ClassTypeSpecialize(dictType.(*ClassType), []Type{strType, t}, nil, false, nil, nil)
-			return ClassTypeCloneAsInstance(specialized, false)
+			return ClassTypeCloneAsInstance(specialized, true)
 		}
 
 		return UnknownTypeCreate(false)

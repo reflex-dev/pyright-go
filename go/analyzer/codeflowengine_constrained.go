@@ -179,7 +179,7 @@ func (w *constrainedTypeVarWalker) narrowForPattern(
 	remaining := []*ClassType{}
 	for _, subtype := range priorRemainingConstraints {
 		if ClassTypeIsSameGenericClass(subtype,
-			ClassTypeCloneAsInstance(classType.(*ClassType), false), 0) {
+			ClassTypeCloneAsInstance(classType.(*ClassType), true), 0) {
 			remaining = append(remaining, subtype)
 		}
 	}
@@ -226,7 +226,7 @@ func (w *constrainedTypeVarWalker) narrowForIsinstance(
 	remaining := []*ClassType{}
 	for _, subtype := range priorRemainingConstraints {
 		matches := ClassTypeIsSameGenericClass(subtype,
-			ClassTypeCloneAsInstance(arg1Type.(*ClassType), false), 0)
+			ClassTypeCloneAsInstance(arg1Type.(*ClassType), true), 0)
 		if matches == isPositiveTest {
 			remaining = append(remaining, subtype)
 		}

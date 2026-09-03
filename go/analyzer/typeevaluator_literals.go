@@ -222,7 +222,7 @@ func (e *typeEvaluator) makeTopLevelTypeVarsConcrete(
 						[]Type{ConvertToInstance(e.prefetched.StrClass, true), e.GetObjectType()},
 						nil, false, nil, nil,
 					)
-					return ClassTypeCloneAsInstance(specialized, false)
+					return ClassTypeCloneAsInstance(specialized, true)
 				}
 
 				return UnknownTypeCreate(false)
