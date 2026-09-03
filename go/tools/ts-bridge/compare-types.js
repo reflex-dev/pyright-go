@@ -6,8 +6,8 @@
  * original TypeScript evaluator and the Go port for the type of every name, and
  * diffs the answers one name at a time.
  *
- * This is the check that makes a 30,000-line evaluator tractable. The Stage D
- * gate (make bridge-evaluator-tests) tells you a file reported three errors
+ * This is the check that makes a 30,000-line evaluator tractable. The
+ * evaluator gate (make bridge-evaluator-tests) tells you a file reported three errors
  * instead of two; that is nearly useless for finding out which of the
  * expressions in it went wrong. This says the name is `x` at pre-order index
  * 412, that pyright called it `list[int]` and the port called it `list[Unknown]`.

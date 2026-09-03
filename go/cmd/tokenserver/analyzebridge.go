@@ -1,7 +1,7 @@
 /*
  * analyzebridge.go
  *
- * The "analyze" op: the Stage D gate.
+ * The "analyze" op: the evaluator gate (make bridge-evaluator-tests).
  *
  * tests/testUtils.ts funnels every one of the 1,279 test cases in
  * typeEvaluator1-8.test.ts and checker.test.ts through two functions --
@@ -225,7 +225,7 @@ func handleAnalyze(payload json.RawMessage) (result any, errMsg string) {
 	// The original builds a FullAccessHost, which shells out to a Python
 	// interpreter for search paths. Nothing under tests/samples imports from
 	// site-packages, so this port uses a NoAccessHost and the difference does
-	// not reach the results. Documented as a divergence in STATUS-STAGE-D.md.
+	// not reach the results; a deliberate divergence.
 	host := analyzer.NewNoAccessHost()
 	importResolver := analyzer.CreateImportResolver(fileSystem, console, configOptions, host)
 

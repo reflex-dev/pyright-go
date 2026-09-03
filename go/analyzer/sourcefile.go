@@ -11,13 +11,13 @@
  * sourcefile_diagnostics.go (the accumulated-diagnostic computation and the
  * task-list scan).
  *
- * The Stage D seam is `check()`. It builds a Checker over a TypeEvaluator, and
- * neither exists yet, so both are interfaces here with the evaluator opaque and
- * the checker supplied as a factory. When the factory is nil -- which is the
- * only configuration that can be built today -- check() marks checking done and
- * produces no diagnostics. Everything around it, including the reentrancy
- * flags, the timing and the diagnostic bookkeeping, is the original's, so
- * dropping a real checker in place changes one field.
+ * The checker plugs in at `check()`. It builds a Checker over a TypeEvaluator;
+ * both sit behind interfaces here, with the evaluator opaque and the checker
+ * supplied as a factory. When the factory is nil, check() marks checking done
+ * and produces no diagnostics -- which is how the front end was verified on
+ * its own before the evaluator existed. Everything around it, including the
+ * reentrancy flags, the timing and the diagnostic bookkeeping, is the
+ * original's.
  *
  * The ServiceProvider evaporates as it did for the import resolver: the
  * constructor takes the file system and console directly. The one service
@@ -224,7 +224,7 @@ type SourceFile struct {
 	// onFileDirty stands in for the stateMutationListeners service.
 	onFileDirty func(fileUri uri.Uri)
 
-	// checkerFactory is the Stage D seam; see the header.
+	// checkerFactory is the checker seam; see the header.
 	checkerFactory CheckerFactory
 
 	preEditData  *sourceFileWritableData
@@ -306,7 +306,7 @@ func NewSourceFile(
 // SetOnFileDirty installs the stand-in for the stateMutationListeners service.
 func (s *SourceFile) SetOnFileDirty(callback func(fileUri uri.Uri)) { s.onFileDirty = callback }
 
-// SetCheckerFactory installs the Stage D seam; see the header.
+// SetCheckerFactory installs the checker factory; see the header.
 func (s *SourceFile) SetCheckerFactory(factory CheckerFactory) { s.checkerFactory = factory }
 
 // SetInitialDiagnosticRuleSet sets the initial diagnostic rule set from the
@@ -981,7 +981,7 @@ func (s *SourceFile) bindContents(
 
 // Check runs the checker over the bound file.
 //
-// This is the Stage D seam; see the header. With no checker factory installed
+// This is the checker seam; see the header. With no checker factory installed
 // the reentrancy flags, the timing and the diagnostic bookkeeping still run,
 // and checkerDiagnostics stays empty.
 func (s *SourceFile) Check(

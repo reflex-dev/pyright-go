@@ -12,13 +12,13 @@
  * `common/uri/`. It lives here instead because fileSystem.ts imports
  * uri/uri.ts and uri/uriUtils.ts imports fileSystem.ts -- a cycle TypeScript
  * does not mind and Go forbids between packages. It is the same situation
- * ANALYZER-PLAN.md describes for the analyzer, and it gets the same answer:
+ * the analyzer package is in, and it gets the same answer:
  * the cycle collapses into one package rather than the port refactoring
  * pyright's architecture around it. Every member here is defined in terms of
  * Uri, so `uri` is where it goes.
  *
  * Four groups of members are deliberately dropped, all of them Node plumbing
- * that ANALYZER-PLAN.md puts out of scope:
+ * that is out of scope for this port:
  *
  *   - the async readFile / readFileText pair. Nothing in the analyzer calls
  *     them; the language server does.

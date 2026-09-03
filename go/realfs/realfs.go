@@ -3,7 +3,7 @@
  *
  * A uri.FileSystem backed by the operating system.
  *
- * This is the "deliberate divergence" ANALYZER-PLAN.md sanctions for Stage C:
+ * This is a deliberate divergence, sanctioned from the start:
  *
  *   Port `Uri` *semantics* faithfully (case sensitivity, the `.key`
  *   normalization, root handling) because import resolution depends on them,

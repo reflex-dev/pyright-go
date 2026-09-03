@@ -10,7 +10,7 @@
  * Transliterated from analyzer/cellChainIndex.ts (pyright 1.1.412).
  *
  * The CellChainIndex class walks SourceFileInfo chains, so it landed with the
- * program in Stage C; the interface alone was here while the binder was its
+ * program; the interface alone was here while the binder was its
  * only consumer.
  */
 

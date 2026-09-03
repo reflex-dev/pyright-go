@@ -9,8 +9,8 @@
  * the file split.
  *
  * specializeWithDefaultTypeArgs (2176) and specializeForBaseClass (2231) are
- * not here: both call applySolvedTypeVars, which is still waiting on
- * ApplySolvedTypeVarsTransformer. See STATUS.md.
+ * not here: both call applySolvedTypeVars, and all three live in
+ * typeutils_applysolved.go.
  */
 
 package analyzer

@@ -8,7 +8,7 @@
  * (pyright 1.1.412), lines 55-64 and 192-573.
  *
  * This is the only part of parseTreeUtils that typePrinter needs, so it is
- * split out ahead of the rest of the file; see analyzer/STATUS.md.
+ * split out ahead of the rest of the file.
  */
 
 package analyzer

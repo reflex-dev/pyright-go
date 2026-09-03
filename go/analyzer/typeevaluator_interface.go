@@ -7,7 +7,7 @@
  * This file began as typeevaluator_unported.go: every interface method that had
  * no implementation yet, each recording itself so the gate reported a
  * work-remaining map derived from the corpus rather than from reading the
- * source. Its header said "when it is empty, Stage D is done."
+ * source. Its header said "when it is empty, the evaluator is done."
  *
  * It is empty of stubs now. What remains are genuine adapters -- the original's
  * default arguments made explicit, and one method whose interface signature

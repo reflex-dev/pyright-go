@@ -10,8 +10,8 @@
  *
  * PARTIAL: the ConsoleInterface, its level machinery, and the two
  * implementations the analyzer reaches. ConsoleWithLogLevel and the
- * chattyness-filtering wrappers exist for the language server, which
- * ANALYZER-PLAN.md puts out of scope.
+ * chattyness-filtering wrappers exist for the language server, which is out
+ * of scope for this port.
  */
 
 package common

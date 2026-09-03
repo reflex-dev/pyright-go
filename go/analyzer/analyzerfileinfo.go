@@ -9,8 +9,8 @@
  * Transliterated from analyzer/analyzerFileInfo.ts (pyright 1.1.412), plus the
  * two declarations it pulls in from elsewhere: IPythonMode from sourceFile.ts
  * and ExecutionEnvironment from common/configOptions.ts. Both are here rather
- * than in their own files because the rest of sourceFile.ts and configOptions.ts
- * belong to Stage C; see STATUS.md.
+ * than in their own files because this file was ported ahead of the rest of
+ * sourceFile.ts and configOptions.ts.
  */
 
 package analyzer
@@ -36,7 +36,7 @@ const (
 )
 
 // ExecutionEnvironment and its constructor moved to configoptions_class.go
-// when the rest of configOptions.ts landed in Stage C. They were here while
+// when the rest of configOptions.ts was ported. They were here while
 // this file was the only consumer.
 
 // AbsoluteModuleDescriptor maps import paths to the symbol table for the

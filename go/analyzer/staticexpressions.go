@@ -413,7 +413,7 @@ func evaluateDictTruthiness(items []parser.DictionaryEntryNode) (bool, bool) {
 // whatever `d.value` holds, which for a literal like `(3, 12.5)` is a
 // non-integer. Such a tuple is nonsense as a version comparison and the
 // original does not reject it either -- it never checks `d.isInteger` -- so
-// this truncates. See analyzer/STATUS.md.
+// this truncates too.
 func convertTupleToVersion(node *parser.TupleNode) (common.PythonVersion, bool) {
 	if len(node.D.Items) >= 2 {
 		majorNode, majorOk := node.D.Items[0].(*parser.NumberNode)

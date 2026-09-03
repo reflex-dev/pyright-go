@@ -21,7 +21,7 @@
  *  - BackgroundAnalysisProgram and the worker threads behind it. The service
  *    talks to a Program directly here;
  *  - type-stub generation (writeTypeStub, _typeStubTargetImportName), which
- *    ANALYZER-PLAN.md lists as out of scope;
+ *    is out of scope for this port;
  *  - the cancellation provider.
  *
  * The ServiceProvider evaporates as it has everywhere else: the constructor

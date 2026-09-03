@@ -13,8 +13,8 @@
  * (used by the checker's duplicate-import report) are here. The rest of the file
  * -- getTextEditsForAutoImportInsertion, getRelativeModuleName and the other
  * auto-import edit machinery -- exists for the language server, which is out of
- * scope per ANALYZER-PLAN.md, and depends on ConfigOptions, ReadOnlyFileSystem
- * and importResolver besides. See analyzer/STATUS.md.
+ * scope for this port, and depends on ConfigOptions, ReadOnlyFileSystem and
+ * importResolver besides.
  */
 
 package analyzer

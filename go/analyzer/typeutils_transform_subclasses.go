@@ -12,9 +12,8 @@
  * typeutils_transform.go for how subclassing works.
  *
  * UniqueFunctionSignatureTransformer (4060), ApplySolvedTypeVarsTransformer
- * (4181) and UnificationTypeTransformer (4510) are not here: each needs
- * applySolvedTypeVars or convertToInstance/convertToInstantiable, which are not
- * ported yet. See STATUS.md.
+ * (4181) and UnificationTypeTransformer (4510) are not here: they live with
+ * applySolvedTypeVars in typeutils_applysolved.go.
  */
 
 package analyzer

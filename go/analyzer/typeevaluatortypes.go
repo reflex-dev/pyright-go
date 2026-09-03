@@ -6,7 +6,8 @@
  * Transliterated from analyzer/typeEvaluatorTypes.ts (pyright 1.1.412):
  * the abstract interface and helper types for the type evaluator module.
  *
- * This file is the Stage D seam. It replaces `type TypeEvaluator any` in
+ * This file is the seam the evaluator plugs into. It replaces `type
+ * TypeEvaluator any` in
  * sourcefile.go with the real 109-member interface, so everything the evaluator
  * and its satellites need is declared before any of them is written.
  *

@@ -11,7 +11,8 @@
  * The namespace's `is` guard exists so the Uri factory functions can accept
  * either a detector or a ServiceProvider. Go has no untagged unions, so each
  * factory takes a CaseSensitivityDetector and the service-provider overload is
- * dropped along with the rest of the DI plumbing -- see ANALYZER-PLAN.md.
+ * dropped along with the rest of the DI plumbing; the port passes
+ * dependencies directly.
  */
 
 package common

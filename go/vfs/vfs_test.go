@@ -1,7 +1,7 @@
 /*
  * vfs_test.go
  *
- * The in-memory file system is the one piece of Stage C that is not a
+ * The in-memory file system is the one piece of the common layer that is not a
  * transliteration of anything -- it is harness code, so nothing upstream
  * validates it. These tests cover the three behaviours the import resolver
  * actually depends on and that a snapshot could plausibly get wrong: symbolic

@@ -7,14 +7,14 @@
  * everything the binder produces: the scope tree, every symbol's flags and
  * declarations, the code-flow graph, the __all__ info and the bind diagnostics.
  *
- * ANALYZER-PLAN.md calls for this to exist before the binder is written. A
+ * This existed before the binder was written, deliberately. A
  * single wrong code-flow edge produces no visible symptom until some narrowing
  * test tens of thousands of lines later fails for reasons nobody can trace, so
  * catching it here is worth a great deal.
  *
  * The run happens twice over the corpus, in two import modes -- every import
- * resolves, and none does -- because the import resolver is Stage C and the
- * harness has to synthesize an ImportResult either way. See dump-binder.ts for
+ * resolves, and none does -- because the harness synthesizes every
+ * ImportResult itself and can answer either way. See dump-binder.ts for
  * what that leaves uncovered.
  *
  * The same two normalizations as compare-ast.js apply, because Go has zero

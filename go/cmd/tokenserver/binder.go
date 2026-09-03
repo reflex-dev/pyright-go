@@ -94,7 +94,7 @@ type binderResult struct {
 }
 
 // makeImportResult mirrors dump-binder.ts's synthetic ImportResult. The import
-// resolver is Stage C, and visitModuleName asserts that every ModuleName node
+// resolver is not part of this differential, and visitModuleName asserts every ModuleName node
 // carries one, so the harness supplies it on both sides.
 func makeImportResult(nameParts []string, importsResolve bool) *analyzer.ImportResult {
 	importName := ""
@@ -396,7 +396,7 @@ func handleBinder(req *request) (any, string) {
 			entry.Decl = dumpDeclaration(decl)
 		}
 
-		// The seven parseTreeUtils functions the Stage A differential had to
+		// The seven parseTreeUtils functions the parseTreeUtils differential had to
 		// skip, because each needs a bound scope or the file info. They are
 		// covered here rather than there because this is the harness that
 		// binds.

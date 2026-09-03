@@ -308,7 +308,7 @@ func (e *typeEvaluator) NarrowConstrainedTypeVar(node parser.ParseNode, typeVar 
 
 	result := e.narrowConstrainedTypeVarForFlowNode(flowNode, typeVar)
 	if result == nil {
-		// See STATUS-STAGE-D.md: a nil *ClassType must not be widened by
+		// A nil *ClassType must not be widened by
 		// assignment, or the interface value is non-nil and every reader faults.
 		return nil
 	}

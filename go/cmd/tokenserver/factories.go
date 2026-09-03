@@ -1,9 +1,9 @@
 /*
- * stagedfactories.go
+ * factories.go
  *
- * Where the Stage D seams get filled.
+ * Where the evaluator and checker factories get installed.
  *
- * analyzer/program.go carries two of them: an evaluator factory and a checker
+ * analyzer/program.go carries two seams: an evaluator factory and a checker
  * factory. Both are now installed, which closes the gate's supply chain --
  * sourcefile.go runs the checker and drains the diagnostic sink inside a single
  * `if s.checkerFactory != nil` block, so until the checker existed nothing

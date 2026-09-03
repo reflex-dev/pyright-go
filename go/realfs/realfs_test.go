@@ -14,8 +14,8 @@ import (
 // It needs the real file system, which is the whole point: neither vfs nor the
 // reference's TestFileSystem models symbolic links, so every corpus
 // differential and every bridged test suite passed while a virtualenv's
-// bin/python was silently normalizing to the system interpreter. See
-// analyzer/STATUS-STAGE-D.md.
+// bin/python was silently normalizing to the system interpreter; see
+// PORTING.md.
 func TestRealCasePathDoesNotFollowSymlinks(t *testing.T) {
 	dir := t.TempDir()
 

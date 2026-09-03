@@ -31,17 +31,17 @@ Where the Go differs, the reason is written down at the point of difference.
 | Node/operator name maps | `parser/parseNodeUtils.ts` | `parser/parsenodeutils.go` | done |
 | Timing stats | `common/timing.ts` | `common/timing.go` | done |
 | **Parser** | `parser/parser.ts` | `parser/parser*.go` | **done — all 131 methods** |
-| Type model | `analyzer/types.ts`, `typeUtils.ts`, `typePrinter.ts`, … | `analyzer/types*.go`, `typeutils*.go`, `typeprinter*.go` | **done and verified** (Stage A) |
-| Parse tree utils | `analyzer/parseTreeUtils.ts`, `parseTreeWalker.ts` | `analyzer/parsetreeutils_*.go`, `parsetreewalker.go` | **done and verified** (Stage A) |
-| **Binder** | `analyzer/binder.ts` + deps | `analyzer/binder*.go` | **done and verified** (Stage B) |
-| Path utils | `common/pathUtils.ts` | `common/pathutils.go` | **done and verified** (Stage C) |
-| URIs | `common/uri/*.ts` + the parts of `vscode-uri` they reach | `common/uri/*.go` | **done and verified** (Stage C) |
-| File system | `common/fileSystem.ts`, `readonlyAugmentedFileSystem.ts`, `pyrightFileSystem.ts`, `partialStubService.ts` | `common/uri/filesystem.go`, `analyzer/*filesystem.go`, `analyzer/partialstubservice.go` | done (Stage C) |
-| Config options | `common/configOptions.ts`, `commandLineOptions.ts` | `analyzer/configoptions*.go`, `commandlineoptions.go` | **done and verified** (Stage C) |
-| **Import resolver** | `analyzer/importResolver.ts` + deps | `analyzer/importresolver*.go` | **done and verified** (Stage C) |
-| **Program loop** | `analyzer/sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`, `service.ts`, `sourceEnumerator.ts` | `analyzer/sourcefile*.go`, `program*.go`, `service*.go`, `sourceenumerator.go` | **done and verified** (Stage C) |
-| **Type evaluator** | `analyzer/typeEvaluator.ts`, `codeFlowEngine.ts`, `typeGuards.ts`, `constraintSolver.ts`, … | `analyzer/typeevaluator*.go`, `codeflowengine*.go`, `typeguards*.go`, … | **done and verified** (Stage D) |
-| **Checker** | `analyzer/checker.ts` | `analyzer/checker*.go` | **done and verified** (Stage D) |
+| Type model | `analyzer/types.ts`, `typeUtils.ts`, `typePrinter.ts`, … | `analyzer/types*.go`, `typeutils*.go`, `typeprinter*.go` | **done and verified** |
+| Parse tree utils | `analyzer/parseTreeUtils.ts`, `parseTreeWalker.ts` | `analyzer/parsetreeutils_*.go`, `parsetreewalker.go` | **done and verified** |
+| **Binder** | `analyzer/binder.ts` + deps | `analyzer/binder*.go` | **done and verified** |
+| Path utils | `common/pathUtils.ts` | `common/pathutils.go` | **done and verified** |
+| URIs | `common/uri/*.ts` + the parts of `vscode-uri` they reach | `common/uri/*.go` | **done and verified** |
+| File system | `common/fileSystem.ts`, `readonlyAugmentedFileSystem.ts`, `pyrightFileSystem.ts`, `partialStubService.ts` | `common/uri/filesystem.go`, `analyzer/*filesystem.go`, `analyzer/partialstubservice.go` | done |
+| Config options | `common/configOptions.ts`, `commandLineOptions.ts` | `analyzer/configoptions*.go`, `commandlineoptions.go` | **done and verified** |
+| **Import resolver** | `analyzer/importResolver.ts` + deps | `analyzer/importresolver*.go` | **done and verified** |
+| **Program loop** | `analyzer/sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`, `service.ts`, `sourceEnumerator.ts` | `analyzer/sourcefile*.go`, `program*.go`, `service*.go`, `sourceenumerator.go` | **done and verified** |
+| **Type evaluator** | `analyzer/typeEvaluator.ts`, `codeFlowEngine.ts`, `typeGuards.ts`, `constraintSolver.ts`, … | `analyzer/typeevaluator*.go`, `codeflowengine*.go`, `typeguards*.go`, … | **done and verified** |
+| **Checker** | `analyzer/checker.ts` | `analyzer/checker*.go` | **done and verified** |
 | Interpreter queries | `common/fullAccessHost.ts` | `analyzer/fullaccesshost.go` | done |
 | **CLI** | `pyright-internal/src/pyright.ts` | `cmd/pyright-go` | **done** — a drop-in for batch checking, including `--threads`; plus a `--cachedir` extension |
 
@@ -65,11 +65,6 @@ comments), `parser_suites.go` (block statements), `parser_simple.go` (one-line
 statements, imports), `parser_patterns.go` (`match`), `parser_errors.go` and
 `parser_entry.go`. Every method carries the name of the TypeScript method it
 corresponds to.
-
-`ANALYZER-PLAN.md` has the staging; `analyzer/STATUS.md` covers Stage A,
-`analyzer/STATUS-STAGE-B.md` Stage B, `analyzer/STATUS-STAGE-C.md` Stage C and
-`analyzer/STATUS-STAGE-D.md` Stage D -- the evaluator, the checker, and the
-performance and concurrency work that followed.
 
 ### Not ported, deliberately
 
@@ -177,7 +172,7 @@ Individual checks have their own targets (`make bridge-tests`,
 `make bridge-ast`, `make bridge-binder`, `make bridge-config`, ... -- see the
 Makefile).
 
-`make bridge-evaluator-tests` is the Stage D gate: pyright's own type
+`make bridge-evaluator-tests` is the evaluator gate: pyright's own type
 evaluator and checker tests -- 1,279 cases across nine files -- run
 unmodified: 1,269 pass, 0 fail, 10 skipped (the skips drive the fourslash
 harness, which needs a live in-process Program).
@@ -202,8 +197,7 @@ caught before anything was compared against it.
 `typePrinter.test.ts` works differently from the others: rather than shipping
 data to Go, the shim records the test's type-construction calls and replays
 them on the Go side, so it exercises the Go `types.ts` port as well as the
-printer. See `analyzer/STATUS.md` for the details and the one documented
-deviation.
+printer.
 
 ## Transliteration conventions
 

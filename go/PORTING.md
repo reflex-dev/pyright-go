@@ -71,7 +71,7 @@ a Go binary has no counterpart for.
 
 ## Still not ported
 
-Everything below is out of scope by ANALYZER-PLAN.md, not pending. None of it
+Everything below is deliberately out of scope, not pending. None of it
 changes a diagnostic.
 
 | module | why |
@@ -155,8 +155,7 @@ and it has earned its place twice: `realfs.RealCasePath` was caught silently
 following symlinks, and `specializeWithUnknownTypeArgs` was caught passing
 `isTypeArgExplicit: true` where the original passes `false` — which cost
 `isinstance(x, tuple)` its type argument. Neither the 1,279 evaluator tests nor
-the 88,477-name type differential contains either construct. See
-analyzer/STATUS-STAGE-D.md.
+the 88,477-name type differential contains either construct.
 
 ### Speed and memory
 
@@ -193,8 +192,7 @@ own V8 heap and collector.
 The port is faster at both sizes — 2.8× and 2.1×. It was *slower* than pyright
 on the large input until two rounds of profiling: three caching problems (a
 1193-file benchmark went from 79 s to 27 s) and then three constant-factor ones
-(the whole project went from 43 s to 35.7 s). All six are written up in
-analyzer/STATUS-STAGE-D.md. The recurring shape is worth knowing before
+(the whole project went from 43 s to 35.7 s). The recurring shape is worth knowing before
 optimizing anything here: the algorithm is usually faithful and the constant
 factor is not, because the original leans on a native JavaScript primitive —
 `indexOf`, `RegExp`, `Map.delete` — that Go has no equal of.

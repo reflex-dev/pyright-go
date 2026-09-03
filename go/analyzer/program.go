@@ -12,8 +12,8 @@
  * program_analysis.go (parse, bind, check, the import graph and cycle
  * detection).
  *
- * Four groups of members are deliberately dropped, and all four are named as
- * out of scope in ANALYZER-PLAN.md:
+ * Four groups of members are deliberately dropped, all four out of scope for
+ * this port:
  *
  *  - getSourceMapper / _createSourceMapper / bindShadowFile / _addShadowedFile.
  *    sourceMapper.ts is 1,148 lines that exist for go-to-definition on a stub.
@@ -31,7 +31,7 @@
  * copy-on-write it drives are all kept: they are how the file list stays
  * consistent, not a language-server nicety.
  *
- * The Stage D seam is the evaluator. _createNewEvaluator builds one and hands
+ * The evaluator plugs in through a factory. _createNewEvaluator builds one and hands
  * it to the checker; both are behind the interfaces sourceFile.go declares, so
  * with no factory installed the program parses, binds, resolves the import
  * graph, detects cycles and reports parse and bind diagnostics -- everything
@@ -167,8 +167,8 @@ type Program struct {
 	// errors, not syntax errors.
 	disableChecker bool
 
-	// evaluatorFactory is the Stage D seam; nil means no evaluator, which is
-	// the only configuration that can be built today.
+	// evaluatorFactory is the evaluator seam; nil means no evaluator and no
+	// checking.
 	evaluatorFactory func(program *Program) TypeEvaluator
 
 	// checkerFactory is handed to each SourceFile; see sourcefile.go.
@@ -227,7 +227,7 @@ func NewProgram(
 	return p
 }
 
-// SetEvaluatorFactory and SetCheckerFactory install the Stage D seam; see the
+// SetEvaluatorFactory and SetCheckerFactory install the evaluator and checker factories; see the
 // header.
 func (p *Program) SetEvaluatorFactory(factory func(program *Program) TypeEvaluator) {
 	p.evaluatorFactory = factory

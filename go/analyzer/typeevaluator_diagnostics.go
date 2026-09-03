@@ -8,7 +8,7 @@
  * addDeprecated, and the two suppression predicates beneath them.
  *
  * This is the evaluator's only route to the diagnostic sink, and it was a stub.
- * That is why the Stage D gate has not moved: the gate asserts on six
+ * That is why the evaluator gate had not moved: the gate asserts on six
  * diagnostic lists, so with addDiagnostic doing nothing, no conclusion the
  * evaluator reaches can reach a test, and every test expecting at least one
  * diagnostic fails no matter how correct the type is.

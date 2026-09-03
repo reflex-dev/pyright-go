@@ -19,8 +19,8 @@
  * The original takes a ServiceProvider and pulls five things out of it: the
  * file system, the temp-file provider, the partial-stub service, and optional
  * overrides for the cached filesystem facade and the typeshed info provider.
- * ANALYZER-PLAN.md calls for the DI plumbing to become small interfaces at the
- * point of consumption, so the constructor takes them directly. `tmp` is
+ * The port turns the DI plumbing into small interfaces at the point of
+ * consumption, so the constructor takes them directly. `tmp` is
  * dropped: nothing in ImportResolver reads it.
  *
  * Five methods are `protected` and documented as extension points for

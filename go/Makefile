@@ -103,7 +103,7 @@ bridge-binder-typeshed: $(SERVER)
 bridge-config: $(SERVER)
 	node tools/ts-bridge/compare-config.js --ref $(REF) --server $(SERVER) --esbuild $(ESBUILD)
 
-# The Stage D gate: pyright's own type evaluator and checker tests -- 1,279
+# The evaluator gate: pyright's own type evaluator and checker tests -- 1,279
 # cases across nine files -- run unmodified against the Go port. See
 # tools/ts-bridge/shim-evaluatorTestUtils.ts.
 EVALUATOR_TESTS := typeEvaluator1.test.ts,typeEvaluator2.test.ts,typeEvaluator3.test.ts,typeEvaluator4.test.ts,typeEvaluator5.test.ts,typeEvaluator6.test.ts,typeEvaluator7.test.ts,typeEvaluator8.test.ts,checker.test.ts

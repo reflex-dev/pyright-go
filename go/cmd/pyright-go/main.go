@@ -10,7 +10,7 @@
  *
  * PARTIAL, and the boundary is the same one the rest of the port draws. Four of
  * pyright's modes are separate features rather than type checking, and each
- * rests on a module ANALYZER-PLAN.md puts out of scope:
+ * rests on a module that is out of scope for this port:
  *
  *   --watch        the file watchers and the reanalysis timer
  *   --createstub   typeStubWriter.ts
@@ -445,7 +445,7 @@ func writeMemProfile(args *parsedArgs) {
 	}
 }
 
-// installFactories mirrors cmd/tokenserver/stagedfactories.go: the evaluator and
+// installFactories mirrors cmd/tokenserver/factories.go: the evaluator and
 // checker the Program builds per file.
 func installFactories(program *analyzer.Program) {
 	program.SetEvaluatorFactory(func(p *analyzer.Program) analyzer.TypeEvaluator {

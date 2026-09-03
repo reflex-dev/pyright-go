@@ -7,8 +7,8 @@
  * printType, printObjectTypeForClass, printFunctionParts, printSrcDestTypes,
  * and the effective-return-type accessor they all pass as a callback.
  *
- * These are thin wrappers over typePrinter.ts, which has been ported since
- * Stage B. They were nonetheless stubs, and that mattered more than their size
+ * These are thin wrappers over typePrinter.ts, which was ported long before
+ * the evaluator. They were nonetheless stubs, and that mattered more than their size
  * suggests: the per-node differential compares printed types, so with printType
  * returning the empty string no computed type could ever match the oracle. The
  * 74 agreements it was reporting were all `<unreachable>`, which is decided

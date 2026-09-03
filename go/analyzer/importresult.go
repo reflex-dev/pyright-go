@@ -15,7 +15,7 @@ import (
 )
 
 // PyTypedInfo, which ImportResult carries, moved to pytypedutils.go when the
-// rest of that module landed in Stage C.
+// rest of that module was ported.
 
 // ImportType corresponds to the const enum of the same name.
 type ImportType int
