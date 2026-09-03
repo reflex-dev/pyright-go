@@ -397,16 +397,6 @@ func getDataclassDecoratorBehaviors(evaluator TypeEvaluator, t Type) *DataClassB
 	return nil
 }
 
-func validateDataClassTransformDecorator(evaluator TypeEvaluator, _ *parser.CallNode) *DataClassBehaviors {
-	noteDecoratorUnported(evaluator, "dataClasses.validateDataClassTransformDecorator")
-	return nil
-}
-
-// noteDecoratorUnported records an unported decorators.ts path on the
-// evaluator's counter; these are free functions, matching the original's module
-// shape, so they reach it through an interface assertion.
-func noteDecoratorUnported(evaluator TypeEvaluator, name string) {
-	if reporter, ok := evaluator.(interface{ noteUnported(string) }); ok {
-		reporter.noteUnported(name)
-	}
+func validateDataClassTransformDecorator(evaluator TypeEvaluator, node *parser.CallNode) *DataClassBehaviors {
+	return ValidateDataClassTransformDecorator(evaluator, node)
 }

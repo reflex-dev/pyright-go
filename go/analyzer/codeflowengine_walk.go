@@ -1255,16 +1255,60 @@ func getPatternSubtypeNarrowingCallback(
 	return GetPatternSubtypeNarrowingCallback(evaluator, reference, subjectExpression)
 }
 
-// narrowForKeyAssignment corresponds to the typedDicts.ts function of the same
-// name, which records that a TypedDict's key is now definitely present.
-func (w *codeFlowWalk) narrowForKeyAssignment(classType *ClassType, _ string) Type {
-	w.evaluator.unported("typedDicts.narrowForKeyAssignment")
-	return classType
+// narrowForKeyAssignment reaches the typedDicts.ts function of the same name,
+// which records that a TypedDict's key is now definitely present.
+func (w *codeFlowWalk) narrowForKeyAssignment(classType *ClassType, key string) Type {
+	return NarrowForKeyAssignment(classType, key)
 }
 
 // getTypeFromWildcardImport corresponds to the function of the same name, which
 // resolves what `from x import *` bound a given name to.
-func (w *codeFlowWalk) getTypeFromWildcardImport(_ *FlowWildcardImport, _ string) Type {
-	w.evaluator.unported("codeFlowEngine.getTypeFromWildcardImport")
-	return UnknownTypeCreate(false)
+func (w *codeFlowWalk) getTypeFromWildcardImport(flowNode *FlowWildcardImport, name string) Type {
+	symbolWithScope := w.evaluator.lookUpSymbolRecursive(flowNode.Node, name, false, false)
+	if symbolWithScope == nil {
+		// The original asserts here; a missing symbol would be a binder bug.
+		return UnknownTypeCreate(false)
+	}
+	decls := symbolWithScope.Symbol.GetDeclarations()
+
+	// The original's comment: normally the wildcard import contributes its own
+	// alias declaration, so we can identify it by the import node directly. But
+	// wildcard-imported multipart modules may be merged into an existing alias
+	// declaration (for example, when `import mylib.a` is followed by
+	// `from x import *` and `x` imports `mylib.b`). In that case, fall back to the
+	// merged multipart alias so code flow preserves the imported module type
+	// instead of degrading the name to Unknown.
+	//
+	// The original's comment: first-match is safe here because the binder merges
+	// all multipart imports for the same base name into a single symbol whose
+	// module info carries the union of all submodule paths. Every surviving alias
+	// declaration for that symbol therefore carries equivalent module info after
+	// the merge.
+	var wildcardDecl Declaration
+	for _, decl := range decls {
+		if decl.DeclBase().Node == parser.ParseNode(flowNode.Node) {
+			wildcardDecl = decl
+			break
+		}
+	}
+	if wildcardDecl == nil {
+		for _, decl := range decls {
+			aliasDecl, ok := decl.(*AliasDeclaration)
+			if ok && aliasDecl.SymbolName == nil && aliasDecl.FirstNamePart != nil &&
+				*aliasDecl.FirstNamePart == name && aliasDecl.LoadSymbolsFromPath {
+				wildcardDecl = decl
+				break
+			}
+		}
+	}
+
+	if wildcardDecl == nil {
+		return UnknownTypeCreate(false)
+	}
+
+	inferred := w.evaluator.GetInferredTypeOfDeclaration(symbolWithScope.Symbol, wildcardDecl)
+	if IsNilType(inferred) {
+		return UnknownTypeCreate(false)
+	}
+	return inferred
 }

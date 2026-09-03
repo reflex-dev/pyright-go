@@ -1,31 +1,25 @@
 /*
- * typeevaluator_unported.go
+ * typeevaluator_interface.go
  *
- * Every TypeEvaluator method that is not ported yet.
+ * TypeEvaluator interface methods whose exported form differs from the internal
+ * one only in argument defaults or in unwrapping a result.
  *
- * The evaluator is installed and reachable from this commit on, so the gate and
- * the per-node differential exercise it for real. That is only defensible if the
- * parts that do not exist say so rather than quietly answering Unknown: each
- * stub records itself, and the counts come back through the bridge.
+ * This file began as typeevaluator_unported.go: every interface method that had
+ * no implementation yet, each recording itself so the gate reported a
+ * work-remaining map derived from the corpus rather than from reading the
+ * source. Its header said "when it is empty, Stage D is done."
  *
- * The result is a work-remaining map derived from the corpus rather than from
- * reading the source -- which of the 109 interface methods the sample files
- * actually reach, and how often. Reading typeEvaluator.ts tells you what exists;
- * this tells you what matters.
- *
- * Each stub answers the way an evaluator that knows nothing would: Unknown for a
- * type, nil for a result, false for a predicate. Those are not neutral answers --
- * an implementation that returns Unknown everywhere passes every test that
- * asserts no diagnostics -- which is why both scoreboards count Unknown answers
- * apart from real ones.
- *
- * This file shrinks as the port grows. When it is empty, Stage D is done.
+ * It is empty of stubs now. What remains are genuine adapters -- the original's
+ * default arguments made explicit, and one method whose interface signature
+ * carries a parameter the implementation drops. They are kept together because
+ * each exists for the same reason: the interface and the implementation disagree
+ * about a signature, and the original resolves that with a default rather than a
+ * wrapper.
  */
 
 package analyzer
 
 import (
-	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/parser"
 )
 
@@ -62,22 +56,8 @@ func (e *typeEvaluator) GetCallbackProtocolType(objType *ClassType, recursionCou
 	return e.getCallbackProtocolType(objType, recursionCount)
 }
 
-func (e *typeEvaluator) GetCallSignatureInfo(node *parser.CallNode, activeIndex int, activeOrFake bool) *CallSignatureInfo {
-	e.unported("GetCallSignatureInfo")
-	return nil
-}
-
-func (e *typeEvaluator) NarrowConstrainedTypeVar(node parser.ParseNode, typeVar *TypeVarType) Type {
-	e.unported("NarrowConstrainedTypeVar")
-	return UnknownTypeCreate(false)
-}
-
 // AssignClassToSelf is the interface method for assignClassToSelf. The original
 // defaults ignoreBaseClassVariance to true and recursionCount to 0.
 func (e *typeEvaluator) AssignClassToSelf(destType *ClassType, srcType *ClassType, assumedVariance Variance) bool {
 	return e.assignClassToSelf(destType, srcType, assumedVariance, true, 0)
-}
-
-func (e *typeEvaluator) PrintControlFlowGraph(flowNode FlowNode, reference CodeFlowReferenceExpressionNode, callName string, logger common.ConsoleInterface) {
-	e.unported("PrintControlFlowGraph")
 }
