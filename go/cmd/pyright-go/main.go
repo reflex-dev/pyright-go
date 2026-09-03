@@ -320,6 +320,8 @@ func run(argv []string) ExitStatus {
 		return runMultiThreaded(args, options, threadCount, service, minSeverityLevel, console, config)
 	}
 
+	configureSingleThreadedGC()
+
 	service.SetOptions(options)
 
 	// Analyze returns false once there is nothing left to do.

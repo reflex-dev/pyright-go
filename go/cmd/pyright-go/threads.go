@@ -29,6 +29,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -127,6 +128,9 @@ func checkFilesInIsolation(
 	// 2.3x. An explicit GOGC (or GOMEMLIMIT) from the environment wins.
 	if workerCount > 1 && os.Getenv("GOGC") == "" && os.Getenv("GOMEMLIMIT") == "" {
 		debug.SetGCPercent(200)
+	}
+	if workerCount == 1 {
+		configureSingleThreadedGC()
 	}
 
 	// The param-details cache is written without synchronization, and a few
@@ -373,4 +377,57 @@ func runMultiThreaded(
 
 	return reportPooledDiagnostics(args, fileDiagnostics, len(sourceFilesToAnalyze),
 		startTime, minSeverityLevel, output)
+}
+
+// configureSingleThreadedGC sets the collector policy for a single-worker
+// check when the environment doesn't. Whole-project analysis allocates tens
+// of gigabytes of short-lived garbage over a multi-gigabyte live set, and at
+// the default GOGC the collector consumes more CPU than the checker; letting
+// the heap run to a memory limit instead was measured 10% faster wall-clock
+// on a 3,150-file project. The limit is half of physical memory, and the
+// policy only engages on machines with enough of it that the limit
+// comfortably exceeds the live set -- elsewhere the defaults stand, because a
+// limit below the live set makes the collector run continuously. An explicit
+// GOGC or GOMEMLIMIT in the environment always wins, exactly as in
+// runMultiThreaded.
+func configureSingleThreadedGC() {
+	if os.Getenv("GOGC") != "" || os.Getenv("GOMEMLIMIT") != "" {
+		return
+	}
+
+	// Engage only where half of physical memory dwarfs any plausible live
+	// set. Below this, GOGC=off with a limit close to the live set would make
+	// the collector run continuously, which is worse than the default.
+	total := totalPhysicalMemory()
+	const minTotal = 32 << 30
+	if total < minTotal {
+		return
+	}
+
+	debug.SetMemoryLimit(int64(total / 2))
+	debug.SetGCPercent(-1)
+}
+
+// totalPhysicalMemory reads MemTotal from /proc/meminfo, returning 0 when it
+// cannot (non-Linux, restricted environments), which disables the policy.
+func totalPhysicalMemory() uint64 {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if !strings.HasPrefix(line, "MemTotal:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0
+		}
+		kb, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			return 0
+		}
+		return kb * 1024
+	}
+	return 0
 }
