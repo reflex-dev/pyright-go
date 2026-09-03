@@ -1238,3 +1238,39 @@ file on the main goroutine before spawning anything, so the wiring is complete
 before any worker exists. No duplicated work -- worker 0 starts from its
 second file -- and re-running the full-project `-race` pass reports zero races
 again, now with the ordering actually guaranteed.
+
+## Import-cohesion partitioning: a negative result worth keeping
+
+The hypothesis: workers duplicate ~1.8× of inference re-deriving each other's
+dependency closures, so partitioning the tracked files by their actual import
+graph (DFS postorder over tracked-file imports, cut into the same contiguous
+chunks) instead of upstream's directory order should cut the duplication. The
+parse needed to build the graph costs ~1s against a ~30s check phase.
+
+It was built, measured, and reverted. The full matrix at 8 workers on the
+3138-file project:
+
+| variant | time | RSS | deterministic output |
+| --- | --- | --- | --- |
+| directory order + stealing (upstream's, kept) | 12.2-12.7 s | ~14 GB | observed, not guaranteed |
+| cohesion + stealing | 13.1-13.5 s | 12.3-12.9 GB | **no** -- observed to differ run to run |
+| cohesion + no stealing | 15.0-15.2 s | 11.6-12.4 GB | yes |
+| directory + no stealing | 14.9-15.1 s | 12.9 GB | yes |
+
+Three findings:
+
+1. **The duplicated work is the typeshed and third-party closure, which every
+   cluster needs no matter how the user files are grouped.** Cohesion over
+   tracked-file imports cannot reduce it; no tracked-file partition can. What
+   is left is either sharing inferred types across workers (the restructure)
+   or nothing.
+2. **Work stealing is worth ~20% of threaded wall time** (the no-steal rows),
+   so determinism-by-construction has a real price.
+3. **Threaded-output determinism is luck, not design -- upstream's too.** Only
+   two files in the whole project are sensitive to which worker checks them
+   (the UPSTREAM-BUGS.md #17 pair, and the isolation bug can *add* spurious
+   diagnostics as well as drop real ones -- one cohesion run produced two).
+   With balanced chunks the steal boundary rarely lands on a sensitive file,
+   which is why every earlier run agreed. A partition that shifts the boundary
+   makes the nondeterminism visible. The guarantee callers can rely on remains
+   the single-threaded mode.
