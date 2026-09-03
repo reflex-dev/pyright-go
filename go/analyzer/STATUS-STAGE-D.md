@@ -907,46 +907,66 @@ stub was written when nothing consumed the out-parameter and stayed silent when
 something did. **Grep for `_ = ` in the analyzer periodically**; there are four
 such sites and the other three are genuine and documented.
 
-### The one that is still failing
+### The one that was left: a value where the original had a reference
 
-`SolverHigherOrder5`. Minimal repro:
+`SolverHigherOrder5` was the last failure, and the cause was one word.
+`getTypeOfExpression` writes the type cache and *then* mutates what it wrote:
 
-```python
-@overload
-def g1(a: T, *, b: Literal[False] = ...) -> list[T]: ...
-@overload
-def g1(a: T, *, b: Literal[True] = ...) -> set[T]: ...
-def g1(a: Any, b: Any = ...) -> Any: ...
+```ts
+writeTypeCache(node, typeResult, flags, inferenceContext, allowSpeculativeCaching);
 
-vg = g1(g1, b=True)   # go: set[T@g1]   ts: set[Overload[...]]
+if (node.nodeType === ParseNodeType.Name || node.nodeType === ParseNodeType.MemberAccess) {
+    typeResult.type = ensureSignatureIsUnique(typeResult.type, node);
+}
 ```
 
-Go selects the right overload; `T` is left unsolved. What is known:
+In TypeScript the cache holds the object, so a later hit sees the
+signature-uniquified type. Every cache in the port stored a `*TypeResult` and
+behaved the same way -- except `SpeculativeTypeEntry`, which stored a
+`TypeResult` value and so froze the pre-uniquification state.
 
-- It requires an **overloaded argument passed to a bare TypeVar parameter**, and
-  a **failing overload attempted first**. Reversing the two overloads so the
-  matching one comes first makes it pass. A non-overloaded argument passes.
-- Inside the winning attempt, argument validation's *first* pass sees the
-  argument as `Overload[(a: T(1)@g1, ...)]` -- signature-uniquified -- and its
-  *second* pass sees `Overload[(a: T@g1, ...)]`, un-uniquified. The second form
-  is self-referential against the parameter `T@g1`, so the solver correctly
-  refuses it and `T` stays unsolved.
-- The uniquifier itself is not at fault. `ensureSignatureIsUnique` is reached
-  every time with a tracker on the stack, `findSignature` matches, and the offset
-  index is 1 on all four evaluations -- it returns the `(1)` form each time.
-  `UniqueSignatureTracker`, `useSignatureTracker`, the speculative-mode teardown,
-  `addConstraintSets` and `cloneWithSignature` were each diffed against the
-  original and match.
+The two forms differ only when one generic function appears more than once in a
+single expression. `g1(g1, b=True)` does, and overload resolution runs each
+attempt in speculative mode, so the winning attempt's second argument pass read
+the stale copy and saw the parameter's own `T@g1` on both sides of the
+assignment. The solver correctly refused the self-referential constraint, and `T`
+was left unsolved.
 
-So the un-uniquified type reaching the second pass comes from somewhere that
-does not go through `getTypeOfExpression`'s Name arm. `argParam.argType` is the
-obvious candidate and is written at only one site in both implementations, which
-matches. That is where the next session should start.
+**The order dependence was the tell.** Putting the matching overload first made
+it pass, because then no earlier attempt had populated the speculative entry. Any
+time a result depends on which sibling was tried first, suspect state that
+outlives an attempt -- a cache, a tracker, a constraint set.
 
-**The harness to start from**: `compare-types.js --dir <dir>` diffs the printed
-type of every name between the two implementations over an arbitrary directory,
-provided the directory is inside the reference tree. Dropping a scratch file into
+Three things were checked and cleared before the cache: the uniquifier itself
+(`ensureSignatureIsUnique` returns the `(1)` form on every one of the four
+evaluations), `UniqueSignatureTracker`, and the speculative-mode teardown. The
+mistake was looking for a *missing* transform when the transform was running fine
+and its result was being discarded.
+
+### Reducing a gate failure to five lines
+
+`compare-types.js --dir <dir>` diffs the printed type of every name between the
+two implementations over an arbitrary directory, provided that directory is
+inside the reference tree. Dropping a scratch file into
 `packages/pyright-internal/src/tests/<scratch>/` turns a failing gate test into a
-five-line repro in about a minute per iteration, and it is what reduced this one.
-Remember to delete the scratch directory afterwards -- it is inside the corpus
-the other differentials walk.
+minute-per-iteration bisect loop; it took `SolverHigherOrder5` from a
+1,400-character expected_text down to nine lines of Python. Delete the scratch
+directory afterwards -- it sits inside the corpus the other differentials walk.
+
+Instrumenting the *TypeScript* side is the other half. A scratch copy of the
+reference tree (`cp -r /tmp/pyright-ref /tmp/pyright-dbg`) plus a `console.error`
+in the function under suspicion, run through `PYRIGHT_GO_BRIDGE_MODE=oracle`,
+answers "what does the original actually do here" in one run. That is what showed
+`includeSubclasses` was true on the TypeScript side after a long stretch of
+reading `getAbstractSymbolInfo` and finding nothing wrong with it -- because
+nothing was.
+
+## Where this ended
+
+1,269 of the 1,279 evaluator and checker tests pass; the other ten raise the
+unsupported marker because they need a live in-process `Program`, which a
+stateless bridge cannot provide. Zero failures. Every other differential is at
+zero differences as well: tokenizer (1,302 files), AST (1,343), parseTreeUtils
+(1,343), binder over the samples (752 x 2 modes) and over typeshed (1,504),
+config (78), plus the bridged parser, typePrinter, pathUtils, Uri, importResolver,
+symbolNameUtils and typeCacheUtils suites.
