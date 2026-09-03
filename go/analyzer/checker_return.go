@@ -63,7 +63,7 @@ func (c *Checker) validateFunctionReturn(node *parser.FunctionNode, functionType
 		c.validateReturnTypeIsNotContravariant(declaredReturnType, returnAnnotation)
 
 		liveScopes := GetTypeVarScopesForNode(node)
-		declaredReturnType = MakeTypeVarsBound(declaredReturnType, liveScopes, false)
+		declaredReturnType = MakeTypeVarsBound(declaredReturnType, liveScopes, true)
 	}
 
 	// The original's comment: wrap the declared type in a generator type if the
@@ -245,7 +245,7 @@ func (c *Checker) validateTypeGuardFunction(
 
 	scopeIds := GetTypeVarScopeIds(functionType)
 	narrowedType := returnClass.Priv.TypeArgs[0]
-	typeGuardType := MakeTypeVarsBound(narrowedType, scopeIds, false)
+	typeGuardType := MakeTypeVarsBound(narrowedType, scopeIds, true)
 	typeGuardType = CloneWithTypeForm(typeGuardType, typeGuardType)
 
 	// The original's comment: determine the type of the first parameter.
@@ -258,7 +258,7 @@ func (c *Checker) validateTypeGuardFunction(
 	}
 
 	paramType := MakeTypeVarsBound(
-		FunctionTypeGetParamType(functionType, paramIndex), scopeIds, false)
+		FunctionTypeGetParamType(functionType, paramIndex), scopeIds, true)
 
 	// The original's comment: verify that the typeGuardType is a narrower type
 	// than the paramType.

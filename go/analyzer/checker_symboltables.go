@@ -735,7 +735,7 @@ func (c *Checker) validateOverloadImplementation(
 	if implementation.Shared.Declaration != nil && implementation.Shared.Declaration.Node != nil {
 		if implNode := implementation.Shared.Declaration.Node.NodeBase().Parent; implNode != nil {
 			liveScopeIds := GetTypeVarScopesForNode(implNode)
-			if bound, ok := MakeTypeVarsBound(implementation, liveScopeIds, false).(*FunctionType); ok {
+			if bound, ok := MakeTypeVarsBound(implementation, liveScopeIds, true).(*FunctionType); ok {
 				implBound = bound
 			}
 		}
@@ -743,7 +743,7 @@ func (c *Checker) validateOverloadImplementation(
 
 	if overload.Shared.Declaration != nil && overload.Shared.Declaration.Node != nil {
 		liveScopeIds := GetTypeVarScopesForNode(overload.Shared.Declaration.Node)
-		if bound, ok := MakeTypeVarsBound(overload, liveScopeIds, false).(*FunctionType); ok {
+		if bound, ok := MakeTypeVarsBound(overload, liveScopeIds, true).(*FunctionType); ok {
 			overloadBound = bound
 		}
 	}
