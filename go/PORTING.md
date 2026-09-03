@@ -56,14 +56,11 @@ the rest go through the --threads worker pool. The cache also stores each
 file's *import descriptors* keyed by its pure content hash -- imports are a
 function of content alone -- so unchanged files skip even the parse;
 resolution still reruns fresh every time, which is what catches a new file
-shadowing a module. On the 3138-file project with 8 workers: a cold run
-costs ~16s (the ~12.6s check plus fingerprinting), a no-change rerun **1.0s
-at 190 MB RSS**, and a single-file change ~2.6s while correctly rechecking
-the file and its reverse import closure. Reverting an edit is a hit again --
-the store is content-addressed, not mtime-based. Cached output is
-byte-identical to the equivalent uncached --threads run and carries the same
-isolation semantics (UPSTREAM-BUGS.md #17); the reference remains the
-single-threaded mode.
+shadowing a module. Reverting an edit is a cache hit again -- the store is
+content-addressed, not mtime-based. Cached output is byte-identical to the
+equivalent uncached --threads run and carries the same isolation semantics
+(UPSTREAM-BUGS.md #17); the reference remains the single-threaded mode.
+BENCHMARKS.md has the numbers.
 
 It finds its typeshed via `--rootdir`, `$PYRIGHT_GO_ROOTDIR`, or a search
 upward from the executable — the original reads `global.__rootDirectory`, which
@@ -159,89 +156,42 @@ the 88,477-name type differential contains either construct.
 
 ### Speed and memory
 
-BENCHMARKS.md carries the full numbers, the worker-count sweep, the cache
-scenarios and the methodology; what follows is the porting-relevant story.
+BENCHMARKS.md is the performance document: the numbers, the scenarios, the
+worker-count scaling and the methodology all live there. What belongs here is
+the performance *character* of the transliteration, because it is a porting
+lesson as much as a result:
 
-| | 84 files | 3135 files |
-| --- | --- | --- |
-| pyright 1.1.412 | 2.34 s / 303 MB | 80.5 s / 3676 MB |
-| Go port | 0.85 s / 202 MB | 39.0 s / 5966 MB |
-
-With `--threads` on 16 logical CPUs (3138-file revision of the same project,
-median of 3 runs, measured the same day on the same machine):
-
-| | single-threaded | `--threads` | scaling |
-| --- | --- | --- | --- |
-| pyright 1.1.412 | 71.5 s / 3608 MB | 37.0 s | 1.9× |
-| Go port | 35.1 s / 6.0 GB | 13.3 s / ~20 GB | 2.6× |
-
-Neither implementation scales to the core count because every worker re-parses,
-re-binds and re-infers the dependency closure of its own files; that redundancy
-is the design being transliterated. The port scales further than the original
-mostly because its front end (the part being redundantly repeated) is 5-9×
-faster. The pyright `--threads` RSS is only the parent process -- its 16 forked
-workers' heaps are not in that number, so the memory comparison across the two
-rows is not apples to apples; the port's ~20 GB is the whole thing.
-
-The GC finding from the single-threaded work inverts under --threads: with 16
-worker goroutines mutating one shared heap several times the single-threaded
-live set, the collector's scan work saturates the cores at the default GOGC,
-and the threaded run was measured at 1.03× single-threaded -- no speedup at
-all. threads.go therefore sets GOGC=200 for the threaded mode (only when the
-environment sets neither GOGC nor GOMEMLIMIT), which is what produces the
-table above; upstream needs no such knob because each forked worker brings its
-own V8 heap and collector.
-
-The port is faster at both sizes — 2.8× and 2.1×. It was *slower* than pyright
-on the large input until two rounds of profiling: three caching problems (a
-1193-file benchmark went from 79 s to 27 s) and then three constant-factor ones
-(the whole project went from 43 s to 35.7 s). The recurring shape is worth knowing before
-optimizing anything here: the algorithm is usually faithful and the constant
-factor is not, because the original leans on a native JavaScript primitive —
-`indexOf`, `RegExp`, `Map.delete` — that Go has no equal of.
-
-GC tuning is *not* a lever, which is easy to assume from a profile that is more
-than half runtime frames: `GOGC=off` buys 5% at 3× the memory. The collector runs
-on other cores alongside a single-threaded mutator, so it is not on the critical
-path.
-
-Memory is the remaining weak side, and it trades against time rather than being
-free to fix. `GOMEMLIMIT` is the knob, and diagnostics are identical at every
-setting:
-
-| GOMEMLIMIT | time | peak RSS |
-| --- | --- | --- |
-| unset | 47.1 s | 6330 MB |
-| 4GiB | 81.4 s | 4414 MB |
-| 3GiB | 137.7 s | 3705 MB |
-| 2GiB | 228.9 s | 2989 MB |
-
-At pyright's memory the port is slower; at pyright's speed it wants roughly
-1.7× the memory. A profile of the unbounded run is more than half garbage
-collection, with no application-level hot spot left, so this is the cost of the
-type model as represented in Go rather than a specific mistake.
-
-Two structure-layout changes later recovered part of that cost -- about 400 MB
-of live heap (−12%), roughly 0.5 GB of single-threaded RSS and 2-4 GB of
-16-worker RSS, at parity on wall time and with identical diagnostics in every
-mode. Both exploit the same V8 asymmetry: a JavaScript object is laid out with
-only the properties actually set, while the transliterated Go struct charged
-every instance for every field.
-
-- `AnalyzerNodeInfo` (analyzernodeinfo.go) was 104 bytes attached to millions
-  of parse nodes that carry a flowNode and nothing else. The node's `A` slot
-  now holds the FlowNode directly -- no allocation at all -- and upgrades to
-  the full struct the moment any other field is set. The file is the slot's
-  only reader and writer, so the hybrid is invisible outside it.
-- `ClassType` (types_class.go) went from 232 to 152 bytes: the ten
-  `ClassDetailsPriv` fields that exist only on properties, narrowed
-  TypedDicts, `functools.partial` and the `deprecated` class moved behind a
-  `rare` pointer that cloneSelf deep-copies, so a clone owns its fields
-  exactly as before. Reads go through same-named accessor methods; writes
-  through ensureRare().
-
-Neither implementation caches across runs, so all of this measures batch
-analysis and says nothing about language-server latency.
+- **The front end is several times faster than the original** (tokenize,
+  parse, bind, resolve) and totals a few seconds; **checking dominates every
+  run**, and its relative speed depends on the workload -- ahead of pyright
+  on stub-light closures, currently behind it on heavy third-party inference
+  (BENCHMARKS.md has both). Anyone optimizing this code should profile the
+  check phase and nothing else.
+- **When the port is slower than it should be, the algorithm is usually
+  faithful and the constant factor is not**, because the original leans on a
+  native JavaScript primitive -- `indexOf`, `RegExp`, `Map.delete`, V8's
+  pay-for-what-you-set object layout -- that Go has no equal of. Every such
+  finding so far (the quadratic type-cache deletes, the tokenizer's
+  unbounded scans, the include-spec scan, the always-full structs) had this
+  shape.
+- **Memory trades against time rather than being free to fix.** The port
+  runs faster than pyright at higher RSS; `GOMEMLIMIT` bounds it with
+  identical diagnostics at every setting. A profile of an unbounded run is
+  more than half garbage collection with no application hot spot left: the
+  remaining cost is pyright's clone-on-specialize type model as represented
+  in Go, not a specific mistake.
+- **GC behavior differs by mode.** Single-threaded, the collector runs on
+  otherwise-idle cores and is nearly free, so GOGC tuning buys little.
+  Under --threads, the workers share one heap several times the
+  single-threaded live set and the collector competes with them, so the
+  threaded mode raises GOGC itself (see threads.go) -- upstream needs no
+  such knob because each forked worker brings its own V8 heap.
+- **Parallel checking duplicates work by design.** pyright's worker model
+  gives each worker its own program, so every worker re-infers the
+  dependency closure of its files; scaling stops well short of the core
+  count in both implementations, and no partition of the user files can fix
+  it (the duplicated work is the typeshed and third-party closure, which
+  every worker needs).
 
 ## Suspected bugs in the original
 

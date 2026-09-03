@@ -16,106 +16,30 @@ collects the pyright bugs found along the way.
 
 ## Performance
 
-Same project, same command line, same config, identical diagnostics —
-measured against pyright 1.1.412 under Node on a 3,138-file production
-codebase (16 logical CPUs; full numbers and methodology in
-[`go/BENCHMARKS.md`](go/BENCHMARKS.md)):
+Measured on a ~3,150-file production codebase with its virtual environment
+active (all third-party imports resolving), against pyright 1.1.412 under
+Node, identical diagnostics in every row — full tables and methodology in
+[`go/BENCHMARKS.md`](go/BENCHMARKS.md):
 
-| mode | pyright 1.1.412 | Go port |
+| invocation | pyright 1.1.412 | Go port |
 | --- | --- | --- |
-| single-threaded | 71.5 s / 3.6 GB | 35 s / 5.4 GB |
-| `--threads` | 37.0 s | ~12 s (best at 8 workers) |
-| `--cachedir`, nothing changed | n/a | **1.0 s / 190 MB** |
-| `--cachedir`, one file changed | n/a | **2.6 s** |
+| full check, no cache | 59 s (`--threads`) | 163 s |
+| `--cachedir`, nothing changed | n/a — pyright has no cache | **5.9 s / 0.6 GB** |
+| `--cachedir`, typical (leaf) file changed | n/a | **6.8 s** |
+| pre-commit file list (1,779 files), warm | 107 s every run | **5.8 s** |
 
-Times scale with the resolved import closure: on the same project with its
-virtual environment active (so every third-party import resolves) and 1,779
-files passed pre-commit-style on the command line, the warm-cache run is
-5.8 s against 1m47s for pyright -- `go/BENCHMARKS.md` has both scenarios and
-the methodology.
-
-`--threads` is pyright's own worker model transliterated — per-worker
-analyzer, one file checked at a time in isolation — with goroutines in place
-of upstream's forked processes. `--cachedir` is a pyright-go extension: a
-run-to-run cache keyed by each file's transitive dependency closure, so an
-unchanged file replays its previous diagnostics and a changed file recheck
-touches only its reverse import closure. Import resolution reruns fresh
-every time, so a new file shadowing a module still invalidates correctly.
-The two compose:
+The two implementations differ in shape, not just speed. Uncached, pyright
+is faster on this heavily-interconnected project. The port's result is
+`--cachedir`: a run-to-run cache keyed by each file's transitive dependency
+closure, so unchanged files replay their diagnostics and a changed file
+re-checks only its reverse import closure — while import resolution reruns
+fresh every time, which is what keeps a new file shadowing a module from
+serving stale results. The recurring invocation — CI on a mostly-unchanged
+tree, a pre-commit hook — answers in seconds:
 
 ```bash
-pyright-go --threads 8 --cachedir .pyright-cache --outputjson
+pyright-go --threads 4 --cachedir .pyright-cache
 ```
-
-The trade is memory: the port is faster than pyright at every point but
-hungrier, and `GOMEMLIMIT` bounds it (with identical diagnostics) when that
-matters.
-
-## What is ported
-
-| Area | TypeScript source | Go | Status |
-| --- | --- | --- | --- |
-| Character codes | `common/charCodes.ts` | `common/charcodes.go` | done |
-| Text ranges | `common/textRange.ts` | `common/textrange.go` | done |
-| Range collections | `common/textRangeCollection.ts` | `common/textrangecollection.go` | done |
-| Position conversion | `common/positionUtils.ts` | `common/positionutils.go` | done |
-| String utils | `common/stringUtils.ts` | `common/stringutils.go` | done |
-| Core helpers | `common/core.ts` | `common/core.go` | partial — the members the front end uses |
-| Debug helpers | `common/debug.ts` | `common/debug.go` | done |
-| Python versions | `common/pythonVersion.ts` | `common/pythonversion.go` | done |
-| Diagnostics | `common/diagnostic.ts`, `common/diagnosticSink.ts` | `common/diagnostic.go`, `common/diagnosticsink.go` | done |
-| Localization | `localization/localize.ts` + 15 `package.nls.*.json` | `localization/` | done — all 847 accessors |
-| Unicode tables | `parser/unicode.ts` | `parser/unicode_gen.go` | done — all 3241 ranges |
-| Character classes | `parser/characters.ts` | `parser/characters.go` | done |
-| Character stream | `parser/characterStream.ts` | `parser/characterstream.go` | done |
-| Token types | `parser/tokenizerTypes.ts` | `parser/tokenizertypes.go` | done |
-| String unescaping | `parser/stringTokenUtils.ts` | `parser/stringtokenutils.go` | done |
-| **Tokenizer** | `parser/tokenizer.ts` | `parser/tokenizer.go` | **done and verified** |
-| Parse nodes | `parser/parseNodes.ts` | `parser/parsenodes.go`, `parser/parsenodes_unions.go` | done — all 78 node types |
-| Node/operator name maps | `parser/parseNodeUtils.ts` | `parser/parsenodeutils.go` | done |
-| Timing stats | `common/timing.ts` | `common/timing.go` | done |
-| **Parser** | `parser/parser.ts` | `parser/parser*.go` | **done — all 131 methods** |
-| Type model | `analyzer/types.ts`, `typeUtils.ts`, `typePrinter.ts`, … | `analyzer/types*.go`, `typeutils*.go`, `typeprinter*.go` | **done and verified** |
-| Parse tree utils | `analyzer/parseTreeUtils.ts`, `parseTreeWalker.ts` | `analyzer/parsetreeutils_*.go`, `parsetreewalker.go` | **done and verified** |
-| **Binder** | `analyzer/binder.ts` + deps | `analyzer/binder*.go` | **done and verified** |
-| Path utils | `common/pathUtils.ts` | `common/pathutils.go` | **done and verified** |
-| URIs | `common/uri/*.ts` + the parts of `vscode-uri` they reach | `common/uri/*.go` | **done and verified** |
-| File system | `common/fileSystem.ts`, `readonlyAugmentedFileSystem.ts`, `pyrightFileSystem.ts`, `partialStubService.ts` | `common/uri/filesystem.go`, `analyzer/*filesystem.go`, `analyzer/partialstubservice.go` | done |
-| Config options | `common/configOptions.ts`, `commandLineOptions.ts` | `analyzer/configoptions*.go`, `commandlineoptions.go` | **done and verified** |
-| **Import resolver** | `analyzer/importResolver.ts` + deps | `analyzer/importresolver*.go` | **done and verified** |
-| **Program loop** | `analyzer/sourceFile.ts`, `sourceFileInfo.ts`, `program.ts`, `service.ts`, `sourceEnumerator.ts` | `analyzer/sourcefile*.go`, `program*.go`, `service*.go`, `sourceenumerator.go` | **done and verified** |
-| **Type evaluator** | `analyzer/typeEvaluator.ts`, `codeFlowEngine.ts`, `typeGuards.ts`, `constraintSolver.ts`, … | `analyzer/typeevaluator*.go`, `codeflowengine*.go`, `typeguards*.go`, … | **done and verified** |
-| **Checker** | `analyzer/checker.ts` | `analyzer/checker*.go` | **done and verified** |
-| Interpreter queries | `common/fullAccessHost.ts` | `analyzer/fullaccesshost.go` | done |
-| **CLI** | `pyright-internal/src/pyright.ts` | `cmd/pyright-go` | **done** — a drop-in for batch checking, including `--threads`; plus a `--cachedir` extension |
-
-The whole type checker is complete: source text in, the same diagnostics
-pyright 1.1.412 reports out. **go/PORTING.md is the authoritative status
-document** — what is done, what is deliberately out of scope, how it is
-verified, and how fast it runs; this README covers layout and how to run the
-verification.
-
-`parser.ts` methods are exported through `Parser.ParseSourceFile` and
-`Parser.ParseTextExpression` and produce the same tree the TypeScript does,
-verified file-for-file (see below).
-
-`parser.ts` is split across several Go files by grammar area rather than kept as
-one 5.5k-line file: `parser.go` (state and token cursor), `parser_expressions.go`
-(the operator precedence chain), `parser_exprlist.go` (tuples, ternaries,
-walrus), `parser_atoms.go` / `parser_trailers.go` (atoms, calls, subscripts,
-displays), `parser_comprehension.go`, `parser_params.go` (parameters, lambdas,
-yield, annotations), `parser_strings.go` (strings, f-strings, `# type:`
-comments), `parser_suites.go` (block statements), `parser_simple.go` (one-line
-statements, imports), `parser_patterns.go` (`match`), `parser_errors.go` and
-`parser_entry.go`. Every method carries the name of the TypeScript method it
-corresponds to.
-
-### Not ported, deliberately
-
-The language server and everything that exists only to serve it: the
-providers (hover, completion, rename, …), background analysis and
-cancellation, the file watchers, `--watch`, `--createstub`, `--verifytypes`
-and `--dependencies`. go/PORTING.md carries the full table and the reasons.
 
 ## How it is verified
 
