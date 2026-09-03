@@ -30,10 +30,16 @@ the configuration and service layers that decide what gets analyzed.
 | `analyzer/sourceFile.ts`, `program.ts`, `service.ts` | | complete for batch analysis |
 | `common/host.ts`, `common/fullAccessHost.ts` | the interpreter queries | complete (`runScript`/`runSnippet`/`spawnProcess` excepted) |
 
-`cmd/pyright-go` is a small CLI over that: it takes an execution root and a file
-list and prints diagnostics in pyright's `--outputjson` shape, so the two can be
-diffed directly. It exists to answer "does this agree with the original on real
-code", not to be a replacement for the pyright CLI.
+`cmd/pyright-go` is a transliteration of `packages/pyright/src/pyright.ts`: the
+same option table, the same parsing rules, the same text and `--outputjson`
+reporters, the same exit codes. It is meant to stand in for the pyright CLI in a
+script or a CI step. Five of pyright's modes are refused rather than silently
+ignored, because each rests on a module listed below as out of scope:
+`--watch`, `--createstub`, `--verifytypes`, `--dependencies` and `--threads`.
+
+It finds its typeshed via `--rootdir`, `$PYRIGHT_GO_ROOTDIR`, or a search
+upward from the executable — the original reads `global.__rootDirectory`, which
+a Go binary has no counterpart for.
 
 ## Still not ported
 
@@ -51,7 +57,7 @@ changes a diagnostic.
 | `analyzer/codeFlowUtils.ts` (`formatControlFlowGraph`) | a debug dump behind a verbose logging flag |
 | `common/serviceProvider.ts` and friends | the DI container; the port passes dependencies directly |
 | `Host.runScript` / `runSnippet` / `spawnProcess` | asynchronous and cancellable; only the language server and the stub writer call them |
-| `CacheManager.getUsedHeapRatio` | reads V8 heap statistics. Go exposes no heap *limit*, so there is no ratio; it answers -1, which every caller already treats as "don't act on this" |
+| `CacheManager`'s cross-worker heap sharing | a SharedArrayBuffer read by worker threads that do not exist here. The heap ratio itself is ported, against `GOMEMLIMIT` — see analyzer/cachemanager.go |
 
 ## How it is verified
 
@@ -91,25 +97,58 @@ message and position, over 1343 real Python files. The type one asks both
 implementations for the inferred type of every name in those files and compares
 the printed result — 88,477 names, no sampling.
 
-Beyond the corpus, `cmd/pyright-go` has been run against a real project (1193
-files, a virtualenv with several hundred third-party packages) alongside pyright
-1.1.412 with an identical config and file list: **1193 files and 8074 errors on
-both sides, zero differences**. This is the only check that exercises a real
-file system, and it is where `realfs.RealCasePath` was caught silently following
-symlinks — see analyzer/STATUS-STAGE-D.md.
+Beyond the corpus, `cmd/pyright-go` is run against a real project alongside
+pyright 1.1.412 — same working directory, same command line, same config file,
+no arguments invented for either side:
 
-On speed the honest summary is "comparable, and it depends on the size":
+| | files | errors | warnings | differences |
+| --- | --- | --- | --- | --- |
+| pyright 1.1.412 | 3135 | 10177 | 31675 | — |
+| Go port | 3135 | 10177 | 31675 | **0 missing, 0 spurious** |
 
-| | 84 files | 1193 files |
+Text output is byte-identical; JSON output differs only in `version` and the
+timestamp; exit codes match across `--level`, `--warnings`, `-p`, stdin file
+lists and the error paths.
+
+This is the only check that exercises a real file system and a real virtualenv,
+and it has earned its place twice: `realfs.RealCasePath` was caught silently
+following symlinks, and `specializeWithUnknownTypeArgs` was caught passing
+`isTypeArgExplicit: true` where the original passes `false` — which cost
+`isinstance(x, tuple)` its type argument. Neither the 1,279 evaluator tests nor
+the 88,477-name type differential contains either construct. See
+analyzer/STATUS-STAGE-D.md.
+
+### Speed and memory
+
+| | 84 files | 3135 files |
 | --- | --- | --- |
-| pyright 1.1.412 | 3.49 s / 343 MB | 58.7 s / 2814 MB |
-| Go port | 0.98 s / 216 MB | 78.9 s / 3577 MB (no limit) |
-| Go port, `GOMEMLIMIT=3GiB` | | 62.3 s / 2921 MB |
+| pyright 1.1.412 | 2.34 s / 303 MB | 86.8 s / 3597 MB |
+| Go port | 0.85 s / 202 MB | 47.1 s / 6198 MB |
 
-The port wins clearly on small runs and lands at rough parity on the large one.
-Neither implementation is doing anything clever here — both are single-threaded
-and neither caches across runs — so this measures batch analysis and says
-nothing about language-server latency.
+The port is faster at both sizes — 2.8× and 1.8×. It was *slower* than pyright
+on the large input until three caching problems were fixed; on a fixed 1193-file
+benchmark those took the run from 79 s to 27 s. What was wrong is written up in
+analyzer/STATUS-STAGE-D.md; the short version is that `OrderedMap.Delete` was
+O(n) and the type cache never needed to be ordered at all.
+
+Memory is the remaining weak side, and it trades against time rather than being
+free to fix. `GOMEMLIMIT` is the knob, and diagnostics are identical at every
+setting:
+
+| GOMEMLIMIT | time | peak RSS |
+| --- | --- | --- |
+| unset | 47.1 s | 6330 MB |
+| 4GiB | 81.4 s | 4414 MB |
+| 3GiB | 137.7 s | 3705 MB |
+| 2GiB | 228.9 s | 2989 MB |
+
+At pyright's memory the port is slower; at pyright's speed it wants roughly
+1.7× the memory. A profile of the unbounded run is more than half garbage
+collection, with no application-level hot spot left, so this is the cost of the
+type model as represented in Go rather than a specific mistake.
+
+Both implementations are single-threaded here and neither caches across runs, so
+this measures batch analysis and says nothing about language-server latency.
 
 ## Suspected bugs in the original
 
