@@ -65,16 +65,27 @@ func NewConstraintSet() *ConstraintSet {
 
 func (c *ConstraintSet) Clone() *ConstraintSet {
 	constraintSet := NewConstraintSet()
+	c.cloneInto(constraintSet)
+	return constraintSet
+}
 
-	c.typeVarMap.ForEach(func(value *TypeVarConstraints, _ string) {
-		constraintSet.SetBounds(value.TypeVar, value.LowerBound, value.UpperBound, value.RetainLiterals)
-	})
-
-	if c.scopeIds != nil {
-		c.scopeIds.ForEach(func(scopeId string) { constraintSet.AddScopeId(scopeId) })
+// cloneInto fills a zero-valued destination with a copy of this set. The
+// cloned entries share one backing array instead of one allocation each --
+// constraint sets are cloned tens of millions of times per large run -- and
+// each clone owns its entries exactly as it did when SetBounds built them
+// individually.
+func (c *ConstraintSet) cloneInto(dst *ConstraintSet) {
+	if n := c.typeVarMap.Size(); n > 0 {
+		backing := make([]TypeVarConstraints, 0, n)
+		c.typeVarMap.ForEach(func(value *TypeVarConstraints, key string) {
+			backing = append(backing, *value)
+			dst.typeVarMap.Set(key, &backing[len(backing)-1])
+		})
 	}
 
-	return constraintSet
+	if c.scopeIds != nil {
+		c.scopeIds.ForEach(func(scopeId string) { dst.AddScopeId(scopeId) })
+	}
 }
 
 func (c *ConstraintSet) IsSame(other *ConstraintSet) bool {
@@ -218,15 +229,16 @@ func NewConstraintTracker() *ConstraintTracker {
 }
 
 func (t *ConstraintTracker) Clone() *ConstraintTracker {
-	newTypeVarMap := NewConstraintTracker()
-
+	// The sets share one backing array, and the tracker is built directly --
+	// going through NewConstraintTracker here would allocate a constraint set
+	// only to overwrite it.
+	backing := make([]ConstraintSet, len(t.constraintSets))
 	sets := make([]*ConstraintSet, 0, len(t.constraintSets))
-	for _, set := range t.constraintSets {
-		sets = append(sets, set.Clone())
+	for i, set := range t.constraintSets {
+		set.cloneInto(&backing[i])
+		sets = append(sets, &backing[i])
 	}
-	newTypeVarMap.constraintSets = sets
-
-	return newTypeVarMap
+	return &ConstraintTracker{constraintSets: sets}
 }
 
 func (t *ConstraintTracker) CloneWithSignature(scopeId TypeVarScopeId) *ConstraintTracker {
@@ -258,9 +270,11 @@ func (t *ConstraintTracker) CloneWithSignature(scopeId TypeVarScopeId) *Constrai
 
 // CopyFromClone copies a cloned type var context back into this object.
 func (t *ConstraintTracker) CopyFromClone(clone *ConstraintTracker) {
+	backing := make([]ConstraintSet, len(clone.constraintSets))
 	sets := make([]*ConstraintSet, 0, len(clone.constraintSets))
-	for _, context := range clone.constraintSets {
-		sets = append(sets, context.Clone())
+	for i, context := range clone.constraintSets {
+		context.cloneInto(&backing[i])
+		sets = append(sets, &backing[i])
 	}
 	t.constraintSets = sets
 }
