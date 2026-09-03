@@ -218,29 +218,42 @@ type ReturnTypeInferenceContext struct {
 	CodeFlowAnalyzer any
 }
 
-// typeCacheMap adapts an OrderedMap to the SpeculativeCache interface, which is
-// how the speculative tracker deletes entries when a speculative context ends.
+// typeCacheMap adapts a map to the SpeculativeCache interface, which is how the
+// speculative tracker deletes entries when a speculative context ends.
+//
+// This is a plain Go map rather than the OrderedMap the port uses wherever the
+// original writes a `Map`, and that is a deliberate exception. OrderedMap exists
+// because JavaScript's Map iterates in insertion order and pyright's output
+// depends on that -- but the type cache is never iterated. The original only
+// ever calls get, set and size on it, and replaces it wholesale to empty it. So
+// there is no order to preserve, and preserving one is not free: this is the
+// largest map in the process, and the ordering bookkeeping costs both the keys
+// slice and the index beside it.
+//
+// It was also the map whose deletes dominated the profile before OrderedMap's
+// Delete became O(1) -- the speculative tracker undoes every write it made, on
+// every overload attempt.
 type typeCacheMap struct {
-	m *common.OrderedMap[int, *TypeCacheEntry]
+	m map[int]*TypeCacheEntry
 }
 
 func newTypeCacheMap() *typeCacheMap {
-	return &typeCacheMap{m: common.NewOrderedMap[int, *TypeCacheEntry]()}
+	return &typeCacheMap{m: map[int]*TypeCacheEntry{}}
 }
 
-func (c *typeCacheMap) Delete(id int) bool { return c.m.Delete(id) }
-
-func (c *typeCacheMap) Get(id int) *TypeCacheEntry {
-	entry, ok := c.m.Get(id)
-	if !ok {
-		return nil
+func (c *typeCacheMap) Delete(id int) bool {
+	if _, ok := c.m[id]; !ok {
+		return false
 	}
-	return entry
+	delete(c.m, id)
+	return true
 }
 
-func (c *typeCacheMap) Set(id int, entry *TypeCacheEntry) { c.m.Set(id, entry) }
+func (c *typeCacheMap) Get(id int) *TypeCacheEntry { return c.m[id] }
 
-func (c *typeCacheMap) Size() int { return c.m.Size() }
+func (c *typeCacheMap) Set(id int, entry *TypeCacheEntry) { c.m[id] = entry }
+
+func (c *typeCacheMap) Size() int { return len(c.m) }
 
 // typeEvaluator holds what createTypeEvaluator closes over. The field order is
 // the original's declaration order.

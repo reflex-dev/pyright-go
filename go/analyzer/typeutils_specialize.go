@@ -61,7 +61,18 @@ func SpecializeWithUnknownTypeArgs(t *ClassType, tupleClassType *ClassType) *Cla
 			SpecializeTupleClass(
 				t,
 				[]*TupleTypeArg{{Type: UnknownTypeCreate(false), IsUnbounded: true}},
-				true,  // isTypeArgExplicit
+				// isTypeArgExplicit. specializeTupleClass defaults this to true
+				// and the original overrides it to false right here -- these
+				// Unknown arguments were manufactured because the class was used
+				// bare, so nothing about them was written down.
+				//
+				// The distinction is load-bearing two files away. isinstance
+				// narrowing refuses to re-specialize a filter class whose type
+				// arguments were explicit, so `isinstance(x, tuple)` against an
+				// `x: Sequence[Block]` narrowed to `tuple[Unknown, ...]` instead
+				// of `tuple[Block, ...]`, and every element read out of it was
+				// Unknown.
+				false,
 				false, // isUnpacked, defaulted in the original
 			),
 			t.Priv.IncludeSubclasses,

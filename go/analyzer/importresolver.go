@@ -174,6 +174,45 @@ type ImportResolver struct {
 
 	// cachedParentImportResults is `protected readonly` in the original.
 	cachedParentImportResults *ParentDirectoryCache
+
+	// cachedFromUserFile memoizes MatchFileSpecs per source file. It has no
+	// counterpart in the original -- see isFromUserFile.
+	cachedFromUserFile map[string]bool
+}
+
+// isFromUserFile is `matchFileSpecs(this._configOptions, sourceFileUri)`, which
+// resolveImportStrict evaluates on every call, before the import cache is even
+// consulted.
+//
+// The memoization has no counterpart upstream and is not a behavior change:
+// MatchFileSpecs is a pure function of the config's include and exclude specs
+// and the URI, and any config change goes through SetConfigOptions, which
+// invalidates this along with everything else.
+//
+// It is here because the constant factor differs between the two languages by
+// enough to matter. MatchFileSpecs runs one regex per include spec, and when
+// the caller passes an explicit file list -- which is how pyright's own
+// `--files` works, and how the differential harness invokes both sides -- there
+// is one include spec per file. That makes the scan O(files) per import
+// resolved, or tens of millions of regex calls over a project. V8 absorbs that;
+// Go's regexp, whose per-call setup cost is an order of magnitude higher, spent
+// 19% of total run time in it.
+func (r *ImportResolver) isFromUserFile(sourceFileUri uri.Uri) bool {
+	if sourceFileUri == nil {
+		return MatchFileSpecs(r.configOptions, sourceFileUri, true)
+	}
+
+	key := sourceFileUri.Key()
+	if cached, ok := r.cachedFromUserFile[key]; ok {
+		return cached
+	}
+
+	result := MatchFileSpecs(r.configOptions, sourceFileUri, true)
+	if r.cachedFromUserFile == nil {
+		r.cachedFromUserFile = map[string]bool{}
+	}
+	r.cachedFromUserFile[key] = result
+	return result
 }
 
 // NewImportResolver corresponds to the constructor.
@@ -256,6 +295,7 @@ func (r *ImportResolver) InvalidateCache() {
 	r.cachedImportResults = common.NewOrderedMap[string, *cachedImportResults]()
 	r.cachedModuleNameResults = map[string]map[string]ModuleImportInfo{}
 	r.cachedParentImportResults.Reset()
+	r.cachedFromUserFile = nil
 	r.stdlibModules = nil
 
 	r.invalidateFileSystemCache()

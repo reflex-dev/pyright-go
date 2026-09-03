@@ -1022,3 +1022,95 @@ Two things generalize:
   for that layer is running against a real project -- which is what
   `cmd/pyright-go` is for, and why it earned its place beyond being a benchmark
   harness.
+
+## The caching was quadratic, and the profiler said so in one line
+
+Running the CLI against a real 1,193-file project took 79 seconds where pyright
+took 58. One `pprof -top` answered why:
+
+```
+      flat  flat%   sum%        cum   cum%
+    34.15s 33.06% 33.06%     34.26s 33.17%  common.(*OrderedMap[int,*uint8]).Delete
+```
+
+A third of the run, in one method, all of it from `typeCacheMap.Delete`.
+
+`OrderedMap` exists because JavaScript's `Map` iterates in insertion order and
+pyright's output depends on that. Its `Delete` kept the order by scanning the
+key slice for the key and splicing it out -- O(n) where JavaScript's is O(1).
+The header said this was fine, and said why:
+
+> Pyright deletes from these maps rarely (symbol tables are built up and then
+> read), so the simpler representation is worth more than the asymptotics.
+
+That is true of symbol tables and false of the type cache. The speculative type
+tracker writes into it and undoes every write when the speculative context
+ends -- once per overload attempt, once per bidirectional inference retry. With
+a cache holding hundreds of thousands of entries, the undo was a linear scan.
+
+Three changes, each worth stating separately because they are different kinds of
+mistake:
+
+1. **`OrderedMap.Delete` is now O(1)** (`common/orderedmap.go`). Keys are
+   append-only with an index beside them; a slot is live only when
+   `index[k] == i`. That test is also what makes delete-then-reinsert land at
+   the end, as JavaScript does. 79s -> 42s.
+
+2. **The type cache is no longer an OrderedMap at all**
+   (`analyzer/typeevaluator.go`). It was never iterated -- the original calls
+   only `get`, `set` and `size` on it -- so there was no order to preserve and
+   the ordering bookkeeping was pure overhead on the largest map in the process.
+
+3. **`MatchFileSpecs` is memoized per source file**
+   (`analyzer/importresolver.go`). `resolveImportStrict` evaluates
+   `fromUserFile` before consulting the import cache, and MatchFileSpecs runs
+   one regex per include spec. Pass an explicit file list -- which is what
+   `--files` does, and what the differential harness does -- and that is one
+   spec per file, so the scan is O(files) per import resolved. Same algorithm as
+   upstream; the difference is that Go's `regexp` has an order of magnitude more
+   per-call overhead than V8's, and it was 19% of the run. 42s -> 27s.
+
+The general lesson is in the first one. A comment asserting a performance
+assumption ("deletes are rare") is a claim about every current and future
+caller, written when only some of them existed. The type evaluator arrived
+later and broke it, and nothing failed -- the tests all passed, the
+differentials were all at zero, and the only symptom was a number nobody was
+looking at.
+
+## isinstance narrowing lost the type argument, from one wrong boolean
+
+The first diagnostic difference ever found against real code: 3 spurious
+warnings out of 41,852 diagnostics over 3,135 files. All three reduced to the
+same four lines.
+
+```python
+def f(x: Sequence[Block]) -> None:
+    if isinstance(x, tuple):
+        reveal_type(x)   # pyright: tuple[Block, ...]   port: tuple[Unknown, ...]
+```
+
+`typeGuards.filterType` refuses to re-specialize a filter class whose type
+arguments were written down by the user -- `!filterType.priv.isTypeArgExplicit`
+guards the whole `addConstraintsForExpectedType` block that solves `tuple`'s
+parameter against `Sequence[Block]`. The `tuple` in `isinstance(x, tuple)` is
+bare, so its Unknown arguments were manufactured rather than written, and the
+flag has to be false.
+
+`specializeWithUnknownTypeArgs` is what manufactures them, and the original is
+explicit at both call sites:
+
+```ts
+specializeTupleClass(type, [{ type: UnknownType.create(), isUnbounded: true }],
+    /* isTypeArgExplicit */ false)
+```
+
+The port passed `true` -- and labelled it `// isTypeArgExplicit`, so this was
+not a defaulted argument going missing but a value transcribed wrong, two files
+and one indirection away from anything that looked like narrowing. The
+non-tuple branch four lines below had it right.
+
+Worth noting what did *not* catch this: 1,269 evaluator and checker tests, and a
+per-node type differential over 88,477 names in 1,343 files. Both still pass
+unchanged with the fix in. The construct is simply absent from pyright's own
+sample corpus, which is a reminder that a differential proves agreement on the
+inputs it was given and nothing about the inputs it was not.

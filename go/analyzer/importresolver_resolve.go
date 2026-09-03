@@ -357,7 +357,7 @@ func (r *ImportResolver) resolveImportStrict(
 	moduleDescriptor ImportedModuleDescriptor,
 	importLogger *ImportLogger,
 ) *ImportResult {
-	fromUserFile := MatchFileSpecs(r.configOptions, sourceFileUri, true)
+	fromUserFile := r.isFromUserFile(sourceFileUri)
 	notFoundResult := &ImportResult{
 		ImportName:        importName,
 		ImportFailureInfo: importLogger.GetLogs(),

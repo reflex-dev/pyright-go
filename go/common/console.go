@@ -99,3 +99,35 @@ func (c *StandardConsole) write(level LogLevel, message string) {
 	}
 	fmt.Fprintln(os.Stdout, message)
 }
+
+// StderrConsole corresponds to the class of the same name: a StandardConsole
+// that writes every level to stderr rather than only errors.
+//
+// It exists for exactly one caller, and the reason is worth keeping visible: the
+// CLI's --outputjson mode sends the report to stdout, so anything else written
+// there would corrupt it. The original's comment at the call site: if using
+// outputjson, redirect all console output to stderr so it doesn't mess up the
+// JSON output, which goes to stdout.
+type StderrConsole struct {
+	maxLevel LogLevel
+}
+
+// NewStderrConsole corresponds to the constructor. The TypeScript defaults
+// maxLevel to LogLevel.Log.
+func NewStderrConsole(maxLevel LogLevel) *StderrConsole {
+	return &StderrConsole{maxLevel: maxLevel}
+}
+
+func (c *StderrConsole) Level() LogLevel { return c.maxLevel }
+
+func (c *StderrConsole) Error(message string) { c.write(LogLevelError, message) }
+func (c *StderrConsole) Warn(message string)  { c.write(LogLevelWarn, message) }
+func (c *StderrConsole) Info(message string)  { c.write(LogLevelInfo, message) }
+func (c *StderrConsole) Log(message string)   { c.write(LogLevelLog, message) }
+
+func (c *StderrConsole) write(level LogLevel, message string) {
+	if GetLevelNumber(c.maxLevel) < GetLevelNumber(level) {
+		return
+	}
+	fmt.Fprintln(os.Stderr, message)
+}

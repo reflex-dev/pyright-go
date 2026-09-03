@@ -1,31 +1,37 @@
 /*
  * pyright-go
  *
- * A command-line front end over the ported analyzer, shaped to be comparable
- * with pyright's own CLI rather than to replace it. It takes an execution root,
- * runs the same AnalyzerService the language server would, and prints the
- * diagnostics as JSON in pyright's `--outputjson` shape.
+ * The command-line type checker, transliterated from
+ * packages/pyright/src/pyright.ts (pyright 1.1.412).
  *
- * This exists to answer one question: run against a real project, does the port
- * report the same things the original does, and how long does it take? Anything
- * beyond that -- watch mode, the language server, --verifytypes, exit-code
- * conventions -- is deliberately absent, because a fuller CLI would invite the
- * comparison to be read as a product claim rather than as a differential.
+ * It accepts pyright's command line, produces pyright's output in both text and
+ * `--outputjson` form, and returns pyright's exit codes, so it can stand in for
+ * the original in a script or a CI step without the caller knowing.
  *
- * The diagnostic categories are pyright's own numbering, mapped to the same
- * strings its JSON output uses, so the two outputs can be diffed directly.
+ * PARTIAL, and the boundary is the same one the rest of the port draws. Four of
+ * pyright's modes are separate features rather than type checking, and each
+ * rests on a module ANALYZER-PLAN.md puts out of scope:
+ *
+ *   --watch        the file watchers and the reanalysis timer
+ *   --createstub   typeStubWriter.ts
+ *   --verifytypes  packageTypeVerifier.ts
+ *   --threads      backgroundAnalysisProgram.ts and the worker threads
+ *   --dependencies the service's dependency report
+ *
+ * Each is rejected with a message saying so, rather than being accepted and
+ * quietly ignored -- a drop-in that silently does less than it was asked is
+ * worse than one that says what it cannot do.
  */
 
 package main
 
 import (
-	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"time"
+	"runtime"
+	"runtime/pprof"
+	"strings"
 
 	"github.com/microsoft/pyright/go/analyzer"
 	"github.com/microsoft/pyright/go/common"
@@ -34,134 +40,234 @@ import (
 	"github.com/microsoft/pyright/go/realfs"
 )
 
-type jsonRange struct {
-	Start jsonPosition `json:"start"`
-	End   jsonPosition `json:"end"`
-}
-
-type jsonPosition struct {
-	Line      int `json:"line"`
-	Character int `json:"character"`
-}
-
-type jsonDiagnostic struct {
-	File     string     `json:"file"`
-	Severity string     `json:"severity"`
-	Message  string     `json:"message"`
-	Range    *jsonRange `json:"range,omitempty"`
-	Rule     string     `json:"rule,omitempty"`
-}
-
-type jsonSummary struct {
-	FilesAnalyzed    int     `json:"filesAnalyzed"`
-	ErrorCount       int     `json:"errorCount"`
-	WarningCount     int     `json:"warningCount"`
-	InformationCount int     `json:"informationCount"`
-	TimeInSec        float64 `json:"timeInSec"`
-}
-
-type jsonOutput struct {
-	Version            string           `json:"version"`
-	Time               string           `json:"time"`
-	GeneralDiagnostics []jsonDiagnostic `json:"generalDiagnostics"`
-	Summary            jsonSummary      `json:"summary"`
-}
-
-// severityName maps the diagnostic categories pyright emits in JSON output.
-// Categories that the CLI does not surface (unused, unreachable, deprecated --
-// the tagged hints) return "" and are dropped, which is what the original does.
-func severityName(category common.DiagnosticCategory) string {
-	switch category {
-	case common.DiagnosticCategoryError:
-		return "error"
-	case common.DiagnosticCategoryWarning:
-		return "warning"
-	case common.DiagnosticCategoryInformation:
-		return "information"
-	}
-	return ""
-}
+// version is what --version prints and what the JSON report carries. The
+// original reads it from its package.json; this names the pyright release the
+// port was transliterated from, and marks itself so a consumer can tell the two
+// apart.
+const version = "1.1.412-go"
 
 func main() {
-	outputJSON := flag.Bool("outputjson", false, "emit diagnostics as JSON")
-	projectRoot := flag.String("project", "", "directory containing the project's config")
-	rootDir := flag.String("rootdir", "", "directory holding typeshed-fallback (defaults to the binary's ../..)")
-	pythonPath := flag.String("pythonpath", "", "path to the Python interpreter")
-	noInterpreter := flag.Bool("nointerpreter", false,
-		"never run a Python interpreter; use a NoAccessHost, so search paths come only from config")
-	flag.Parse()
+	os.Exit(int(run(os.Args[1:])))
+}
 
-	if *projectRoot == "" {
-		fmt.Fprintln(os.Stderr,
-			"usage: pyright-go --project <dir> --rootdir <dir> [--outputjson] "+
-				"[--pythonpath <file>] [--nointerpreter] [file...]")
-		os.Exit(2)
-	}
-
-	absRoot, err := filepath.Abs(*projectRoot)
+func run(argv []string) ExitStatus {
+	args, err := parseArgs(argv)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-
-	// The original locates its bundled typeshed relative to the running script
-	// (`global.__rootDirectory`). The Go binary's location has nothing to do
-	// with the reference tree, so the caller says where it is.
-	if *rootDir == "" {
-		fmt.Fprintln(os.Stderr, "--rootdir is required: the directory holding typeshed-fallback")
-		os.Exit(2)
-	}
-	typeshedRoot, err := filepath.Abs(*rootDir)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-
-	started := time.Now()
-
-	fs := realfs.New(uri.UriExFile(typeshedRoot, true, false), true)
-	rootUri := uri.UriExFile(absRoot, true, false)
-
-	commandLineOptions := analyzer.NewCommandLineOptions(absRoot, rootUri, true, false)
-	if files := flag.Args(); len(files) > 0 {
-		override := append([]string{}, files...)
-		commandLineOptions.ConfigSettings.IncludeFileSpecsOverride = &override
-	} else {
-		commandLineOptions.ConfigSettings.IncludeFileSpecs = []string{absRoot}
-	}
-	if *pythonPath != "" {
-		// The original resolves this against the process's cwd before storing
-		// it: `combinePaths(process.cwd(), normalizePath(args['pythonpath']))`.
-		resolved := common.NormalizePath(*pythonPath)
-		if cwd, err := os.Getwd(); err == nil {
-			resolved = common.CombinePaths(cwd, resolved)
+		if unknown, ok := err.(unknownOptionError); ok {
+			fmt.Fprintf(os.Stderr, "%s.\npyright-go --help for usage\n", unknown.Error())
+			return ExitParameterError
 		}
-		commandLineOptions.ConfigSettings.PythonPath = &resolved
+		fmt.Fprintf(os.Stderr, "%v\npyright-go --help for usage\n", err)
+		return ExitParameterError
 	}
 
-	// The original's CLI passes `hostFactory: () => new FullAccessHost(...)`, so
-	// the import resolver can ask the interpreter where its search paths are.
-	// Without it the only paths are the ones the config names, and every
-	// third-party import in a virtualenv goes unresolved -- which is the whole
-	// difference the --nointerpreter flag exists to demonstrate.
-	hostFactory := func() analyzer.Host {
-		return analyzer.NewFullAccessHost(fs, uri.UriExDetector(true))
+	if args.has("help") {
+		fmt.Print(usageText)
+		return ExitNoErrors
 	}
-	if *noInterpreter {
+
+	if args.has("version") {
+		fmt.Printf("pyright-go %s\n", version)
+		return ExitNoErrors
+	}
+
+	// The modes that rest on an out-of-scope module. Rejected explicitly.
+	for _, unsupported := range []struct{ name, why string }{
+		{"watch", "the file watchers are not ported"},
+		{"createstub", "type stub generation is not ported"},
+		{"verifytypes", "package type verification is not ported"},
+		{"dependencies", "the dependency report is not ported"},
+		{"threads", "background analysis threads are not ported; analysis is single-threaded"},
+	} {
+		if args.has(unsupported.name) {
+			fmt.Fprintf(os.Stderr, "'--%s' is not supported by pyright-go: %s\n",
+				unsupported.name, unsupported.why)
+			return ExitParameterError
+		}
+	}
+
+	if args.has("ignoreexternal") {
+		fmt.Fprintln(os.Stderr, "'--ignoreexternal' is valid only when used with '--verifytypes'")
+		return ExitParameterError
+	}
+
+	if args.has("lib") {
+		fmt.Fprintln(os.Stderr,
+			"The --lib option is deprecated. Pyright now defaults to using library code to infer types.")
+	}
+
+	if stop := startProfiling(args); stop != nil {
+		defer stop()
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return ExitFatalError
+	}
+
+	// The original's comment: always enable autoSearchPaths when using the
+	// command line. Missing this is not subtle -- it is what adds a `src`
+	// directory to the search path, so without it a whole shape of project fails
+	// to resolve its own imports.
+	autoSearchPaths := true
+	checkOnlyOpenFiles := false
+
+	options := analyzer.NewCommandLineOptions(cwd, uri.UriExFile(cwd, true, false), true, false)
+	options.ConfigSettings.AutoSearchPaths = &autoSearchPaths
+	options.LanguageServerSettings.CheckOnlyOpenFiles = &checkOnlyOpenFiles
+
+	// The original's comment: assume any relative paths are relative to the
+	// working directory.
+	if args.has("files") {
+		fileSpecList := args.files
+
+		// The original's comment: has the caller indicated that the file list
+		// will be supplied by stdin?
+		if len(fileSpecList) == 1 && fileSpecList[0] == "-" {
+			fileSpecList, err = readFileListFromStdin()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Invalid file list specified by stdin input")
+				return ExitParameterError
+			}
+		}
+
+		combined := make([]string, 0, len(fileSpecList))
+		for _, f := range fileSpecList {
+			combined = append(combined, common.CombinePaths(cwd, f))
+		}
+		options.ConfigSettings.IncludeFileSpecsOverride = &combined
+	}
+
+	if args.truthy("project") {
+		configFilePath := common.CombinePaths(cwd, common.NormalizePath(args.str("project")))
+		options.ConfigFilePath = &configFilePath
+	}
+
+	if args.truthy("pythonplatform") {
+		platform, ok := parsePythonPlatform(args.str("pythonplatform"))
+		if !ok {
+			fmt.Fprintf(os.Stderr,
+				"'%s' is not a supported Python platform; specify Darwin, Linux, Windows, iOS, or Android.\n",
+				args.str("pythonplatform"))
+			return ExitParameterError
+		}
+		options.ConfigSettings.PythonPlatform = &platform
+	}
+
+	if args.truthy("pythonversion") {
+		pythonVersion := common.PythonVersionFromString(args.str("pythonversion"))
+		if pythonVersion == nil {
+			fmt.Fprintf(os.Stderr, "'%s' is not a supported Python version; specify 3.3, 3.4, etc.\n",
+				args.str("pythonversion"))
+			return ExitParameterError
+		}
+		options.ConfigSettings.PythonVersion = pythonVersion
+	}
+
+	if args.has("pythonpath") {
+		for _, incompatible := range []string{"venv-path", "venvpath"} {
+			if args.has(incompatible) {
+				fmt.Fprintf(os.Stderr, "'pythonpath' option cannot be used with '%s' option\n", incompatible)
+				return ExitParameterError
+			}
+		}
+
+		pythonPath := common.CombinePaths(cwd, common.NormalizePath(args.str("pythonpath")))
+		options.ConfigSettings.PythonPath = &pythonPath
+	}
+
+	if args.truthy("venv-path") {
+		fmt.Fprintln(os.Stderr, "'venv-path' option is deprecated; use 'venvpath' instead")
+		venvPath := common.CombinePaths(cwd, common.NormalizePath(args.str("venv-path")))
+		options.ConfigSettings.VenvPath = &venvPath
+	}
+
+	if args.truthy("venvpath") {
+		venvPath := common.CombinePaths(cwd, common.NormalizePath(args.str("venvpath")))
+		options.ConfigSettings.VenvPath = &venvPath
+	}
+
+	if args.truthy("typeshed-path") {
+		fmt.Fprintln(os.Stderr, "'typeshed-path' option is deprecated; use 'typeshedpath' instead")
+		typeshedPath := common.CombinePaths(cwd, common.NormalizePath(args.str("typeshed-path")))
+		options.ConfigSettings.TypeshedPath = &typeshedPath
+	}
+
+	if args.truthy("typeshedpath") {
+		typeshedPath := common.CombinePaths(cwd, common.NormalizePath(args.str("typeshedpath")))
+		options.ConfigSettings.TypeshedPath = &typeshedPath
+	}
+
+	if args.has("skipunannotated") {
+		analyzeUnannotatedFunctions := false
+		options.ConfigSettings.AnalyzeUnannotatedFunctions = &analyzeUnannotatedFunctions
+	}
+
+	if args.has("verbose") {
+		verboseOutput := true
+		options.ConfigSettings.VerboseOutput = &verboseOutput
+	}
+
+	minSeverityLevel := SeverityInformation
+	if args.truthy("level") {
+		switch strings.ToLower(args.str("level")) {
+		case "error":
+			minSeverityLevel = SeverityError
+		case "warning":
+			minSeverityLevel = SeverityWarning
+		default:
+			fmt.Fprintf(os.Stderr, "'%s' is not a valid value for --level; specify error or warning.\n",
+				args.str("level"))
+			return ExitParameterError
+		}
+	}
+
+	if args.has("stats") && args.has("verbose") {
+		options.LanguageServerSettings.LogTypeEvaluationTime = true
+	}
+
+	logLevel := common.LogLevelError
+	if args.has("stats") || args.has("verbose") {
+		logLevel = common.LogLevelInfo
+	}
+
+	// The original's comment: if using outputjson, redirect all console output
+	// to stderr so it doesn't mess up the JSON output, which goes to stdout.
+	outputJSON := args.has("outputjson")
+	var console common.ConsoleInterface = common.NewStandardConsole(logLevel)
+	if outputJSON {
+		console = common.NewStderrConsole(logLevel)
+	}
+
+	typeshedRoot, ok := resolveTypeshedRoot(args)
+	if !ok {
+		fmt.Fprintln(os.Stderr,
+			"Cannot locate typeshed-fallback. Pass --rootdir <dir>, or set PYRIGHT_GO_ROOTDIR.")
+		return ExitFatalError
+	}
+
+	fileSystem := realfs.New(uri.UriExFile(typeshedRoot, true, false), true)
+
+	// The original passes `hostFactory: () => new FullAccessHost(serviceProvider)`.
+	hostFactory := func() analyzer.Host {
+		return analyzer.NewFullAccessHost(fileSystem, uri.UriExDetector(true))
+	}
+	if args.has("nointerpreter") {
 		hostFactory = func() analyzer.Host { return analyzer.NewNoAccessHost() }
 	}
 
-	service := analyzer.NewAnalyzerService("pyright-go", analyzer.AnalyzerServiceOptions{
-		FileSystem:  fs,
-		Console:     common.NewStandardConsole(common.LogLevelError),
+	service := analyzer.NewAnalyzerService("<default>", analyzer.AnalyzerServiceOptions{
+		FileSystem:  fileSystem,
+		Console:     console,
 		HostFactory: hostFactory,
 	})
+
 	// The Program has no evaluator or checker until they are installed. The
 	// original does this inside Program itself; the port keeps the factories at
 	// the seam so the earlier stages could be exercised without them.
 	installFactories(service.Program())
-
-	service.SetOptions(commandLineOptions)
+	service.SetOptions(options)
 
 	// Analyze returns false once there is nothing left to do.
 	for service.Analyze() {
@@ -169,87 +275,124 @@ func main() {
 
 	configOptions := service.GetConfigOptions()
 	fileDiags := service.Program().GetDiagnostics(configOptions, false)
+	filesInProgram := len(service.GetUserFiles())
+	timeInSec := common.TimingStatsInstance.GetTotalDuration()
 
-	out := jsonOutput{
-		Version:            "go-port",
-		Time:               fmt.Sprint(time.Now().UnixMilli()),
-		GeneralDiagnostics: []jsonDiagnostic{},
-	}
-
-	for _, fd := range fileDiags {
-		path := fd.FileUri.String()
-		for _, d := range fd.Diagnostics {
-			severity := severityName(d.Category)
-			if severity == "" {
-				continue
-			}
-
-			r := d.Range
-			entry := jsonDiagnostic{
-				File:     path,
-				Severity: severity,
-				Message:  d.Message,
-				Range: &jsonRange{
-					Start: jsonPosition{Line: r.Start.Line, Character: r.Start.Character},
-					End:   jsonPosition{Line: r.End.Line, Character: r.End.Character},
-				},
-			}
-			if rule := d.GetRule(); rule != nil {
-				entry.Rule = *rule
-			}
-
-			switch severity {
-			case "error":
-				out.Summary.ErrorCount++
-			case "warning":
-				out.Summary.WarningCount++
-			case "information":
-				out.Summary.InformationCount++
-			}
-
-			out.GeneralDiagnostics = append(out.GeneralDiagnostics, entry)
-		}
-	}
-
-	out.Summary.FilesAnalyzed = len(service.GetUserFiles())
-	out.Summary.TimeInSec = time.Since(started).Seconds()
-
-	// Sort so two runs are comparable regardless of the order files were
-	// enumerated in.
-	sort.Slice(out.GeneralDiagnostics, func(i, j int) bool {
-		a, b := out.GeneralDiagnostics[i], out.GeneralDiagnostics[j]
-		if a.File != b.File {
-			return a.File < b.File
-		}
-		if a.Range.Start.Line != b.Range.Start.Line {
-			return a.Range.Start.Line < b.Range.Start.Line
-		}
-		if a.Range.Start.Character != b.Range.Start.Character {
-			return a.Range.Start.Character < b.Range.Start.Character
-		}
-		return a.Message < b.Message
-	})
-
-	if *outputJSON {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(out); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+	var report diagnosticResult
+	if outputJSON {
+		report = reportDiagnosticsAsJSON(fileDiags, minSeverityLevel, filesInProgram, timeInSec)
 	} else {
-		for _, d := range out.GeneralDiagnostics {
-			fmt.Printf("  %s:%d:%d - %s: %s\n", d.File, d.Range.Start.Line+1,
-				d.Range.Start.Character+1, d.Severity, d.Message)
+		report = reportDiagnosticsAsText(fileDiags, minSeverityLevel)
+
+		// The original's comment: print the total time.
+		common.TimingStatsInstance.PrintSummary(console.Info)
+
+		if args.has("stats") {
+			common.TimingStatsInstance.PrintDetails(console.Info)
 		}
-		fmt.Printf("%d error%s, %d warning%s, %d information (%.3fs)\n",
-			out.Summary.ErrorCount, plural(out.Summary.ErrorCount),
-			out.Summary.WarningCount, plural(out.Summary.WarningCount),
-			out.Summary.InformationCount, out.Summary.TimeInSec)
 	}
 
-	if out.Summary.ErrorCount > 0 {
-		os.Exit(1)
+	writeMemProfile(args)
+
+	// The original's comment (on --warnings): use exit code of 1 if warnings are
+	// reported.
+	errorCount := report.errorCount
+	if args.has("warnings") {
+		errorCount += report.warningCount
+	}
+
+	if errorCount > 0 {
+		return ExitErrorsReported
+	}
+	return ExitNoErrors
+}
+
+// resolveTypeshedRoot finds the directory holding typeshed-fallback.
+//
+// The original reads `global.__rootDirectory`, which its build sets to the
+// directory the running script was loaded from. A Go binary has no such
+// relationship to the reference tree, so this looks in the places a caller would
+// reasonably have put it, in decreasing order of explicitness, and reports
+// failure rather than analyzing every stdlib import as unresolved.
+func resolveTypeshedRoot(args *parsedArgs) (string, bool) {
+	candidates := []string{}
+
+	if args.truthy("rootdir") {
+		candidates = append(candidates, args.str("rootdir"))
+	}
+	if fromEnv := os.Getenv("PYRIGHT_GO_ROOTDIR"); fromEnv != "" {
+		candidates = append(candidates, fromEnv)
+	}
+
+	// Beside the executable, then walking up from it -- which covers both a
+	// binary shipped next to its typeshed and one left in a build directory
+	// inside the source tree.
+	if exe, err := os.Executable(); err == nil {
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved
+		}
+		dir := filepath.Dir(exe)
+		for i := 0; i < 8; i++ {
+			candidates = append(candidates, dir)
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+
+	for _, candidate := range candidates {
+		absolute, err := filepath.Abs(candidate)
+		if err != nil {
+			continue
+		}
+		if info, err := os.Stat(filepath.Join(absolute, "typeshed-fallback")); err == nil && info.IsDir() {
+			return absolute, true
+		}
+	}
+
+	return "", false
+}
+
+func startProfiling(args *parsedArgs) func() {
+	if !args.truthy("cpuprofile") {
+		return nil
+	}
+
+	f, err := os.Create(args.str("cpuprofile"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return nil
+	}
+
+	if err := pprof.StartCPUProfile(f); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		f.Close()
+		return nil
+	}
+
+	return func() {
+		pprof.StopCPUProfile()
+		f.Close()
+	}
+}
+
+func writeMemProfile(args *parsedArgs) {
+	if !args.truthy("memprofile") {
+		return
+	}
+
+	f, err := os.Create(args.str("memprofile"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	defer f.Close()
+
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
@@ -276,11 +419,4 @@ func installFactories(program *analyzer.Program) {
 	) *analyzer.Checker {
 		return analyzer.NewChecker(importResolver, evaluator, parserOutput, dependentFiles)
 	})
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
 }
