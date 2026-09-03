@@ -85,8 +85,7 @@ func (e *typeEvaluator) getTypeOfExpression(
 		if specCacheEntry := e.speculativeTypeTracker.GetSpeculativeType(node, expectedType); specCacheEntry != nil {
 			if !specCacheEntry.TypeResult.IsIncomplete ||
 				specCacheEntry.IncompleteGenerationCount == e.incompleteGenCount {
-				result := specCacheEntry.TypeResult
-				return &result
+				return specCacheEntry.TypeResult
 			}
 		}
 	}

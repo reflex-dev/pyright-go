@@ -110,6 +110,21 @@ fs.writeFileSync(
     `module.exports = require(${JSON.stringify(esbuildPkg)});\n`
 );
 
+// The bundle entry point lives in a temp directory, so esbuild's own
+// node_modules walk starts there and never reaches the installed packages. The
+// dump's import chain reaches common/uri/uri.ts, which imports vscode-uri.
+function findNodeModules(startPath) {
+    let dir = path.dirname(startPath);
+    while (dir !== path.dirname(dir)) {
+        const candidate = path.join(dir, 'node_modules');
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+        dir = path.dirname(dir);
+    }
+    throw new Error(`could not locate node_modules near ${startPath}`);
+}
+
 function findEsbuildPackage(binPath) {
     let dir = path.dirname(binPath);
     while (dir !== path.dirname(dir)) {
@@ -134,6 +149,7 @@ esbuild.build({
     format: 'cjs',
     outfile: ${JSON.stringify(bundle)},
     plugins: [require(${JSON.stringify(path.join(outDir, 'alias-plugin.js'))})],
+    nodePaths: [${JSON.stringify(findNodeModules(esbuildPath))}],
     // pyright's tsconfig enables legacy decorators; esbuild needs to be told,
     // because the bundle entry point lives outside the pyright source tree and
     // so does not pick up its tsconfig.

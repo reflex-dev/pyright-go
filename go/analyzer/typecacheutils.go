@@ -63,10 +63,17 @@ type ContextualTypeCacheEntry interface {
 }
 
 // SpeculativeTypeEntry corresponds to the interface of the same name.
+//
+// TypeResult is a pointer, and has to be. The original stores the very object
+// getTypeOfExpression is holding, and that object is mutated after it is cached:
+// `typeResult.type = ensureSignatureIsUnique(typeResult.type, node)` runs after
+// writeTypeCache, so a later cache hit sees the signature-uniquified type. A
+// value copy here freezes the pre-uniquification state, and the two differ
+// exactly when a generic function appears more than once in one expression.
 type SpeculativeTypeEntry struct {
 	ExpectedType Type
 
-	TypeResult                TypeResult
+	TypeResult                *TypeResult
 	IncompleteGenerationCount int
 	DependentTypes            []DependentType
 }
@@ -245,7 +252,7 @@ func (t *SpeculativeTypeTracker) EnableSpeculativeMode(stack []*SpeculativeConte
 // AddSpeculativeType corresponds to addSpeculativeType.
 func (t *SpeculativeTypeTracker) AddSpeculativeType(
 	node parser.ParseNode,
-	typeResult TypeResult,
+	typeResult *TypeResult,
 	incompleteGenerationCount int,
 	expectedType Type,
 ) {

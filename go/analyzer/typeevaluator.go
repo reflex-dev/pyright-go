@@ -540,7 +540,7 @@ func (e *typeEvaluator) writeTypeCache(
 			if inferenceContext != nil {
 				expectedType = inferenceContext.ExpectedType
 			}
-			e.speculativeTypeTracker.AddSpeculativeType(node, *typeResult, e.incompleteGenCount, expectedType)
+			e.speculativeTypeTracker.AddSpeculativeType(node, typeResult, e.incompleteGenCount, expectedType)
 		}
 	}
 }
