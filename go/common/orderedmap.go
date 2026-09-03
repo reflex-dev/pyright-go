@@ -341,13 +341,15 @@ func (m *OrderedMap[K, V]) Clone() *OrderedMap[K, V] {
 }
 
 // OrderedSet is an insertion-ordered set, standing in for a JavaScript Set.
+// The zero value is an empty, usable set; holding one by value inside another
+// struct therefore costs no allocation at all until the first Add.
 type OrderedSet[T comparable] struct {
-	m *OrderedMap[T, struct{}]
+	m OrderedMap[T, struct{}]
 }
 
 // NewOrderedSet returns an empty set, like `new Set()`.
 func NewOrderedSet[T comparable]() *OrderedSet[T] {
-	return &OrderedSet[T]{m: NewOrderedMap[T, struct{}]()}
+	return &OrderedSet[T]{}
 }
 
 // NewOrderedSetFrom returns a set containing values, like `new Set(values)`.

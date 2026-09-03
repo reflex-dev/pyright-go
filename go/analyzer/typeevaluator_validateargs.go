@@ -696,11 +696,9 @@ func (e *typeEvaluator) computeCallReturnType(
 	paramSpecConstraints []*ConstraintTracker,
 	isTypeIncomplete *bool,
 ) Type {
-	returnTypeResult := e.getEffectiveReturnTypeResult(fnType, &EffectiveReturnTypeOptions{
-		CallSiteInfo: &CallSiteEvaluationInfo{Args: matchResults.ArgParams, ErrorNode: errorNode},
-	})
-	returnType := returnTypeResult.Type
-	if returnTypeResult.IsIncomplete {
+	returnType, returnTypeIncomplete := e.getEffectiveReturnTypeInfo(fnType,
+		&CallSiteEvaluationInfo{Args: matchResults.ArgParams, ErrorNode: errorNode})
+	if returnTypeIncomplete {
 		*isTypeIncomplete = true
 	}
 

@@ -88,6 +88,104 @@ type ParamListDetailsOptions struct {
 	DisallowExtraKwargsForTd bool
 }
 
+// ParamListDetailsCacheEnabled gates the per-FunctionType memoization of
+// GetParamListDetails. The cache is written without synchronization, which is
+// safe only while a single goroutine evaluates types; runMultiThreaded turns
+// it off before spawning workers because a handful of lazily-built type
+// singletons are shared between them.
+var ParamListDetailsCacheEnabled = true
+
+// paramListDetailsCacheEntry memoizes GetParamListDetails for one
+// FunctionType. The result is a pure function of the fields fingerprinted
+// here -- the parameter slice, the flags (staticmethod changes the "__"
+// position-only inference), and the specialization arrays -- all of which are
+// mutated in place in a few places (FunctionTypeAddParam, decorators setting
+// flags), so a hit requires every one of them to be unchanged rather than
+// trusting any invalidation discipline at the mutation sites.
+type paramListDetailsCacheEntry struct {
+	details [2]*ParamListDetails // indexed by DisallowExtraKwargsForTd
+
+	paramsLen   int
+	paramsPtr   *FunctionParam
+	flags       FunctionTypeFlags
+	specialized *SpecializedFunctionTypes
+	specLen     int
+	specDefLen  int
+}
+
+func (c *paramListDetailsCacheEntry) fingerprintMatches(t *FunctionType) bool {
+	if c.paramsLen != len(t.Shared.Parameters) || c.flags != t.Shared.Flags ||
+		c.specialized != t.Priv.SpecializedTypes {
+		return false
+	}
+	if c.paramsLen > 0 && c.paramsPtr != &t.Shared.Parameters[0] {
+		return false
+	}
+	if t.Priv.SpecializedTypes != nil &&
+		(c.specLen != len(t.Priv.SpecializedTypes.ParameterTypes) ||
+			c.specDefLen != len(t.Priv.SpecializedTypes.ParameterDefaultTypes)) {
+		return false
+	}
+	return true
+}
+
+func (c *paramListDetailsCacheEntry) fingerprint(t *FunctionType) {
+	c.paramsLen = len(t.Shared.Parameters)
+	c.paramsPtr = nil
+	if c.paramsLen > 0 {
+		c.paramsPtr = &t.Shared.Parameters[0]
+	}
+	c.flags = t.Shared.Flags
+	c.specialized = t.Priv.SpecializedTypes
+	c.specLen, c.specDefLen = 0, 0
+	if t.Priv.SpecializedTypes != nil {
+		c.specLen = len(t.Priv.SpecializedTypes.ParameterTypes)
+		c.specDefLen = len(t.Priv.SpecializedTypes.ParameterDefaultTypes)
+	}
+}
+
+// getParamListDetailsCached is GetParamListDetails behind the per-function
+// cache. Only call sites that treat the result as read-only may use it;
+// adjustSourceParamDetailsForDestVariadic rewrites the result in place, so
+// the assignability paths call GetParamListDetails directly.
+func getParamListDetailsCached(t *FunctionType, disallowExtraKwargsForTd bool) *ParamListDetails {
+	if !ParamListDetailsCacheEnabled {
+		var options *ParamListDetailsOptions
+		if disallowExtraKwargsForTd {
+			options = &ParamListDetailsOptions{DisallowExtraKwargsForTd: true}
+		}
+		return GetParamListDetails(t, options)
+	}
+
+	slot := 0
+	if disallowExtraKwargsForTd {
+		slot = 1
+	}
+
+	entry := t.Priv.paramListDetails
+	if entry != nil && entry.fingerprintMatches(t) {
+		if d := entry.details[slot]; d != nil {
+			return d
+		}
+	} else {
+		entry = nil
+	}
+
+	var options *ParamListDetailsOptions
+	if disallowExtraKwargsForTd {
+		options = &ParamListDetailsOptions{DisallowExtraKwargsForTd: true}
+	}
+	details := GetParamListDetails(t, options)
+
+	if entry == nil {
+		entry = &paramListDetailsCacheEntry{}
+		entry.fingerprint(t)
+		t.Priv.paramListDetails = entry
+	}
+	entry.details[slot] = details
+	return details
+}
+
 // GetParamListDetails examines the input parameters within a function signature
 // and creates a "virtual list" of parameters, stripping out any markers and
 // expanding any *args with unpacked tuples. A nil options stands in for the
@@ -509,19 +607,25 @@ type ParamAssignmentInfo struct {
 
 // ParamAssignmentTracker tracks which parameters in a signature have been
 // assigned arguments.
+//
+// The entries live by value in Params -- one object per parameter per call
+// validation added up. Lookup methods hand out pointers into the slice, which
+// AddKeywordParam can invalidate by growing it, so callers must not hold a
+// returned pointer across an AddKeywordParam (none do: every lookup's pointer
+// is consumed immediately).
 type ParamAssignmentTracker struct {
-	Params []*ParamAssignmentInfo
+	Params []ParamAssignmentInfo
 }
 
 // NewParamAssignmentTracker corresponds to the constructor.
 func NewParamAssignmentTracker(paramInfos []*VirtualParamDetails) *ParamAssignmentTracker {
-	params := make([]*ParamAssignmentInfo, 0, len(paramInfos))
+	params := make([]ParamAssignmentInfo, 0, len(paramInfos))
 	for _, p := range paramInfos {
 		argsNeeded := 1
 		if p.DefaultType != nil || p.Param.Category != parser.ParamCategorySimple {
 			argsNeeded = 0
 		}
-		params = append(params, &ParamAssignmentInfo{ParamDetails: p, ArgsNeeded: argsNeeded, ArgsReceived: 0})
+		params = append(params, ParamAssignmentInfo{ParamDetails: p, ArgsNeeded: argsNeeded, ArgsReceived: 0})
 	}
 	return &ParamAssignmentTracker{Params: params}
 }
@@ -530,7 +634,7 @@ func NewParamAssignmentTracker(paramInfos []*VirtualParamDetails) *ParamAssignme
 // targets a **kwargs parameter. This allows us to detect duplicate keyword
 // arguments.
 func (t *ParamAssignmentTracker) AddKeywordParam(name string, info *VirtualParamDetails) {
-	t.Params = append(t.Params, &ParamAssignmentInfo{
+	t.Params = append(t.Params, ParamAssignmentInfo{
 		ParamDetails: info,
 		KeywordName:  &name,
 		ArgsNeeded:   1,
@@ -540,7 +644,8 @@ func (t *ParamAssignmentTracker) AddKeywordParam(name string, info *VirtualParam
 
 // LookupName returns nil where the TypeScript returns undefined.
 func (t *ParamAssignmentTracker) LookupName(name string) *ParamAssignmentInfo {
-	for _, p := range t.Params {
+	for i := range t.Params {
+		p := &t.Params[i]
 		// Don't return positional parameters because their names are
 		// irrelevant.
 		kind := p.ParamDetails.Kind
@@ -562,9 +667,9 @@ func (t *ParamAssignmentTracker) LookupName(name string) *ParamAssignmentInfo {
 // LookupDetails corresponds to lookupDetails; the original asserts the entry
 // exists.
 func (t *ParamAssignmentTracker) LookupDetails(paramInfo *VirtualParamDetails) *ParamAssignmentInfo {
-	for _, p := range t.Params {
-		if p.ParamDetails == paramInfo {
-			return p
+	for i := range t.Params {
+		if t.Params[i].ParamDetails == paramInfo {
+			return &t.Params[i]
 		}
 	}
 	fail("Assertion failed.")

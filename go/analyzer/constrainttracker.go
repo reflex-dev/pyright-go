@@ -225,7 +225,17 @@ type ConstraintTracker struct {
 }
 
 func NewConstraintTracker() *ConstraintTracker {
-	return &ConstraintTracker{constraintSets: []*ConstraintSet{NewConstraintSet()}}
+	// Co-allocate the tracker, its initial set, and the slice backing: one
+	// heap object instead of three, on a constructor that runs for nearly
+	// every call-site validation.
+	combined := &struct {
+		tracker ConstraintTracker
+		set     ConstraintSet
+		sets    [1]*ConstraintSet
+	}{}
+	combined.sets[0] = &combined.set
+	combined.tracker.constraintSets = combined.sets[:]
+	return &combined.tracker
 }
 
 func (t *ConstraintTracker) Clone() *ConstraintTracker {

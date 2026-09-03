@@ -72,7 +72,18 @@ func NewConstraintSolution(solutionSets []*ConstraintSolutionSet) *ConstraintSol
 	if len(solutionSets) > 0 {
 		return &ConstraintSolution{solutionSets: sliceCopy(solutionSets)}
 	}
-	return &ConstraintSolution{solutionSets: []*ConstraintSolutionSet{NewConstraintSolutionSet()}}
+	// The empty-solution path runs tens of millions of times; co-allocating
+	// the solution, its single set, and the slice backing turns three heap
+	// objects into one. The set's address escapes only alongside the
+	// solution's, so their lifetimes already coincide.
+	combined := &struct {
+		sol  ConstraintSolution
+		set  ConstraintSolutionSet
+		sets [1]*ConstraintSolutionSet
+	}{}
+	combined.sets[0] = &combined.set
+	combined.sol.solutionSets = combined.sets[:]
+	return &combined.sol
 }
 
 func (c *ConstraintSolution) IsEmpty() bool {

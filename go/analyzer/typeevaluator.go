@@ -233,27 +233,107 @@ type ReturnTypeInferenceContext struct {
 // It was also the map whose deletes dominated the profile before OrderedMap's
 // Delete became O(1) -- the speculative tracker undoes every write it made, on
 // every overload attempt.
+// typeCacheMap is the per-node type cache, keyed by parse node ID. Node IDs
+// come from one global counter (parsenodes.go), so within a run they form a
+// dense range; a paged array beats a hash map here because Get/Set run on
+// every expression evaluation -- the map's hashing and probing was among the
+// hottest single entries in the whole-project CPU profile. Pages are
+// allocated on first touch; a page covers ids [p<<pageBits, (p+1)<<pageBits).
+//
+// Entries are stored by value in the page, so Get returns a pointer into the
+// page and a later Set to the same id overwrites in place. Callers never hold
+// an entry pointer across a Set of the same node (the map version already
+// aliased nothing longer than a single read-modify sequence).
 type typeCacheMap struct {
-	m map[int]*TypeCacheEntry
+	pages [][]typeCacheSlot
+	m     map[int]*TypeCacheEntry // nil in paged mode
+	count int
 }
 
+const typeCachePageBits = 13 // 8k slots/page
+
+type typeCacheSlot struct {
+	entry   TypeCacheEntry
+	present bool
+}
+
+// newTypeCacheMap returns the map-backed variant, right for the small,
+// short-lived caches (call-site return-type inference), where a 256KB page
+// per touched id range would dwarf the entries.
 func newTypeCacheMap() *typeCacheMap {
 	return &typeCacheMap{m: map[int]*TypeCacheEntry{}}
 }
 
+// newPagedTypeCacheMap returns the paged variant for the evaluator's main
+// cache, which holds millions of entries and is hit on every expression.
+func newPagedTypeCacheMap() *typeCacheMap {
+	return &typeCacheMap{}
+}
+
+func (c *typeCacheMap) slot(id int) *typeCacheSlot {
+	p := id >> typeCachePageBits
+	if p >= len(c.pages) || c.pages[p] == nil {
+		return nil
+	}
+	return &c.pages[p][id&(1<<typeCachePageBits-1)]
+}
+
 func (c *typeCacheMap) Delete(id int) bool {
-	if _, ok := c.m[id]; !ok {
+	if c.m != nil {
+		if _, ok := c.m[id]; !ok {
+			return false
+		}
+		delete(c.m, id)
+		return true
+	}
+	s := c.slot(id)
+	if s == nil || !s.present {
 		return false
 	}
-	delete(c.m, id)
+	*s = typeCacheSlot{}
+	c.count--
 	return true
 }
 
-func (c *typeCacheMap) Get(id int) *TypeCacheEntry { return c.m[id] }
+func (c *typeCacheMap) Get(id int) *TypeCacheEntry {
+	if c.m != nil {
+		return c.m[id]
+	}
+	s := c.slot(id)
+	if s == nil || !s.present {
+		return nil
+	}
+	return &s.entry
+}
 
-func (c *typeCacheMap) Set(id int, entry *TypeCacheEntry) { c.m[id] = entry }
+func (c *typeCacheMap) Set(id int, entry *TypeCacheEntry) {
+	if c.m != nil {
+		c.m[id] = entry
+		return
+	}
+	p := id >> typeCachePageBits
+	if p >= len(c.pages) {
+		pages := make([][]typeCacheSlot, p+1)
+		copy(pages, c.pages)
+		c.pages = pages
+	}
+	if c.pages[p] == nil {
+		c.pages[p] = make([]typeCacheSlot, 1<<typeCachePageBits)
+	}
+	s := &c.pages[p][id&(1<<typeCachePageBits-1)]
+	if !s.present {
+		c.count++
+	}
+	s.entry = *entry
+	s.present = true
+}
 
-func (c *typeCacheMap) Size() int { return len(c.m) }
+func (c *typeCacheMap) Size() int {
+	if c.m != nil {
+		return len(c.m)
+	}
+	return c.count
+}
 
 // typeEvaluator holds what createTypeEvaluator closes over. The field order is
 // the original's declaration order.
@@ -356,7 +436,7 @@ func NewTypeEvaluator(importLookup ImportLookup, evaluatorOptions EvaluatorOptio
 func (e *typeEvaluator) resetCaches() {
 	e.functionRecursionMap = common.NewOrderedMap[int, []*FunctionRecursionInfo]()
 	e.codeFlowAnalyzerCache = common.NewOrderedMap[int, []*CodeFlowAnalyzerCacheEntry]()
-	e.typeCache = newTypeCacheMap()
+	e.typeCache = newPagedTypeCacheMap()
 	e.typeFormTypeCache = common.NewOrderedMap[int, []*TypeFormTypeCacheEntry]()
 	e.effectiveTypeCache = common.NewOrderedMap[int, *common.OrderedMap[string, *EffectiveTypeResult]]()
 	e.expectedTypeCache = common.NewOrderedMap[int, *ExpectedTypeCacheEntry]()

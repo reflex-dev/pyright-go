@@ -47,7 +47,7 @@ type TypeVarTransformerOverrides interface {
 type TypeVarTransformer struct {
 	self TypeVarTransformerOverrides
 
-	pendingTypeVarTransformations *common.OrderedSet[TypeVarScopeId]
+	pendingTypeVarTransformations common.OrderedSet[TypeVarScopeId]
 
 	// pendingFunctionTransformations holds FunctionType and OverloadedType
 	// values, compared by identity.
@@ -58,8 +58,14 @@ type TypeVarTransformer struct {
 // constructor must call it, passing the outermost embedder.
 func InitTypeVarTransformer(t *TypeVarTransformer, self TypeVarTransformerOverrides) {
 	t.self = self
-	t.pendingTypeVarTransformations = common.NewOrderedSet[TypeVarScopeId]()
-	t.pendingFunctionTransformations = []Type{}
+}
+
+// resetBase clears the per-run state so a pooled transformer starts clean.
+// Both collections are balanced by Apply's push/pop pairs, so this is a
+// safety net for the reuse path, not a semantic step.
+func (t *TypeVarTransformer) resetBase() {
+	t.pendingTypeVarTransformations.Clear()
+	t.pendingFunctionTransformations = t.pendingFunctionTransformations[:0]
 }
 
 // NewTypeVarTransformer returns a transformer with no overrides, which is what
@@ -72,7 +78,7 @@ func NewTypeVarTransformer() *TypeVarTransformer {
 
 // PendingTypeVarTransformations corresponds to the getter of the same name.
 func (t *TypeVarTransformer) PendingTypeVarTransformations() *common.OrderedSet[TypeVarScopeId] {
-	return t.pendingTypeVarTransformations
+	return &t.pendingTypeVarTransformations
 }
 
 // Apply corresponds to TypeVarTransformer.apply.

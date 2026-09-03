@@ -29,7 +29,7 @@ import (
 // typeVarDefaultValidator validates whether a TypeVar's default type uses any
 // other TypeVars that are not currently in scope.
 type typeVarDefaultValidator struct {
-	*TypeVarTransformer
+	TypeVarTransformer
 
 	liveTypeParams  []*TypeVarType
 	invalidTypeVars *common.OrderedSet[string]
@@ -40,11 +40,10 @@ func newTypeVarDefaultValidator(
 	invalidTypeVars *common.OrderedSet[string],
 ) *typeVarDefaultValidator {
 	v := &typeVarDefaultValidator{
-		TypeVarTransformer: &TypeVarTransformer{},
-		liveTypeParams:     liveTypeParams,
-		invalidTypeVars:    invalidTypeVars,
+		liveTypeParams:  liveTypeParams,
+		invalidTypeVars: invalidTypeVars,
 	}
-	InitTypeVarTransformer(v.TypeVarTransformer, v)
+	InitTypeVarTransformer(&v.TypeVarTransformer, v)
 	return v
 }
 
@@ -90,7 +89,7 @@ func ValidateTypeVarDefault(
 // A nil scopeIds slice stands in for `undefined`; an empty non-nil slice is a
 // different thing, and MakeTypeVarsBound distinguishes them.
 type boundTypeVarTransform struct {
-	*TypeVarTransformer
+	TypeVarTransformer
 
 	scopeIDs    []TypeVarScopeId
 	hasScopeIDs bool
@@ -98,11 +97,10 @@ type boundTypeVarTransform struct {
 
 func newBoundTypeVarTransform(scopeIDs []TypeVarScopeId, hasScopeIDs bool) *boundTypeVarTransform {
 	t := &boundTypeVarTransform{
-		TypeVarTransformer: &TypeVarTransformer{},
-		scopeIDs:           scopeIDs,
-		hasScopeIDs:        hasScopeIDs,
+		scopeIDs:    scopeIDs,
+		hasScopeIDs: hasScopeIDs,
 	}
-	InitTypeVarTransformer(t.TypeVarTransformer, t)
+	InitTypeVarTransformer(&t.TypeVarTransformer, t)
 	return t
 }
 
@@ -139,17 +137,16 @@ func (t *boundTypeVarTransform) isTypeVarInScope(typeVar *TypeVarType) bool {
 // freeTypeVarTransform replaces the bound type vars within a type with their
 // corresponding free type vars.
 type freeTypeVarTransform struct {
-	*TypeVarTransformer
+	TypeVarTransformer
 
 	scopeIDs []TypeVarScopeId
 }
 
 func newFreeTypeVarTransform(scopeIDs []TypeVarScopeId) *freeTypeVarTransform {
 	t := &freeTypeVarTransform{
-		TypeVarTransformer: &TypeVarTransformer{},
-		scopeIDs:           scopeIDs,
+		scopeIDs: scopeIDs,
 	}
-	InitTypeVarTransformer(t.TypeVarTransformer, t)
+	InitTypeVarTransformer(&t.TypeVarTransformer, t)
 	return t
 }
 

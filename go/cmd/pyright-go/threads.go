@@ -129,6 +129,12 @@ func checkFilesInIsolation(
 		debug.SetGCPercent(200)
 	}
 
+	// The param-details cache is written without synchronization, and a few
+	// lazily-built type singletons are shared across workers.
+	if workerCount > 1 {
+		analyzer.ParamListDetailsCacheEnabled = false
+	}
+
 	// The original's comment: split the source files into affinity queues, one
 	// for each worker. We assume that files that are next to each other in the
 	// directory hierarchy probably have more common imports, so we want to

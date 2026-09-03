@@ -116,7 +116,8 @@ func (e *typeEvaluator) printSrcDestTypes(
 
 // getEffectiveReturnType corresponds to the function of the same name.
 func (e *typeEvaluator) getEffectiveReturnType(t *FunctionType) Type {
-	return e.getEffectiveReturnTypeResult(t, nil).Type
+	returnType, _ := e.getEffectiveReturnTypeInfo(t, nil)
+	return returnType
 }
 
 // GetEffectiveReturnType is the interface form.
@@ -147,6 +148,22 @@ func (e *typeEvaluator) getEffectiveReturnTypeResult(
 		callSiteInfo = options.CallSiteInfo
 	}
 	return e.getInferredReturnTypeResult(t, callSiteInfo)
+}
+
+// getEffectiveReturnTypeInfo is getEffectiveReturnTypeResult for callers that
+// only need the type and the incompleteness bit; the declared-return common
+// case then allocates no result object.
+func (e *typeEvaluator) getEffectiveReturnTypeInfo(
+	t *FunctionType,
+	callSiteInfo *CallSiteEvaluationInfo,
+) (Type, bool) {
+	specializedReturnType := FunctionTypeGetEffectiveReturnType(t, false)
+	if specializedReturnType != nil && !IsUnknown(specializedReturnType) {
+		return specializedReturnType, false
+	}
+
+	result := e.getInferredReturnTypeResult(t, callSiteInfo)
+	return result.Type, result.IsIncomplete
 }
 
 // inferReturnTypeIfNecessary corresponds to the function of the same name.

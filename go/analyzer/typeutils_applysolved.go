@@ -20,12 +20,17 @@ package analyzer
 import (
 	"strconv"
 	"strings"
+	"sync"
 )
+
+// emptyApplyTypeVarOptions is the shared all-defaults options value; see
+// ApplySolvedTypeVars. Read-only by convention.
+var emptyApplyTypeVarOptions ApplyTypeVarOptions
 
 // applySolvedTypeVarsTransformer specializes a (potentially generic) type by
 // substituting type variables from a solution.
 type applySolvedTypeVarsTransformer struct {
-	*TypeVarTransformer
+	TypeVarTransformer
 
 	solution *ConstraintSolution
 	options  *ApplyTypeVarOptions
@@ -42,11 +47,10 @@ func newApplySolvedTypeVarsTransformer(
 	options *ApplyTypeVarOptions,
 ) *applySolvedTypeVarsTransformer {
 	t := &applySolvedTypeVarsTransformer{
-		TypeVarTransformer: &TypeVarTransformer{},
-		solution:           solution,
-		options:            options,
+		solution: solution,
+		options:  options,
 	}
-	InitTypeVarTransformer(t.TypeVarTransformer, t)
+	InitTypeVarTransformer(&t.TypeVarTransformer, t)
 	return t
 }
 
@@ -443,7 +447,7 @@ func (t *applySolvedTypeVarsTransformer) solveDefaultType(typeVar *TypeVarType, 
 // ---------------------------------------------------------------------------
 
 type unificationTypeTransformer struct {
-	*TypeVarTransformer
+	TypeVarTransformer
 
 	liveTypeVarScopes []TypeVarScopeId
 
@@ -454,11 +458,10 @@ type unificationTypeTransformer struct {
 
 func newUnificationTypeTransformer(liveTypeVarScopes []TypeVarScopeId, usageOffset int) *unificationTypeTransformer {
 	t := &unificationTypeTransformer{
-		TypeVarTransformer: &TypeVarTransformer{},
-		liveTypeVarScopes:  liveTypeVarScopes,
-		usageOffset:        usageOffset,
+		liveTypeVarScopes: liveTypeVarScopes,
+		usageOffset:       usageOffset,
 	}
-	InitTypeVarTransformer(t.TypeVarTransformer, t)
+	InitTypeVarTransformer(&t.TypeVarTransformer, t)
 	return t
 }
 
@@ -487,7 +490,7 @@ func (t *unificationTypeTransformer) isTypeVarLive(typeVar *TypeVarType) bool {
 // ---------------------------------------------------------------------------
 
 type uniqueFunctionSignatureTransformer struct {
-	*TypeVarTransformer
+	TypeVarTransformer
 
 	signatureTracker *UniqueSignatureTracker
 	expressionOffset int
@@ -498,11 +501,10 @@ func newUniqueFunctionSignatureTransformer(
 	expressionOffset int,
 ) *uniqueFunctionSignatureTransformer {
 	t := &uniqueFunctionSignatureTransformer{
-		TypeVarTransformer: &TypeVarTransformer{},
-		signatureTracker:   signatureTracker,
-		expressionOffset:   expressionOffset,
+		signatureTracker: signatureTracker,
+		expressionOffset: expressionOffset,
 	}
-	InitTypeVarTransformer(t.TypeVarTransformer, t)
+	InitTypeVarTransformer(&t.TypeVarTransformer, t)
 	return t
 }
 
@@ -574,7 +576,9 @@ func (t *uniqueFunctionSignatureTransformer) TransformTypeVarsInFunctionType(
 // `{}` default.
 func ApplySolvedTypeVars(t Type, solution *ConstraintSolution, options *ApplyTypeVarOptions) Type {
 	if options == nil {
-		options = &ApplyTypeVarOptions{}
+		// Nobody writes through options, so the all-defaults case can share
+		// one instance instead of allocating per call.
+		options = &emptyApplyTypeVarOptions
 	}
 
 	// Use a shortcut if constraints is empty and no transform is necessary.
@@ -582,15 +586,44 @@ func ApplySolvedTypeVars(t Type, solution *ConstraintSolution, options *ApplyTyp
 		return t
 	}
 
-	transformer := newApplySolvedTypeVarsTransformer(solution, options)
-	return transformer.Apply(t, 0)
+	// The transformer never escapes Apply, so recycle it. One instance per
+	// call was 5% of the whole run's allocation. Put is skipped on panic
+	// unwinds (no defer), which leaks the instance rather than reusing a
+	// possibly inconsistent one.
+	transformer := applySolvedPool.Get().(*applySolvedTypeVarsTransformer)
+	transformer.solution = solution
+	transformer.options = options
+	result := transformer.Apply(t, 0)
+	transformer.solution = nil
+	transformer.options = nil
+	transformer.isSolvingDefaultType = false
+	transformer.activeConstraintSetIndex = nil
+	transformer.resetBase()
+	applySolvedPool.Put(transformer)
+	return result
 }
+
+var applySolvedPool = sync.Pool{New: func() any {
+	return newApplySolvedTypeVarsTransformer(nil, nil)
+}}
 
 // EnsureSignaturesAreUnique corresponds to ensureSignaturesAreUnique.
 func EnsureSignaturesAreUnique(t Type, signatureTracker *UniqueSignatureTracker, expressionOffset int) Type {
-	transformer := newUniqueFunctionSignatureTransformer(signatureTracker, expressionOffset)
-	return transformer.Apply(t, 0)
+	// Pooled for the same reason as ApplySolvedTypeVars above.
+	transformer := uniqueSignaturePool.Get().(*uniqueFunctionSignatureTransformer)
+	transformer.signatureTracker = signatureTracker
+	transformer.expressionOffset = expressionOffset
+	result := transformer.Apply(t, 0)
+	transformer.signatureTracker = nil
+	transformer.expressionOffset = 0
+	transformer.resetBase()
+	uniqueSignaturePool.Put(transformer)
+	return result
 }
+
+var uniqueSignaturePool = sync.Pool{New: func() any {
+	return newUniqueFunctionSignatureTransformer(nil, 0)
+}}
 
 // TransformExpectedType replaces TypeVars that are not part of the context of
 // the class being constructed with "unification" type variables.

@@ -124,13 +124,36 @@ func SolveConstraints(
 	constraints *ConstraintTracker,
 	options *SolveConstraintsOptions,
 ) *ConstraintSolution {
-	solutionSets := []*ConstraintSolutionSet{}
+	constraintSets := constraints.GetConstraintSets()
+	if len(constraintSets) == 0 {
+		return NewConstraintSolution(nil)
+	}
 
-	constraints.DoForEachConstraintSet(func(constraintSet *ConstraintSet, _ int) {
-		solutionSets = append(solutionSets, SolveConstraintSet(evaluator, constraintSet, options))
-	})
+	// The single-set case is the overwhelming majority (only literal-expansion
+	// paths carry more than one constraint set); co-allocate the whole result
+	// as one heap object. This path runs for every call-site solve.
+	if len(constraintSets) == 1 {
+		combined := &struct {
+			sol  ConstraintSolution
+			set  ConstraintSolutionSet
+			sets [1]*ConstraintSolutionSet
+		}{}
+		combined.sets[0] = &combined.set
+		combined.sol.solutionSets = combined.sets[:]
+		solveConstraintSetInto(evaluator, constraintSets[0], options, &combined.set)
+		return &combined.sol
+	}
 
-	return NewConstraintSolution(solutionSets)
+	// One backing array for all the solution sets rather than one heap object
+	// per set.
+	backing := make([]ConstraintSolutionSet, len(constraintSets))
+	solutionSets := make([]*ConstraintSolutionSet, len(constraintSets))
+	for i, constraintSet := range constraintSets {
+		solveConstraintSetInto(evaluator, constraintSet, options, &backing[i])
+		solutionSets[i] = &backing[i]
+	}
+
+	return &ConstraintSolution{solutionSets: solutionSets}
 }
 
 // ApplySourceSolutionToConstraints corresponds to the function of the same name.
@@ -162,13 +185,22 @@ func SolveConstraintSet(
 	options *SolveConstraintsOptions,
 ) *ConstraintSolutionSet {
 	solutionSet := NewConstraintSolutionSet()
+	solveConstraintSetInto(evaluator, constraintSet, options, solutionSet)
+	return solutionSet
+}
 
+// solveConstraintSetInto is SolveConstraintSet writing into caller-provided
+// storage, which lets SolveConstraints batch its sets in one allocation.
+func solveConstraintSetInto(
+	evaluator TypeEvaluator,
+	constraintSet *ConstraintSet,
+	options *SolveConstraintsOptions,
+	solutionSet *ConstraintSolutionSet,
+) {
 	// Solve the type variables.
 	constraintSet.DoForEachTypeVar(func(entry *TypeVarConstraints) {
 		solveTypeVarRecursive(evaluator, constraintSet, options, solutionSet, entry)
 	})
-
-	return solutionSet
 }
 
 // solveTypeVarRecursive corresponds to the function of the same name.

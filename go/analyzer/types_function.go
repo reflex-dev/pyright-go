@@ -307,6 +307,13 @@ type FunctionDetailsPriv struct {
 	// "Callable" annotation with type arguments. This allows us to detect and
 	// report an error when it is used in an isinstance call.
 	IsCallableWithTypeArgs bool
+
+	// paramListDetails has no TypeScript counterpart: it memoizes
+	// GetParamListDetails, which the original recomputes on every call-site
+	// validation. See paramListDetailsCacheEntry for the validity rules.
+	// Clones copy the pointer, which is safe because a hit requires the
+	// fingerprint to match the clone's own state.
+	paramListDetails *paramListDetailsCacheEntry
 }
 
 // FunctionType corresponds to the interface of the same name.

@@ -178,6 +178,29 @@ type argMatcher struct {
 
 	argParams   []*ValidateArgTypeParams
 	activeParam *FunctionParam
+
+	// argParamChunk backs the argParams entries. One heap object per argument
+	// per overload attempt was ~4% of the whole run's allocation; chunks are
+	// never grown in place, so the pointers stay valid and everything shares
+	// the matcher's lifetime.
+	argParamChunk []ValidateArgTypeParams
+}
+
+// appendArgParam copies p into the matcher's chunk and appends the pointer to
+// argParams.
+func (m *argMatcher) appendArgParam(p ValidateArgTypeParams) {
+	if len(m.argParamChunk) == cap(m.argParamChunk) {
+		size := cap(m.argParamChunk) * 2
+		if size == 0 {
+			// One per argument, which is what the matching phases append in
+			// the common case; keyword and tuple expansions overflow into a
+			// second chunk.
+			size = len(m.argList) + 1
+		}
+		m.argParamChunk = make([]ValidateArgTypeParams, 0, size)
+	}
+	m.argParamChunk = append(m.argParamChunk, p)
+	m.argParams = append(m.argParams, &m.argParamChunk[len(m.argParamChunk)-1])
 }
 
 // trySetActive corresponds to the closure of the same name.
@@ -207,8 +230,7 @@ func (e *typeEvaluator) matchArgsToParams(
 	overloadIndex int,
 ) *MatchArgsToParamsResult {
 	overload := typeResult.Type.(*FunctionType)
-	disallow := true
-	paramDetails := GetParamListDetails(overload, &ParamListDetailsOptions{DisallowExtraKwargsForTd: disallow})
+	paramDetails := getParamListDetailsCached(overload, true)
 
 	m := &argMatcher{
 		e:                e,
@@ -619,7 +641,7 @@ func (m *argMatcher) matchUnpackedPositional(
 			m.paramSpecArgList = append(m.paramSpecArgList, m.argList[m.argIndex])
 		}
 
-		m.argParams = append(m.argParams, &ValidateArgTypeParams{
+		m.appendArgParam(ValidateArgTypeParams{
 			ParamCategory:           paramInfo.Param.Category,
 			ParamType:               paramInfo.Type,
 			RequiresTypeVarMatching: RequiresSpecialization(paramInfo.Type, nil, 0),
@@ -703,7 +725,7 @@ func (m *argMatcher) matchAgainstArgsList(
 		return
 	}
 
-	m.argParams = append(m.argParams, &ValidateArgTypeParams{
+	m.appendArgParam(ValidateArgTypeParams{
 		ParamCategory:           paramCategory,
 		ParamType:               effectiveParamType,
 		RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
@@ -719,7 +741,7 @@ func (m *argMatcher) matchAgainstArgsList(
 
 // matchSimplePositional is the ordinary one-argument-to-one-parameter arm.
 func (m *argMatcher) matchSimplePositional(paramInfo *VirtualParamDetails) {
-	m.argParams = append(m.argParams, &ValidateArgTypeParams{
+	m.appendArgParam(ValidateArgTypeParams{
 		ParamCategory:           paramInfo.Param.Category,
 		ParamType:               paramInfo.Type,
 		RequiresTypeVarMatching: RequiresSpecialization(paramInfo.Type, nil, 0),
@@ -900,7 +922,7 @@ func (m *argMatcher) reportUnassignedParams(unpackedDictArgType Type) {
 			continue
 		}
 
-		m.argParams = append(m.argParams, &ValidateArgTypeParams{
+		m.appendArgParam(ValidateArgTypeParams{
 			ParamCategory:           param.Category,
 			ParamType:               paramInfo.Type,
 			RequiresTypeVarMatching: true,
@@ -1129,7 +1151,7 @@ func (m *argMatcher) matchUnpackedDictArg() ([]string, bool, Type) {
 			if !IsParamSpec(argType) {
 				argTypeOverride = AnyTypeCreate(false)
 			}
-			m.argParams = append(m.argParams, &ValidateArgTypeParams{
+			m.appendArgParam(ValidateArgTypeParams{
 				ParamCategory:           parser.ParamCategoryKwargsDict,
 				ParamType:               m.paramSpec,
 				RequiresTypeVarMatching: false,
@@ -1173,7 +1195,7 @@ func (m *argMatcher) matchTypedDictKwargs(argClass *ClassType) {
 			paramType := m.paramDetails.Params[paramInfoIndex].Type
 
 			nameCopy := name
-			m.argParams = append(m.argParams, &ValidateArgTypeParams{
+			m.appendArgParam(ValidateArgTypeParams{
 				ParamCategory:           parser.ParamCategorySimple,
 				ParamType:               paramType,
 				RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
@@ -1190,7 +1212,7 @@ func (m *argMatcher) matchTypedDictKwargs(argClass *ClassType) {
 		if m.paramDetails.KwargsIndex != nil {
 			paramType := m.paramDetails.Params[*m.paramDetails.KwargsIndex].Type
 			nameCopy := name
-			m.argParams = append(m.argParams, &ValidateArgTypeParams{
+			m.appendArgParam(ValidateArgTypeParams{
 				ParamCategory:           parser.ParamCategoryKwargsDict,
 				ParamType:               paramType,
 				RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
@@ -1225,7 +1247,7 @@ func (m *argMatcher) matchTypedDictKwargs(argClass *ClassType) {
 	if !IsNever(extraItemsType) && m.paramDetails.KwargsIndex != nil {
 		kwargsParam := m.paramDetails.Params[*m.paramDetails.KwargsIndex]
 
-		m.argParams = append(m.argParams, &ValidateArgTypeParams{
+		m.appendArgParam(ValidateArgTypeParams{
 			ParamCategory:           parser.ParamCategoryKwargsDict,
 			ParamType:               kwargsParam.Type,
 			RequiresTypeVarMatching: RequiresSpecialization(kwargsParam.Type, nil, 0),
@@ -1307,7 +1329,7 @@ func (m *argMatcher) matchMappingKwargs(argType Type) ([]string, bool, Type) {
 
 	if m.paramDetails.KwargsIndex != nil && unpackedDictArgType != nil {
 		paramType := m.paramDetails.Params[*m.paramDetails.KwargsIndex].Type
-		m.argParams = append(m.argParams, &ValidateArgTypeParams{
+		m.appendArgParam(ValidateArgTypeParams{
 			ParamCategory:           parser.ParamCategorySimple,
 			ParamType:               paramType,
 			RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
@@ -1377,7 +1399,7 @@ func (m *argMatcher) matchNamedOrExtraArg() {
 			if !IsParamSpec(argType) {
 				argTypeOverride = AnyTypeCreate(false)
 			}
-			m.argParams = append(m.argParams, &ValidateArgTypeParams{
+			m.appendArgParam(ValidateArgTypeParams{
 				ParamCategory:           parser.ParamCategoryArgsList,
 				ParamType:               m.paramSpec,
 				RequiresTypeVarMatching: false,
@@ -1417,7 +1439,7 @@ func (m *argMatcher) matchNamedArg(paramName *parser.NameNode) {
 		assert(paramInfoIndex >= 0, "expected to find the keyword parameter")
 		paramType := m.paramDetails.Params[paramInfoIndex].Type
 
-		m.argParams = append(m.argParams, &ValidateArgTypeParams{
+		m.appendArgParam(ValidateArgTypeParams{
 			ParamCategory:           parser.ParamCategorySimple,
 			ParamType:               paramType,
 			RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
@@ -1443,7 +1465,7 @@ func (m *argMatcher) matchNamedArg(paramName *parser.NameNode) {
 			}
 			m.reportedArgError = true
 		} else {
-			m.argParams = append(m.argParams, &ValidateArgTypeParams{
+			m.appendArgParam(ValidateArgTypeParams{
 				ParamCategory:           parser.ParamCategoryKwargsDict,
 				ParamType:               paramType,
 				RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
@@ -1506,7 +1528,7 @@ func (m *argMatcher) applyUnpackedDictToKeywordParams(
 			}
 		}
 
-		m.argParams = append(m.argParams, &ValidateArgTypeParams{
+		m.appendArgParam(ValidateArgTypeParams{
 			ParamCategory:           parser.ParamCategorySimple,
 			ParamType:               paramType,
 			RequiresTypeVarMatching: RequiresSpecialization(paramType, nil, 0),
