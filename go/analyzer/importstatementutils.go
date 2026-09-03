@@ -236,3 +236,84 @@ func FormatModuleName(node *parser.ModuleNameNode) string {
 
 	return moduleName + strings.Join(parts, ".")
 }
+
+// GetRelativeModuleName corresponds to getRelativeModuleName. The checker needs
+// it to re-resolve a relative `from . import x` while deciding whether a stub's
+// source is missing; the rest of the auto-import machinery it was written for is
+// still out of scope.
+//
+// sourceIsFile is a pointer because the original's parameter is optional and
+// distinguishes "not supplied, go ask the filesystem" from "supplied as false".
+func GetRelativeModuleName(
+	fs uri.ReadOnlyFileSystem,
+	sourcePath uri.Uri,
+	targetPath uri.Uri,
+	configOptions *ConfigOptions,
+	ignoreFolderStructure bool,
+	sourceIsFile *bool,
+) string {
+	srcPath := sourcePath
+	isFile := uri.IsFile(fs, sourcePath, false)
+	if sourceIsFile != nil {
+		isFile = *sourceIsFile
+	}
+	if isFile {
+		srcPath = sourcePath.GetDirectory()
+	}
+
+	symbolName := ""
+	destPath := targetPath
+	if (configOptions.StubPath != nil && destPath.IsChild(configOptions.StubPath)) ||
+		(configOptions.TypeshedPath != nil && destPath.IsChild(configOptions.TypeshedPath)) {
+		// The original's comment: always use absolute imports for files in these
+		// library-like directories.
+		return ""
+	}
+
+	if isFile {
+		destPath = targetPath.GetDirectory()
+
+		fileName := targetPath.StripAllExtensions().FileName()
+		if fileName != "__init__" {
+			// The original's comment: ex) src: a.py, dest: b.py -> ".b" will be
+			// returned.
+			symbolName = fileName
+		} else if ignoreFolderStructure {
+			// The original's comment: ex) src: nested1/nested2/__init__.py,
+			// dest: nested1/__init__.py -> "...nested1" will be returned like
+			// how it would return for sibling folder.
+			//
+			// if folder structure is not ignored, ".." will be returned
+			symbolName = destPath.FileName()
+			destPath = destPath.GetDirectory()
+		}
+	}
+
+	relativePaths := srcPath.GetRelativePathComponents(destPath)
+
+	// The original's comment: this assumes both file paths are under the same
+	// importing root. So this doesn't handle paths pointing to 2 different
+	// import roots. ex) user file A to library file B
+	currentPaths := "."
+	for i, relativePath := range relativePaths {
+		if relativePath == ".." {
+			currentPaths += "."
+		} else {
+			currentPaths += relativePath
+		}
+
+		if relativePath != ".." && i != len(relativePaths)-1 {
+			currentPaths += "."
+		}
+	}
+
+	if symbolName != "" {
+		if currentPaths[len(currentPaths)-1] == '.' {
+			currentPaths += symbolName
+		} else {
+			currentPaths += "." + symbolName
+		}
+	}
+
+	return currentPaths
+}
