@@ -66,7 +66,9 @@ jobs:
         run: |
           ext=""
           [ "$GOOS" = "windows" ] && ext=".exe"
-          go build -trimpath -ldflags="-s -w" -o "dist/pyright-go$ext" ./cmd/pyright-go
+          version="${GITHUB_REF_NAME#v}"
+          go build -trimpath -ldflags="-s -w -X main.version=$version" \
+            -o "dist/pyright-go$ext" ./cmd/pyright-go
 
       - name: Assemble release tarball
         run: |

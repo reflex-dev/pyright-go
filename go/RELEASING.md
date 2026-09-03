@@ -3,8 +3,8 @@
 A release is a pushed tag:
 
 ```bash
-git tag v0.1.0
-git push pyright-go v0.1.0
+git tag v1.1.412.0
+git push pyright-go v1.1.412.0
 ```
 
 `.github/workflows/release.yml` then runs the Go tests, cross-compiles the
@@ -24,9 +24,14 @@ and produces two kinds of artifact per platform:
   `go/packaging/build_wheel.py`, stdlib-only and reproducible. Nothing
   compiles at install time.
 
-Versioning: the tag is the package version. The binary's `--version` string
-(`1.1.412-go`) names the pyright release whose behavior it reproduces and
-does not change per release; the package version is the port's own.
+Versioning: the tag is the package version, and the scheme is
+`<pyright release>.<port revision>` -- the first three segments name the
+pyright release whose behavior the port reproduces, the fourth counts the
+port's own releases on top of it. `1.1.412.0` is the first cut of the
+1.1.412 port, `1.1.412.1` fixes something in it, and `1.1.413.0` would mean
+a newer pyright was ported. The release workflow injects the version into
+the binary (`-X main.version=...`), so `--version` and the JSON report carry
+the release version; development builds report `1.1.412-go`.
 
 ## PyPI trusted publishing: one-time setup
 

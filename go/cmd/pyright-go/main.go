@@ -43,10 +43,16 @@ import (
 )
 
 // version is what --version prints and what the JSON report carries. The
-// original reads it from its package.json; this names the pyright release the
-// port was transliterated from, and marks itself so a consumer can tell the two
-// apart.
-const version = "1.1.412-go"
+// original reads it from its package.json.
+//
+// Release builds inject the release version via
+// `-ldflags "-X main.version=..."` (see .github/workflows/release.yml):
+// its first three segments name the pyright release whose behavior the port
+// reproduces, and the fourth is the port's own revision -- 1.1.412.1 is the
+// second cut of the 1.1.412 port. A build without the injection reports this
+// development default, which names the transliteration source and marks
+// itself so a consumer can tell the two apart.
+var version = "1.1.412-go"
 
 func main() {
 	os.Exit(int(run(os.Args[1:])))
