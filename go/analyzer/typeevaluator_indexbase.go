@@ -189,7 +189,7 @@ func (e *typeEvaluator) indexOneSubtype(
 	}
 
 	if IsInstantiableClass(concreteSubtype) {
-		return e.indexInstantiableClass(node, usage, flags, concreteSubtype.(*ClassType), state)
+		return e.indexInstantiableClass(node, usage, flags, concreteSubtype.(*ClassType), selfType, state)
 	}
 
 	if IsNoneInstance(concreteSubtype) {
@@ -240,6 +240,7 @@ func (e *typeEvaluator) indexInstantiableClass(
 	usage *EvaluatorUsage,
 	flags EvalFlags,
 	concreteSubtype *ClassType,
+	selfType Type,
 	state *indexBaseState,
 ) Type {
 	// The original's comment: see if the class has a custom metaclass that
@@ -247,7 +248,8 @@ func (e *typeEvaluator) indexInstantiableClass(
 	if meta := concreteSubtype.Shared.EffectiveMetaclass; meta != nil && IsInstantiableClass(meta) &&
 		!ClassTypeIsBuiltInNamed(meta.(*ClassType), "type", "_InitVarMeta") &&
 		(flags&EvalFlagsInstantiableType) == 0 {
-		e.GetBoundMagicMethod(concreteSubtype, getIndexAccessMagicMethodName(usage), nil, node.D.LeftExpr, nil, 0)
+		itemMethodType := e.GetBoundMagicMethod(
+			concreteSubtype, getIndexAccessMagicMethodName(usage), nil, node.D.LeftExpr, nil, 0)
 
 		if (flags & EvalFlagsTypeExpression) != 0 {
 			// The original's comment: if the class doesn't derive from Generic,
@@ -260,6 +262,13 @@ func (e *typeEvaluator) indexInstantiableClass(
 				node,
 				nil,
 			)
+		}
+
+		// A metaclass __getitem__ means the subscript is a runtime call, not a
+		// specialization, so the result comes from that method rather than from
+		// the type arguments.
+		if itemMethodType != nil {
+			return e.getTypeOfIndexedObjectOrClass(node, concreteSubtype, selfType, usage).Type
 		}
 	}
 

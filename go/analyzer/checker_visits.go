@@ -80,8 +80,38 @@ func (c *Checker) VisitAssignmentExpression(node *parser.AssignmentExpressionNod
 // VisitMatch corresponds to visitMatch.
 func (c *Checker) VisitMatch(node *parser.MatchNode) bool {
 	c.evaluator.GetType(node.D.Expr)
-	c.scopedNodes = append(c.scopedNodes, node)
+	c.validateExhaustiveMatch(node)
 	return true
+}
+
+// validateExhaustiveMatch corresponds to _validateExhaustiveMatch.
+//
+// The subject's type after every case has been applied is what answers the
+// question: if narrowing has eliminated every subtype, the match handled them
+// all, and anything left over is a value no case matches.
+func (c *Checker) validateExhaustiveMatch(node *parser.MatchNode) {
+	// The original's comment: this check can be expensive, so skip it if it's
+	// disabled.
+	if c.fileInfo.DiagnosticRuleSet.ReportMatchNotExhaustive == DiagnosticLevelNone {
+		return
+	}
+
+	narrowedTypeResult := c.evaluator.EvaluateTypeForSubnode(node, func() {
+		c.evaluator.EvaluateTypesForMatchStatement(node)
+	})
+
+	if narrowedTypeResult == nil || IsNever(narrowedTypeResult.Type) {
+		return
+	}
+
+	diagAddendum := common.NewDiagnosticAddendum()
+	diagAddendum.AddMessage(localization.LocAddendum.MatchIsNotExhaustiveType().Format(
+		c.evaluator.PrintType(narrowedTypeResult.Type, nil)))
+	diagAddendum.AddMessage(localization.LocAddendum.MatchIsNotExhaustiveHint())
+
+	c.evaluator.AddDiagnostic(DiagnosticRuleReportMatchNotExhaustive,
+		localization.LocMessage.MatchIsNotExhaustive()+diagAddendum.GetString(),
+		node.D.Expr, nil)
 }
 
 // VisitWith corresponds to visitWith.

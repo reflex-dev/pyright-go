@@ -174,11 +174,7 @@ func (c *Checker) validateFinalMemberOverrides(classType *ClassType) {
 			continue
 		}
 
-		// The original's comment: did the parent class explicitly declare the
-		// variable as final?
-		if !c.evaluator.IsFinalVariable(parentSymbol.Symbol) {
-			continue
-		}
+		parentClass := parentSymbol.ClassType.(*ClassType)
 
 		decls := localSymbol.GetDeclarations()
 		if len(decls) == 0 {
@@ -188,10 +184,28 @@ func (c *Checker) validateFinalMemberOverrides(classType *ClassType) {
 			continue
 		}
 
-		c.evaluator.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
-			localization.LocMessage.FinalRedeclarationBySubclass().Format(
-				name, parentSymbol.ClassType.(*ClassType).Shared.Name),
-			decls[0].DeclBase().Node, nil)
+		// The original's comment: did the parent class explicitly declare the
+		// variable as final?
+		if c.evaluator.IsFinalVariable(parentSymbol.Symbol) {
+			c.evaluator.AddDiagnostic(DiagnosticRuleReportGeneralTypeIssues,
+				localization.LocMessage.FinalRedeclarationBySubclass().Format(
+					name, parentClass.Shared.Name),
+				decls[0].DeclBase().Node, nil)
+			continue
+		}
+
+		// The original's comment: if the parent class is a named tuple, all
+		// instance variables (other than dundered ones) are implicitly final.
+		if !ClassTypeHasNamedTupleEntry(parentClass, name) || IsDunderName(name) {
+			continue
+		}
+
+		if _, isVariable := decls[0].(*VariableDeclaration); isVariable {
+			c.evaluator.AddDiagnostic(DiagnosticRuleReportIncompatibleVariableOverride,
+				localization.LocMessage.NamedTupleEntryRedeclared().Format(
+					name, parentClass.Shared.Name),
+				decls[0].DeclBase().Node, nil)
+		}
 	}
 }
 
