@@ -75,7 +75,7 @@ func (e *typeEvaluator) applyTypeArgToTypeVar(
 				diag.AddMessage(localization.LocAddendum.TypeBound().Format(
 					e.PrintType(effectiveSrcType, nil),
 					e.PrintType(destType.Shared.BoundType, nil),
-					TypeVarTypeGetReadableName(destType, false),
+					TypeVarTypeGetReadableName(destType, true),
 				))
 			}
 			return nil
@@ -107,7 +107,7 @@ func (e *typeEvaluator) applyTypeArgToTypeVar(
 
 	diag.AddMessage(localization.LocAddendum.TypeConstrainedTypeVar().Format(
 		e.PrintType(srcType, nil),
-		TypeVarTypeGetReadableName(destType, false),
+		TypeVarTypeGetReadableName(destType, true),
 	))
 
 	return nil
@@ -132,7 +132,7 @@ func (e *typeEvaluator) applyTypeArgToParamSpec(
 
 	diag.AddMessage(localization.LocAddendum.TypeParamSpec().Format(
 		e.PrintType(srcType, nil),
-		TypeVarTypeGetReadableName(destType, false),
+		TypeVarTypeGetReadableName(destType, true),
 	))
 
 	return nil

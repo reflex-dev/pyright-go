@@ -52,7 +52,7 @@ func CreateFunctionFromConstructor(
 		skipInitMethod := false
 
 		DoForEachSignature(fromNew, func(signature *FunctionType, _ int) {
-			newMethodReturnType := FunctionTypeGetEffectiveReturnType(signature, false)
+			newMethodReturnType := FunctionTypeGetEffectiveReturnType(signature, true)
 			if !IsNilType(newMethodReturnType) &&
 				shouldSkipInitEvaluation(evaluator, classType, newMethodReturnType) {
 				skipInitMethod = true
@@ -131,7 +131,7 @@ func createFunctionFromMetaclassCall(
 	// __new__/__init__ and so tells us nothing.
 	DoForEachSignature(boundCallType, func(signature *FunctionType, _ int) {
 		if signature.Shared.DeclaredReturnType != nil {
-			returnType := FunctionTypeGetEffectiveReturnType(signature, false)
+			returnType := FunctionTypeGetEffectiveReturnType(signature, true)
 			if !IsNilType(returnType) &&
 				shouldSkipNewAndInitEvaluation(evaluator, classType, returnType) {
 				useMetaclassCall = true

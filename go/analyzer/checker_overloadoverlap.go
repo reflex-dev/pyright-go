@@ -73,8 +73,8 @@ func (c *Checker) validateOverloadConsistency(
 			continue
 		}
 
-		prevReturnType := FunctionTypeGetEffectiveReturnType(prevOverload, false)
-		returnType := FunctionTypeGetEffectiveReturnType(functionType, false)
+		prevReturnType := FunctionTypeGetEffectiveReturnType(prevOverload, true)
+		returnType := FunctionTypeGetEffectiveReturnType(functionType, true)
 
 		if IsNilType(prevReturnType) || IsNilType(returnType) {
 			continue

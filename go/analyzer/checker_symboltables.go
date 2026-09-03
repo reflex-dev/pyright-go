@@ -757,13 +757,13 @@ func (c *Checker) validateOverloadImplementation(
 		0)
 
 	// The original's comment: now check the return types.
-	overloadReturn := FunctionTypeGetEffectiveReturnType(overloadBound, false)
+	overloadReturn := FunctionTypeGetEffectiveReturnType(overloadBound, true)
 	if overloadReturn == nil {
 		overloadReturn = c.evaluator.GetInferredReturnType(overloadBound, nil)
 	}
 	overloadReturnType := c.evaluator.SolveAndApplyConstraints(overloadReturn, constraints, nil, nil)
 
-	implReturn := FunctionTypeGetEffectiveReturnType(implBound, false)
+	implReturn := FunctionTypeGetEffectiveReturnType(implBound, true)
 	if implReturn == nil {
 		implReturn = c.evaluator.GetInferredReturnType(implBound, nil)
 	}

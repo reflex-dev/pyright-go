@@ -620,7 +620,7 @@ func (e *typeEvaluator) checkClassTypeArgsAgainstParams(
 			DiagnosticRuleReportInvalidTypeArguments,
 			localization.LocMessage.TypeVarAssignmentMismatch().Format(
 				e.PrintType(typeArgTypes[index], nil),
-				TypeVarTypeGetReadableName(typeParams[index], false),
+				TypeVarTypeGetReadableName(typeParams[index], true),
 			)+diag.GetString(),
 			typeArgs[index].Node,
 			nil,

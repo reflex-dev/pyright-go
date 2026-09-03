@@ -126,7 +126,7 @@ func (e *typeEvaluator) enforceClassTypeVarScope(node parser.ExpressionNode, typ
 	e.AddDiagnostic(
 		DiagnosticRuleReportGeneralTypeIssues,
 		localization.LocMessage.TypeVarInvalidForMemberVariable().Format(
-			TypeVarTypeGetReadableName(typeVar, false)),
+			TypeVarTypeGetReadableName(typeVar, true)),
 		node,
 		nil,
 	)

@@ -266,7 +266,7 @@ func (e *typeEvaluator) classGetItemReturnsGenericAlias(classType *ClassType) bo
 
 	memberType := e.GetTypeOfMember(member)
 	functionReturnsGenericAlias := func(functionType *FunctionType) bool {
-		returnType := FunctionTypeGetEffectiveReturnType(functionType, false)
+		returnType := FunctionTypeGetEffectiveReturnType(functionType, true)
 		return !IsNilType(returnType) && IsClassInstance(returnType) &&
 			ClassTypeIsBuiltInNamed(returnType.(*ClassType), "GenericAlias")
 	}

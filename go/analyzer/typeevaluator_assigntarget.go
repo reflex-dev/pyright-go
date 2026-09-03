@@ -150,7 +150,7 @@ func (e *typeEvaluator) checkTypeVarAssignedName(
 		return
 	}
 
-	name := TypeVarTypeGetReadableName(typeVar, false)
+	name := TypeVarTypeGetReadableName(typeVar, true)
 	message := localization.LocMessage.TypeVarAssignedName().Format(name)
 	if IsParamSpec(typeVar) {
 		message = localization.LocMessage.ParamSpecAssignedName().Format(name)

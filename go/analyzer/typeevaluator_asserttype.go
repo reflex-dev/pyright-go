@@ -65,7 +65,7 @@ func (e *typeEvaluator) normalizeEnumTypes(
 			parameterTypes = append(parameterTypes, normalizedType)
 		}
 
-		returnType := FunctionTypeGetEffectiveReturnType(fn, false)
+		returnType := FunctionTypeGetEffectiveReturnType(fn, true)
 		var normalizedReturnType Type
 		if returnType != nil {
 			normalizedReturnType = e.normalizeEnumTypes(returnType, literalEnumClasses, recursionCount)

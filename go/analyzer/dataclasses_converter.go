@@ -184,7 +184,7 @@ func getConverterInputType(
 	DoForEachSignature(converterType, func(signature *FunctionType, _ int) {
 		returnConstraints := NewConstraintTracker()
 
-		effectiveReturn := FunctionTypeGetEffectiveReturnType(signature, false)
+		effectiveReturn := FunctionTypeGetEffectiveReturnType(signature, true)
 		if effectiveReturn == nil {
 			effectiveReturn = UnknownTypeCreate(false)
 		}

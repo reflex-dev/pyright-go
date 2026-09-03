@@ -155,7 +155,7 @@ func (e *typeEvaluator) validateArgs(
 		// The original's comment: use a return type of Unknown but attach a
 		// "possible type" to it so the completion provider can suggest better
 		// completions.
-		possibleType := FunctionTypeGetEffectiveReturnType(typeResult.Type.(*FunctionType), false)
+		possibleType := FunctionTypeGetEffectiveReturnType(typeResult.Type.(*FunctionType), true)
 		var returnType Type
 		if possibleType != nil && !IsAnyOrUnknown(possibleType) {
 			returnType = UnknownTypeCreatePossibleType(possibleType, false)

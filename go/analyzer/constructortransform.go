@@ -287,7 +287,7 @@ func applyPartialTransformToFunction(
 
 	if specializedFn.Shared.DeclaredReturnType != nil {
 		newCallMemberType.Shared.DeclaredReturnType =
-			FunctionTypeGetEffectiveReturnType(specializedFn, false)
+			FunctionTypeGetEffectiveReturnType(specializedFn, true)
 	} else if specializedFn.Shared.InferredReturnType != nil {
 		newCallMemberType.Shared.DeclaredReturnType = specializedFn.Shared.InferredReturnType.Type
 	}

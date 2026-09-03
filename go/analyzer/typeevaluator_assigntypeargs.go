@@ -168,7 +168,7 @@ func (e *typeEvaluator) assignTypeArgs(
 				types := e.PrintSrcDestTypes(srcTypeArg, destTypeArg)
 
 				childDiag.AddMessage(errorSource(
-					TypeVarTypeGetReadableName(destTypeParam, false),
+					TypeVarTypeGetReadableName(destTypeParam, true),
 					types.SourceType,
 					types.DestType,
 				))
