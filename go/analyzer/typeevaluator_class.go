@@ -497,7 +497,7 @@ func (e *typeEvaluator) processClassBaseArg(
 	argType = StripTypeFormRecursive(argType, 0)
 
 	if !IsAnyOrUnknown(argType) && !IsUnbound(argType) {
-		argType = e.adjustBaseClassArgType(node, classType, fileInfo, arg, argType)
+		argType = e.adjustBaseClassArgType(node, classType, fileInfo, arg, argType, isNamedTupleSubclass)
 	}
 
 	if IsUnknown(argType) {
@@ -621,6 +621,7 @@ func (e *typeEvaluator) adjustBaseClassArgType(
 	fileInfo *AnalyzerFileInfo,
 	arg *parser.ArgumentNode,
 	argType Type,
+	isNamedTupleSubclass *bool,
 ) Type {
 	// The original's comment: if the specified base class is type(T), use the
 	// metaclass of T if it's known.
@@ -679,10 +680,11 @@ func (e *typeEvaluator) adjustBaseClassArgType(
 	}
 
 	// The original's comment: if the class directly derives from NamedTuple (in
-	// Python 3.6 or newer), it's considered a (read-only) dataclass. The caller
-	// records the result; this function only reports it through the return of
-	// isNamedTupleBase below.
-	_ = node
+	// Python 3.6 or newer), it's considered a (read-only) dataclass.
+	if fileInfo.ExecutionEnvironment.PythonVersion.IsGreaterOrEqualTo(common.PythonVersion3_6) &&
+		ClassTypeIsBuiltInNamed(bc, "NamedTuple") {
+		*isNamedTupleSubclass = true
+	}
 
 	// The original's comment: if the class directly derives from TypedDict or
 	// from a class that is a TypedDict, it is considered a TypedDict.

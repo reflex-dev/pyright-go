@@ -44,6 +44,9 @@
 package analyzer
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/localization"
 	"github.com/microsoft/pyright/go/parser"
@@ -646,6 +649,12 @@ func SynthesizeDataClassMethods(
 		}
 	})
 
+	if f, err := os.OpenFile("/tmp/dcdbg.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
+		fmt.Fprintf(f, "class=%s isNT=%v local=%d full=%d skipInit=%v hasInit=%v\n",
+			classType.Shared.Name, isNamedTuple, len(localDataClassEntries),
+			len(fullDataClassEntries), skipSynthesizeInit, hasExistingInitMethod)
+		f.Close()
+	}
 	if isNamedTuple {
 		classType.Shared.NamedTupleEntries = namedTupleEntries
 	} else {
