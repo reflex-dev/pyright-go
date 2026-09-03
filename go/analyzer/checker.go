@@ -171,6 +171,7 @@ func (c *Checker) walkStatementsAndReportUnreachable(statements []parser.Stateme
 			}
 			reachability := c.evaluator.GetNodeReachability(statement, prevNode)
 			if reachability != ReachabilityReachable {
+
 				// The original's comment: create a text range that covers the
 				// next statement through the end of the statement list.
 				start := statement.NodeBase().Start

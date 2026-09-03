@@ -138,11 +138,19 @@ func (c *codeFlowReachability) GetFlowNodeReachability(
 		curFlowNode := node
 
 		for {
-			// The original reads the cache with `flowNode.id`, the *outer*
-			// node, not curFlowNode -- so within one walk this is a check on
-			// the entry point rather than on the node being visited. Preserved
-			// as written; changing it would change which results are reused.
-			if cacheEntry := c.reachabilityCache[flowNode.FlowBase().ID]; cacheEntry != nil && len(closedFinallyGateSet) == 0 {
+			// The original names this function's parameter `flowNode`, shadowing
+			// the enclosing query's parameter of the same name, and reads the
+			// cache with the *shadowed* one -- so the check is on the node this
+			// recursion started from. cacheReachabilityResult, defined in the
+			// outer scope, sees the outer `flowNode` instead and writes under
+			// the top-level query node.
+			//
+			// The asymmetry is load-bearing. A branch label recurses into each
+			// antecedent in turn, and reading the cache under the outer node
+			// would let the first antecedent's result answer for every sibling:
+			// one unreachable antecedent would make the whole label unreachable,
+			// which is the opposite of what the label loop computes.
+			if cacheEntry := c.reachabilityCache[node.FlowBase().ID]; cacheEntry != nil && len(closedFinallyGateSet) == 0 {
 				if sourceFlowNode == nil {
 					if cacheEntry.Reachability != nil {
 						return *cacheEntry.Reachability
