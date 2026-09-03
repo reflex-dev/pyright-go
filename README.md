@@ -23,9 +23,9 @@ Node, identical diagnostics in every row — full tables and methodology in
 
 | invocation | pyright 1.1.412 | Go port |
 | --- | --- | --- |
-| full check, no cache | 59 s (`--threads`) | 163 s |
-| `--cachedir`, nothing changed | n/a — pyright has no cache | **5.9 s / 0.6 GB** |
-| `--cachedir`, typical (leaf) file changed | n/a | **6.8 s** |
+| full check, no cache | 59 s (`--threads`) | 115 s (`--threads 4`) |
+| `--cachedir`, nothing changed | n/a — pyright has no cache | **5.0 s / 0.6 GB** |
+| `--cachedir`, typical (leaf) file changed | n/a | **~7 s** |
 | pre-commit file list (1,779 files), warm | 107 s every run | **5.8 s** |
 
 The two implementations differ in shape, not just speed. Uncached, pyright

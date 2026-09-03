@@ -24,28 +24,27 @@ runs and vary ±10% with thermal state; treat small deltas as noise.
 | --- | --- | --- |
 | pyright, single-threaded | 111 s | 5.3 GB |
 | pyright `--threads` | **59 s** | multi-process (parent 1.7 GB) |
-| pyright-go, single-threaded | 191 s | 7.9 GB |
-| pyright-go `--threads 2` | 148 s | 19 GB |
-| pyright-go `--threads 4` | 173 s | 26 GB |
-| pyright-go `--threads 8` | 197 s | 31 GB |
+| pyright-go, single-threaded | 133 s | 7.2 GB |
+| pyright-go `--threads 4` | 115 s | 16 GB |
+| pyright-go `--threads 8` | 132 s | 20 GB |
 | pyright-go `--threads 16` | exceeds this machine's memory | — |
-| pyright-go `--threads 4 --cachedir`, cold | 163 s | 17 GB |
-| pyright-go `--cachedir`, **nothing changed** | **5.9 s** | **0.6 GB** |
-| pyright-go `--cachedir`, leaf file changed | 6.8 s | 0.7 GB |
-| pyright-go `--cachedir`, hub file changed | 174 s | 12 GB |
+| pyright-go `--threads 4 --cachedir`, cold | 136 s | 16 GB |
+| pyright-go `--cachedir`, **nothing changed** | **5.0 s** | **0.6 GB** |
+| pyright-go `--cachedir`, leaf file changed | ~7 s | 0.7 GB |
+| pyright-go `--cachedir`, hub file changed | ~cold | 12 GB |
 
 Reading this honestly:
 
-- **Uncached, pyright wins this workload.** The port's single-threaded check
-  is ~1.7× slower than pyright's here, and its `--threads` does not scale on
-  this project — each worker re-infers its own copy of the enormous shared
-  framework closure, so added workers add memory (roughly 6 GB apiece)
-  without adding speed, and 16 workers exceed a 60 GB machine. pyright's
-  forked workers duplicate the same work but each brings an independent V8
-  heap, which is why its `--threads` halves its time while the port's does
-  not. The single-threaded gap is the open optimization front: the resolved
-  third-party closure exercises inference paths where the port's constant
-  factors have not yet been profiled.
+- **Uncached, pyright's `--threads` still wins this workload.** The port's
+  single-threaded run is ~1.2× slower than pyright's, and its workers scale
+  only to 4 before the duplicated framework closure and the shared heap's
+  collector take the gains back — each worker re-infers its own copy of the
+  closure, memory grows roughly 5 GB per worker, and 16 workers exceed a
+  60 GB machine. pyright's forked workers duplicate the same work but each
+  brings an independent V8 heap, which is why its `--threads` halves its
+  time. The remaining single-threaded gap has no profile hotspot: it is the
+  cost of the clone-heavy type model under Go's collector, spread across the
+  whole evaluator.
 - **The cache is the port's result.** A no-change run answers in ~6 seconds
   at half a gigabyte; a typical edit costs seconds more. That mode has no
   pyright equivalent — pyright re-checks everything, every run.
