@@ -161,12 +161,17 @@ const (
 
 // DataClassBehaviors corresponds to the interface of the same name.
 type DataClassBehaviors struct {
-	SkipGenerateInit     bool
-	SkipGenerateEq       bool
-	GenerateOrder        bool
-	GenerateSlots        bool
-	GenerateHash         bool
-	MatchArgs            bool
+	SkipGenerateInit bool
+	SkipGenerateEq   bool
+	GenerateOrder    bool
+	GenerateSlots    bool
+	GenerateHash     bool
+
+	// MatchArgs is a pointer because the original declares it optional and
+	// reads it as `matchArgs ?? true` -- absent means "synthesize
+	// __match_args__", which is the opposite of the bool zero value. Every
+	// other field here is read for truthiness, where undefined and false agree.
+	MatchArgs            *bool
 	KeywordOnly          bool
 	Frozen               bool
 	FrozenDefault        bool

@@ -140,7 +140,7 @@ func applyDataClassBehaviorOverrideValue(
 
 	case "match_args":
 		if argValue != nil {
-			behaviors.MatchArgs = *argValue
+			behaviors.MatchArgs = argValue
 		}
 
 	case "frozen":

@@ -795,9 +795,11 @@ func SynthesizeDataClassMethods(
 	// doesn't exist and match_args behavior is not explicitly disabled.
 	strType := evaluator.GetBuiltInType(node, "str")
 	tupleClassType := evaluator.GetBuiltInType(node, "tuple")
+	// The original reads `classType.shared.dataClassBehaviors?.matchArgs ?? true`,
+	// so both an absent behaviors object and an absent flag mean true.
 	matchArgs := true
-	if classType.Shared.DataClassBehaviors != nil {
-		matchArgs = classType.Shared.DataClassBehaviors.MatchArgs
+	if b := classType.Shared.DataClassBehaviors; b != nil && b.MatchArgs != nil {
+		matchArgs = *b.MatchArgs
 	}
 	if tupleClassType != nil && IsInstantiableClass(tupleClassType) &&
 		strType != nil && IsInstantiableClass(strType) &&
