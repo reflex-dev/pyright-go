@@ -1297,8 +1297,11 @@ func (e *typeEvaluator) reportArgAssignmentFailure(
 	var message string
 	if argParam.ParamName != "" && !argParam.IsParamNameSynthesized {
 		if functionName != "" {
+			// The generated Format takes its arguments in format-string order
+			// (argType, paramType, paramName, functionName); the original names
+			// them, and lists functionName first.
 			message = localization.LocMessage.ArgAssignmentParamFunction().Format(
-				argTypeText, paramTypeText, functionName, argParam.ParamName)
+				argTypeText, paramTypeText, argParam.ParamName, functionName)
 		} else {
 			message = localization.LocMessage.ArgAssignmentParam().Format(
 				argTypeText, paramTypeText, argParam.ParamName)

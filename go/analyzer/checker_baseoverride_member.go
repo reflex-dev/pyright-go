@@ -399,7 +399,9 @@ func (c *Checker) validateVariableOverride(
 	if !isBaseVarFinal && overrideFinalVarDecl != nil {
 		diag := c.evaluator.AddDiagnostic(
 			DiagnosticRuleReportIncompatibleVariableOverride,
-			localization.LocMessage.VariableFinalOverride().Format(memberName, baseClass.Shared.Name),
+			// Format takes (className, name); the message names the variable
+			// first but the class appears first in the format string.
+			localization.LocMessage.VariableFinalOverride().Format(baseClass.Shared.Name, memberName),
 			declErrorNode(lastDecl),
 			nil,
 		)

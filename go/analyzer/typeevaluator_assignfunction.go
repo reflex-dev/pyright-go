@@ -268,7 +268,9 @@ func (a *functionAssigner) checkParamNames(destParam, srcParam *VirtualParamDeta
 	}
 
 	if destParamName != srcParamName {
-		a.addAddendum(localization.LocAddendum.FunctionParamName().Format(srcParamName, destParamName))
+		// Format takes (destName, srcName), which is the order they appear in
+		// the message; the original's object literal lists srcName first.
+		a.addAddendum(localization.LocAddendum.FunctionParamName().Format(destParamName, srcParamName))
 		return false
 	}
 

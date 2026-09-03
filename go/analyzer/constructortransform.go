@@ -337,8 +337,8 @@ func (s *partialTransformState) checkArgAgainstParam(
 			localization.LocMessage.ArgAssignmentParamFunction().Format(
 				s.evaluator.PrintType(argTypeResult.Type, nil),
 				s.evaluator.PrintType(paramType, nil),
-				s.origFunctionType.Shared.Name,
-				paramName),
+				paramName,
+				s.origFunctionType.Shared.Name),
 			node, nil)
 	}
 
