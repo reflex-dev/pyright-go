@@ -542,3 +542,39 @@ port hit the pathological path and hung. The Go port refuses to expand a
 self-referential replacement in `applySolvedTypeVarsTransformer.transformTypeVar`,
 which restores the invariant the occurs check exists to maintain and terminates.
 This divergence is marked at the site.
+
+## 17. `--threads` silently drops diagnostics
+
+Found by running the port and the original over a 3,135-file project with an
+identical command line. Both agree exactly when pyright runs single-threaded:
+10,177 errors and 31,675 warnings, zero differences either way. Add `--threads`
+and pyright reports **10,175** errors -- two fewer -- while the port and
+single-threaded pyright continue to agree.
+
+The two that vanish are both the same diagnostic:
+
+```
+flexgen/sandbox/command_env.py:107:49       Cannot access attribute "decode" for class "str"
+flexgen/services/memory_store/pg_store.py:227:51  Cannot access attribute "decode" for class "str"
+```
+
+It is reproducible rather than a race in the usual sense: three consecutive
+`--threads` runs all report 10,175, and three single-threaded runs all report
+10,177. So the partitioning is deterministic and something about which files a
+worker owns changes an answer, rather than two workers interleaving badly.
+
+Why this is worth reporting rather than shrugging at: `--threads` is presented
+as a pure speedup -- it halves the wall time on this project, 74.8s to 36.7s --
+and nothing in the output suggests the analysis was less complete. A user who
+turns it on in CI gets a quieter build and no indication that two real errors
+stopped being reported.
+
+The mechanism is not diagnosed here. `Cannot access attribute` on a narrowed
+`str` suggests the missing diagnostics depend on a declaration reached through
+an import, which is exactly the state a per-worker `Program` would hold
+differently from a single one -- but that is a hypothesis, not a finding.
+
+Nothing about this is reproduced in the port, which has no threading. It is
+recorded because the comparison that found it is the port's own verification
+harness, and because it is evidence for how any future parallelism here should
+be validated: against the single-threaded diagnostic set, file by file.
