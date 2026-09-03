@@ -122,14 +122,22 @@ analyzer/STATUS-STAGE-D.md.
 
 | | 84 files | 3135 files |
 | --- | --- | --- |
-| pyright 1.1.412 | 2.34 s / 303 MB | 86.8 s / 3597 MB |
-| Go port | 0.85 s / 202 MB | 47.1 s / 6198 MB |
+| pyright 1.1.412 | 2.34 s / 303 MB | 80.5 s / 3676 MB |
+| Go port | 0.85 s / 202 MB | 39.0 s / 5966 MB |
 
-The port is faster at both sizes — 2.8× and 1.8×. It was *slower* than pyright
-on the large input until three caching problems were fixed; on a fixed 1193-file
-benchmark those took the run from 79 s to 27 s. What was wrong is written up in
-analyzer/STATUS-STAGE-D.md; the short version is that `OrderedMap.Delete` was
-O(n) and the type cache never needed to be ordered at all.
+The port is faster at both sizes — 2.8× and 2.1×. It was *slower* than pyright
+on the large input until two rounds of profiling: three caching problems (a
+1193-file benchmark went from 79 s to 27 s) and then three constant-factor ones
+(the whole project went from 43 s to 35.7 s). All six are written up in
+analyzer/STATUS-STAGE-D.md. The recurring shape is worth knowing before
+optimizing anything here: the algorithm is usually faithful and the constant
+factor is not, because the original leans on a native JavaScript primitive —
+`indexOf`, `RegExp`, `Map.delete` — that Go has no equal of.
+
+GC tuning is *not* a lever, which is easy to assume from a profile that is more
+than half runtime frames: `GOGC=off` buys 5% at 3× the memory. The collector runs
+on other cores alongside a single-threaded mutator, so it is not on the critical
+path.
 
 Memory is the remaining weak side, and it trades against time rather than being
 free to fix. `GOMEMLIMIT` is the knob, and diagnostics are identical at every

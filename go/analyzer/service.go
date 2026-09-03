@@ -33,6 +33,7 @@ package analyzer
 import (
 	"github.com/microsoft/pyright/go/common"
 	"github.com/microsoft/pyright/go/common/uri"
+	"strconv"
 )
 
 // AnalyzerServiceOptions corresponds to the interface of the same name, reduced
@@ -211,7 +212,10 @@ func (s *AnalyzerService) updateTrackedFileList(markFilesDirtyUnconditionally bo
 		s.console,
 	)
 
-	results := s.sourceEnumerator.Enumerate(0)
+	var results SourceEnumerateResult
+	common.TimingStatsInstance.FindFilesTime.TimeOperation(func() {
+		results = s.sourceEnumerator.Enumerate(0)
+	})
 	fileList := results.Matches.Values()
 
 	s.program.SetTrackedFiles(fileList)
@@ -221,6 +225,18 @@ func (s *AnalyzerService) updateTrackedFileList(markFilesDirtyUnconditionally bo
 }
 
 func (s *AnalyzerService) IsTracked(u uri.Uri) bool { return s.program.Owns(u) }
+
+// PrintStats corresponds to printStats().
+func (s *AnalyzerService) PrintStats() {
+	s.console.Info("")
+	s.console.Info("Analysis stats")
+
+	boundFileCount := s.program.GetFileCount(false)
+	s.console.Info("Total files parsed and bound: " + strconv.Itoa(boundFileCount))
+
+	checkedFileCount := s.program.GetUserFileCount()
+	s.console.Info("Total files checked: " + strconv.Itoa(checkedFileCount))
+}
 
 func (s *AnalyzerService) GetUserFiles() []uri.Uri {
 	out := []uri.Uri{}

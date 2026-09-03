@@ -36,6 +36,12 @@ package common
 // the end the way JavaScript does rather than in the original position.
 // Compaction runs when more than half the slots are stale, so the amortized cost
 // of a delete stays constant.
+//
+// `index` is built on the first Delete rather than maintained from the start.
+// Most of these maps -- every symbol table, and there is one per scope -- never
+// see a delete at all, and for those the second map would be a second allocation
+// and a second write per Set for nothing. Absent `index` therefore means "no key
+// has ever been deleted", which makes every slot live by definition.
 type OrderedMap[K comparable, V any] struct {
 	keys  []K
 	items map[K]V
@@ -50,17 +56,24 @@ type OrderedMap[K comparable, V any] struct {
 	iterDepth int
 }
 
-// NewOrderedMap returns an empty map, like `new Map()`.
+// NewOrderedMap returns an empty map, like `new Map()`. index stays nil until
+// something is deleted; see the type comment.
 func NewOrderedMap[K comparable, V any]() *OrderedMap[K, V] {
-	return &OrderedMap[K, V]{items: map[K]V{}, index: map[K]int{}}
+	return &OrderedMap[K, V]{items: map[K]V{}}
 }
 
 func (m *OrderedMap[K, V]) ensure() {
 	if m.items == nil {
 		m.items = map[K]V{}
 	}
-	if m.index == nil {
-		m.index = map[K]int{}
+}
+
+// buildIndex populates index from the live keys. It runs at most once per map,
+// on the first Delete.
+func (m *OrderedMap[K, V]) buildIndex() {
+	m.index = make(map[K]int, len(m.keys))
+	for i, k := range m.keys {
+		m.index[k] = i
 	}
 }
 
@@ -85,6 +98,9 @@ func (m *OrderedMap[K, V]) compact() {
 // deleted is absent from index; one that was deleted and re-added has an index
 // pointing at its newer slot.
 func (m *OrderedMap[K, V]) isLive(i int, k K) bool {
+	if m.index == nil {
+		return true
+	}
 	pos, ok := m.index[k]
 	return ok && pos == i
 }
@@ -100,7 +116,9 @@ func (m *OrderedMap[K, V]) Get(key K) (V, bool) {
 func (m *OrderedMap[K, V]) Set(key K, value V) {
 	m.ensure()
 	if _, exists := m.items[key]; !exists {
-		m.index[key] = len(m.keys)
+		if m.index != nil {
+			m.index[key] = len(m.keys)
+		}
 		m.keys = append(m.keys, key)
 	}
 	m.items[key] = value
@@ -116,6 +134,10 @@ func (m *OrderedMap[K, V]) Has(key K) bool {
 func (m *OrderedMap[K, V]) Delete(key K) bool {
 	if _, ok := m.items[key]; !ok {
 		return false
+	}
+
+	if m.index == nil {
+		m.buildIndex()
 	}
 
 	delete(m.items, key)
@@ -186,7 +208,7 @@ func (m *OrderedMap[K, V]) ForEach(fn func(value V, key K)) {
 func (m *OrderedMap[K, V]) Clear() {
 	m.keys = nil
 	m.items = map[K]V{}
-	m.index = map[K]int{}
+	m.index = nil
 	m.dead = 0
 }
 

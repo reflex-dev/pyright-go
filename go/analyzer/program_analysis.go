@@ -822,7 +822,12 @@ func (p *Program) lookUpImport(fileUri uri.Uri, moduleDescriptor *AbsoluteModule
 		p.handleMemoryHighUsage()
 
 		skipFileNeededCheck := options != nil && options.SkipFileNeededCheck
-		p.bindFile(sourceFileInfo, "", false, skipFileNeededCheck, false)
+
+		// The original's comment: bind the file if it's not already bound. Don't
+		// count this time against the type checker.
+		common.TimingStatsInstance.TypeCheckerTime.SubtractFromTime(func() {
+			p.bindFile(sourceFileInfo, "", false, skipFileNeededCheck, false)
+		})
 	}
 
 	symbolTable := sourceFileInfo.SourceFile.GetModuleSymbolTable()
@@ -947,16 +952,19 @@ func (p *Program) checkTypes(fileToCheck *SourceFileInfo, chainedByList []*Sourc
 			p.getImportsRecursive(fileToCheck, closureMap, 0)
 
 			for _, file := range closureMap.Values() {
-				filesVisitedMap := common.NewOrderedMap[string, *SourceFileInfo]()
+				common.TimingStatsInstance.CycleDetectionTime.TimeOperation(func() {
+					filesVisitedMap := common.NewOrderedMap[string, *SourceFileInfo]()
 
-				if !p.detectAndReportImportCycles(file, filesVisitedMap, nil, map[string]bool{}) {
-					// The original's comment: if no cycles were found in any of
-					// the files we visited, set a flag that indicates we don't
-					// need to visit them again on subsequent cycle checks.
-					for _, sourceFileInfo := range filesVisitedMap.Values() {
-						sourceFileInfo.SourceFile.SetNoCircularDependencyConfirmed()
+					if !p.detectAndReportImportCycles(file, filesVisitedMap, nil, map[string]bool{}) {
+						// The original's comment: if no cycles were found in any
+						// of the files we visited, set a flag that indicates we
+						// don't need to visit them again on subsequent cycle
+						// checks.
+						for _, sourceFileInfo := range filesVisitedMap.Values() {
+							sourceFileInfo.SourceFile.SetNoCircularDependencyConfirmed()
+						}
 					}
-				}
+				})
 			}
 		}
 	}

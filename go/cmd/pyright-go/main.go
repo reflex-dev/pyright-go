@@ -288,6 +288,8 @@ func run(argv []string) ExitStatus {
 		common.TimingStatsInstance.PrintSummary(console.Info)
 
 		if args.has("stats") {
+			// The original's comment: print the stats details.
+			service.PrintStats()
 			common.TimingStatsInstance.PrintDetails(console.Info)
 		}
 	}

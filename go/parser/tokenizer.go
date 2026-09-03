@@ -1753,10 +1753,14 @@ func (t *Tokenizer) handleComment() {
 	sourceText := t.cs.GetText()
 	end := start + length
 
-	// Fast pre-filter: any ignore directive must contain the substring 'ignore'.
-	// This lets us skip the full directive scan for the vast majority of
-	// comments (which are free-form text).
-	ignoreIdx := indexOfFrom(sourceText, "ignore", start)
+	// The original's comment: fast pre-filter: any ignore directive must contain
+	// the substring 'ignore'. indexOf is a highly-optimized native call and lets
+	// us skip the full directive scan for the vast majority of comments (which
+	// are free-form text).
+	//
+	// `sourceText.indexOf('ignore', start)`, bounded to the comment -- see
+	// indexOfFromWithin for why the bound is here and why it changes no answer.
+	ignoreIdx := indexOfFromWithin(sourceText, "ignore", start, end)
 	if ignoreIdx >= 0 && ignoreIdx < end {
 		if typeIgnoreMatch, ok := matchIgnoreDirective(sourceText, start, end, "type"); ok {
 			commentStart := typeIgnoreMatch.index
@@ -1811,12 +1815,39 @@ func (t *Tokenizer) handleComment() {
 	t.addComments(comment)
 }
 
-// indexOfFrom corresponds to String.prototype.indexOf(needle, from).
-func indexOfFrom(text common.Text, needle string, from int) int {
+// indexOfFromWithin is `text.indexOf(needle, from)` restricted to matches that
+// *begin* before limit.
+//
+// The original passes no limit -- it searches to the end of the file and then
+// discards any result at or past the comment's end. That is the same answer, and
+// its own comment explains why it can afford it: "indexOf is a highly-optimized
+// native call". V8's is a SIMD search; a hand-written scan over []uint16 is not,
+// and running it from every comment to end-of-file makes the tokenizer
+// O(comments x file size). It was 3% of a whole-project run.
+//
+// Two things keep this identical rather than merely equivalent. The needle may
+// still run past limit, exactly as indexOf would -- what is bounded is where a
+// match may *start*, which is precisely what the discarded comparison tested.
+// And the scan checks the first code unit inline before calling out, so the
+// per-position cost is a load and a compare.
+func indexOfFromWithin(text common.Text, needle string, from int, limit int) int {
 	if from < 0 {
 		from = 0
 	}
-	for i := from; i+len(needle) <= text.Length(); i++ {
+	if len(needle) == 0 {
+		return from
+	}
+
+	last := text.Length() - len(needle)
+	if limit-1 < last {
+		last = limit - 1
+	}
+
+	first := uint16(needle[0])
+	for i := from; i <= last; i++ {
+		if text[i] != first {
+			continue
+		}
 		if textStartsWithASCII(text, needle, i) {
 			return i
 		}

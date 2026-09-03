@@ -742,28 +742,30 @@ func (s *SourceFile) Parse(configOptions *ConfigOptions, importResolver *ImportR
 	diagSink := common.NewDiagnosticSink()
 	fileContents, haveContents := s.GetOpenFileContents()
 	if !haveContents {
-		read := func() (string, bool) {
-			if hasContent {
-				return content, true
+		common.TimingStatsInstance.ReadFileTime.TimeOperation(func() {
+			read := func() (string, bool) {
+				if hasContent {
+					return content, true
+				}
+				return s.getFileContentOk()
 			}
-			return s.getFileContentOk()
-		}
-		if text, ok := read(); ok {
-			fileContents = text
-			// Remember the length and hash for comparison purposes.
-			asText := common.NewText(fileContents)
-			length := asText.Length()
-			hash := common.HashText(asText)
-			s.writableData.LastFileContentLength = &length
-			s.writableData.LastFileContentHash = &hash
-		} else {
-			diagSink.AddError("Source file could not be read", common.GetEmptyRange())
-			fileContents = ""
+			if text, ok := read(); ok {
+				fileContents = text
+				// Remember the length and hash for comparison purposes.
+				asText := common.NewText(fileContents)
+				length := asText.Length()
+				hash := common.HashText(asText)
+				s.writableData.LastFileContentLength = &length
+				s.writableData.LastFileContentHash = &hash
+			} else {
+				diagSink.AddError("Source file could not be read", common.GetEmptyRange())
+				fileContents = ""
 
-			if !s.FileSystem.ExistsSync(s.uri) {
-				s.writableData.IsFileDeleted = true
+				if !s.FileSystem.ExistsSync(s.uri) {
+					s.writableData.IsFileDeleted = true
+				}
 			}
-		}
+		})
 	}
 
 	s.parseContents(configOptions, importResolver, fileContents, diagSink)
@@ -858,11 +860,13 @@ func (s *SourceFile) parseContents(
 
 	// Resolve imports.
 	execEnvironment := configOptions.FindExecEnvironment(s.uri)
-	importResult := s.resolveImports(importResolver, parseFileResults.ParserOutput.ImportedModules, execEnvironment)
+	common.TimingStatsInstance.ResolveImportsTime.TimeOperation(func() {
+		importResult := s.resolveImports(importResolver, parseFileResults.ParserOutput.ImportedModules, execEnvironment)
 
-	s.writableData.Imports = importResult.Imports
-	s.writableData.HasImports = true
-	s.writableData.BuiltinsImport = importResult.BuiltinsImportResult
+		s.writableData.Imports = importResult.Imports
+		s.writableData.HasImports = true
+		s.writableData.BuiltinsImport = importResult.BuiltinsImportResult
+	})
 
 	s.writableData.ParseDiagnostics = diagSink.FetchAndClear()
 
@@ -913,7 +917,9 @@ func (s *SourceFile) Bind(
 	logState := s.logTracker.Log("binding: " + s.getPathForLogging(s.uri).String())
 	defer logState.Done()
 
-	s.bindContents(configOptions, importLookup, builtinsScope, futureImports, cellChainIndex)
+	common.TimingStatsInstance.BindTime.TimeOperation(func() {
+		s.bindContents(configOptions, importLookup, builtinsScope, futureImports, cellChainIndex)
+	})
 
 	// Prepare for the next stage of the analysis.
 	s.writableData.IsCheckingNeeded = true
@@ -1005,20 +1011,22 @@ func (s *SourceFile) Check(
 		s.recomputeDiagnostics(configOptions)
 	}()
 
-	checkDuration := common.NewDuration()
-	s.writableData.IsCheckingInProgress = true
+	common.TimingStatsInstance.TypeCheckerTime.TimeOperation(func() {
+		checkDuration := common.NewDuration()
+		s.writableData.IsCheckingInProgress = true
 
-	if s.checkerFactory != nil {
-		checker := s.checkerFactory(importResolver, evaluator, s.writableData.ParserOutput, dependentFiles)
-		checker.Check()
+		if s.checkerFactory != nil {
+			checker := s.checkerFactory(importResolver, evaluator, s.writableData.ParserOutput, dependentFiles)
+			checker.Check()
 
-		fileInfo := GetFileInfo(s.writableData.ParserOutput.ParseTree)
-		s.writableData.CheckerDiagnostics = fileInfo.DiagnosticSink.FetchAndClear()
-	}
+			fileInfo := GetFileInfo(s.writableData.ParserOutput.ParseTree)
+			s.writableData.CheckerDiagnostics = fileInfo.DiagnosticSink.FetchAndClear()
+		}
 
-	s.writableData.IsCheckingNeeded = false
-	elapsed := checkDuration.GetDurationInMilliseconds()
-	s.writableData.CheckTime = &elapsed
+		s.writableData.IsCheckingNeeded = false
+		elapsed := checkDuration.GetDurationInMilliseconds()
+		s.writableData.CheckTime = &elapsed
+	})
 }
 
 func (s *SourceFile) TestEnableIPythonMode(enable bool) {

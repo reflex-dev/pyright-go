@@ -1114,3 +1114,55 @@ per-node type differential over 88,477 names in 1,343 files. Both still pass
 unchanged with the fix in. The construct is simply absent from pyright's own
 sample corpus, which is a reminder that a differential proves agreement on the
 inputs it was given and nothing about the inputs it was not.
+
+## A second round of speed work, and one negative result worth keeping
+
+The negative result first, because it redirected everything after it. The
+profile was more than half garbage collection, so the obvious lever was GC
+tuning. It is not the lever:
+
+| GOGC | time | peak RSS |
+| --- | --- | --- |
+| 100 (default) | 43.0 s | 6480 MB |
+| 200 | 39.5 s | 8315 MB |
+| 400 | 38.7 s | 10171 MB |
+| 800 | 39.4 s | 11580 MB |
+| off | 40.7 s | 19083 MB |
+
+Turning the collector *off entirely* buys 5%, at 3× the memory. The GC work
+shows up in the profile because it runs on other cores in parallel with a
+single-threaded mutator -- it is not on the critical path. Every remaining
+second is application work, and the only way to find it was to profile with
+`GOGC=400` so the runtime frames stopped drowning out everything else.
+
+Three findings, 43 s -> 35.7 s:
+
+**The tokenizer scanned to end-of-file from every comment.** `_handleComment`
+pre-filters with `sourceText.indexOf('ignore', start)` and then discards a
+result at or past the comment's end. The original can afford that -- its own
+comment says "indexOf is a highly-optimized native call", and V8's is a SIMD
+search. The port's hand-written scan over `[]uint16` is not, so the pre-filter
+was O(comments × file size) and cost 3% of a whole-project run. Bounding the
+search to where a match may *begin* is provably the same answer, since that is
+exactly what the discarded comparison tested.
+
+**The O(1) `Delete` fix had made every OrderedMap allocate a second map.** The
+index is only meaningful once something has been deleted, and most of these maps
+-- one symbol table per scope -- never delete at all. Building it lazily on the
+first `Delete` makes "index is nil" mean "no key has ever been deleted", which
+makes every slot live by definition, and removes both the allocation and a map
+write per `Set` from the common path.
+
+**`common.Text` converted through `[]rune` in both directions.** `NewText` is
+`utf16.Encode([]rune(s))` and `String` is `string(utf16.Decode(t))` -- two
+allocations and two passes each, where Python source is overwhelmingly ASCII and
+one code unit is one byte. The fast paths are single-pass and produce a
+byte-identical result; `common/text_asciipath_test.go` pins them against the
+general path over BMP, astral and unpaired-surrogate inputs.
+
+Two of these three are the same shape as the `MatchFileSpecs` finding earlier:
+the algorithm is faithful, and the constant factor is not, because the original
+leans on a native JavaScript primitive that Go does not have an equivalent of.
+That is a category worth watching for in a transliteration -- `indexOf`,
+`RegExp`, `String` concatenation and `Map` iteration are all places where "the
+same code" costs very different amounts.

@@ -25,12 +25,56 @@ type Text []uint16
 
 // NewText converts a Go (UTF-8) string into UTF-16 code units.
 func NewText(s string) Text {
+	// The ASCII fast path. utf16.Encode takes []rune, so the general form
+	// decodes the string into a rune slice and then re-encodes it -- two
+	// allocations and two passes. Python source is overwhelmingly ASCII, and
+	// there one code unit is one byte, so the widening is a single pass with no
+	// intermediate. The result is identical; this only skips work that would
+	// have been the identity.
+	if isASCII(s) {
+		out := make(Text, len(s))
+		for i := 0; i < len(s); i++ {
+			out[i] = uint16(s[i])
+		}
+		return out
+	}
+
 	return Text(utf16.Encode([]rune(s)))
+}
+
+// isASCII reports whether s contains only code points below 0x80.
+func isASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
 }
 
 // String converts back to a Go (UTF-8) string. Unpaired surrogates are
 // replaced with U+FFFD, matching what a lossy UTF-16 -> UTF-8 conversion does.
 func (t Text) String() string {
+	// The ASCII fast path, for the same reason NewText has one: utf16.Decode
+	// allocates a []rune and string() then allocates again to encode it. When
+	// every code unit is below 0x80 the UTF-8 encoding is byte-for-byte the low
+	// halves, so one pass into a byte slice gives the identical string.
+	ascii := true
+	for _, unit := range t {
+		if unit >= 0x80 {
+			ascii = false
+			break
+		}
+	}
+
+	if ascii {
+		out := make([]byte, len(t))
+		for i, unit := range t {
+			out[i] = byte(unit)
+		}
+		return string(out)
+	}
+
 	return string(utf16.Decode([]uint16(t)))
 }
 
