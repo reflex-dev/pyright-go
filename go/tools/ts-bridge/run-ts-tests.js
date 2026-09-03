@@ -141,7 +141,14 @@ export function report() {
     const skipped: { name: string; reason: string }[] = [];
     const perFile = new Map<string, { passed: number; failed: number; skipped: number }>();
 
-    for (const t of tests) {
+    // --filter narrows the run to the tests whose names match, so a single
+    // failing case can be re-run in a second instead of the whole suite in
+    // minutes. The tally lines are meaningless under a filter and say so.
+    const filter = ${JSON.stringify(args.filter ?? null)};
+    const selected = filter ? tests.filter((t) => new RegExp(filter).test(t.name)) : tests;
+
+    for (const t of selected) {
+        (globalThis as any).__pyrightGoCurrentTest = t.name;
         if (!perFile.has(t.file)) {
             perFile.set(t.file, { passed: 0, failed: 0, skipped: 0 });
         }
@@ -219,7 +226,7 @@ export function report() {
             ' failed, ' +
             skipped.length +
             ' skipped, ' +
-            tests.length +
+            selected.length +
             ' total'
     );
     if (${isEvaluatorGate}) {

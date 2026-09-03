@@ -400,7 +400,74 @@ export function typeAnalyzeSampleFiles(
         }
     }
 
+    if (mode === 'diff') {
+        reportDiff(fileNames, reconstructed, console, response.results ?? []);
+    }
+
     return wireToResults(response.results);
+}
+
+/*
+ * Diff mode: answer from the Go port, but also run the TypeScript evaluator over
+ * the same files and print what the two disagree about.
+ *
+ * The gate reports "Expected 3 errors, got 2", which says a diagnostic is
+ * missing but not which one. That is the difference between a day of bisecting a
+ * sample file by hand and a one-line answer, and it is the same reason the
+ * binder differential exists: a count tells you something is wrong, a diff tells
+ * you what.
+ *
+ * Diagnostics are keyed by category, position and message, so a diagnostic that
+ * merely moved is reported as one removal and one addition rather than silently
+ * matching. Order is not part of the key -- pyright does not promise one, and
+ * validateResults does not check it.
+ */
+function reportDiff(
+    fileNames: string[],
+    configOptions: ConfigOptions,
+    console: any,
+    goWire: FileResultWire[]
+) {
+    const oracleWire = resultsToWire(RealTestUtils.typeAnalyzeSampleFiles(fileNames, configOptions, console));
+
+    const key = (kind: string, diag: DiagnosticWire) =>
+        `${kind} [${diag.range.start.line + 1}:${diag.range.start.character}] ${diag.message.replace(/\n/g, ' | ')}`;
+
+    const lines: string[] = [];
+    for (let i = 0; i < Math.max(oracleWire.length, goWire.length); i++) {
+        const expected = new Map<string, number>();
+        const received = new Map<string, number>();
+        const bump = (map: Map<string, number>, k: string) => map.set(k, (map.get(k) ?? 0) + 1);
+
+        for (const kind of diagnosticKinds) {
+            for (const diag of oracleWire[i]?.[kind] ?? []) bump(expected, key(kind, diag));
+            for (const diag of goWire[i]?.[kind] ?? []) bump(received, key(kind, diag));
+        }
+
+        const fileLines: string[] = [];
+        for (const [k, count] of expected) {
+            const missing = count - (received.get(k) ?? 0);
+            for (let n = 0; n < missing; n++) fileLines.push('  MISSING  ' + k);
+        }
+        for (const [k, count] of received) {
+            const spurious = count - (expected.get(k) ?? 0);
+            for (let n = 0; n < spurious; n++) fileLines.push('  SPURIOUS ' + k);
+        }
+
+        if (fileLines.length > 0) {
+            lines.push(' ' + (fileNames[i] ?? oracleWire[i]?.fileUri ?? goWire[i]?.fileUri));
+            // Sorted so the two halves of a moved diagnostic land together.
+            lines.push(...fileLines.sort((a, b) => a.slice(10).localeCompare(b.slice(10))));
+        }
+    }
+
+    if (lines.length > 0) {
+        console?.log?.('');
+        process.stdout.write(
+            'DIFF ' + ((globalThis as any).__pyrightGoCurrentTest ?? fileNames.join(',')) + '\n'
+        );
+        process.stdout.write(lines.join('\n') + '\n');
+    }
 }
 
 export function getAnalysisResults(): never {
