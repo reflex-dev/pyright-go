@@ -1208,3 +1208,33 @@ Fidelity result: the threaded port agrees with `pyright --threads` to the
 diagnostic -- including reproducing upstream's deterministic loss of the same
 two diagnostics (UPSTREAM-BUGS.md #17), which localizes that bug to the
 per-file isolation semantics rather than partitioning or scheduling.
+
+## The memory work, and the wiring race it re-exposed
+
+The first two structure-layout reductions are described in PORTING.md: the
+hybrid `AnalyzerNodeInfo` slot and the `ClassType` rare-field split, together
+−400 MB of live heap (−12%), −0.5 GB single-threaded RSS and −2-4 GB
+16-worker RSS at wall-time parity, with every gate and every dropin mode
+producing identical diagnostics.
+
+Two lessons from it:
+
+**The rare-field split is safe only because cloneSelf is a choke point.** All
+ClassType copies flow through one `clone := *t`, so the rare block can be
+deep-copied there and no other site can alias it. The audit that established
+that -- no `Priv:` literals, no `.Priv =` assignments, no `&x.Priv` captures
+for ClassType -- is what made a 120-site mechanical rewrite safe rather than a
+minefield. Same-named accessor methods kept the diff sed-able: reads gained
+`()`, writes gained `ensureRare().`.
+
+**A clean race run is evidence, not proof.** The full-project `-race` pass
+after the --threads work reported zero races; a later identical pass caught
+two, both in the anySpecialForm wiring. The mutex serialized writers, but a
+worker can *read* the singleton before its own prefetch ever takes that mutex
+-- while its builtins are still partially evaluated -- so there was no
+happens-before edge for readers, and whether the detector sees it depends on
+scheduling. The fix is structural: runMultiThreaded analyzes worker 0's first
+file on the main goroutine before spawning anything, so the wiring is complete
+before any worker exists. No duplicated work -- worker 0 starts from its
+second file -- and re-running the full-project `-race` pass reports zero races
+again, now with the ordering actually guaranteed.

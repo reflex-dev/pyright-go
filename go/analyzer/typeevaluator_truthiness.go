@@ -522,8 +522,8 @@ func (e *typeEvaluator) GetGetterTypeFromProperty(propertyClass *ClassType) Type
 		return nil
 	}
 
-	if propertyClass.Priv.FgetInfo != nil {
-		if fn, ok := propertyClass.Priv.FgetInfo.MethodType.(*FunctionType); ok {
+	if propertyClass.Priv.FgetInfo() != nil {
+		if fn, ok := propertyClass.Priv.FgetInfo().MethodType.(*FunctionType); ok {
 			return e.GetEffectiveReturnType(fn)
 		}
 	}

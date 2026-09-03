@@ -101,8 +101,8 @@ func RequiresTypeArgs(classType *ClassType) bool {
 		}
 
 		name := classType.Shared.Name
-		if classType.Priv.AliasName != nil && *classType.Priv.AliasName != "" {
-			name = *classType.Priv.AliasName
+		if classType.Priv.AliasName() != nil && *classType.Priv.AliasName() != "" {
+			name = *classType.Priv.AliasName()
 		}
 
 		for _, t := range specialClasses {

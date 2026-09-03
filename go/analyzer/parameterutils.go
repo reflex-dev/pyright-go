@@ -287,8 +287,8 @@ func GetParamListDetails(t *FunctionType, options *ParamListDetailsOptions) *Par
 
 				typedDictType := paramTypeCls
 				paramTypeCls.Shared.TypedDictEntries.KnownItems.ForEach(func(entry *TypedDictEntry, name string) {
-					if paramTypeCls.Priv.TypedDictNarrowedEntries != nil {
-						if narrowed, ok := paramTypeCls.Priv.TypedDictNarrowedEntries.Get(name); ok {
+					if paramTypeCls.Priv.TypedDictNarrowedEntries() != nil {
+						if narrowed, ok := paramTypeCls.Priv.TypedDictNarrowedEntries().Get(name); ok {
 							entry = narrowed
 						}
 					}

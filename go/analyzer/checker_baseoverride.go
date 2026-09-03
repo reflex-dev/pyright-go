@@ -143,7 +143,7 @@ func overrideFunctionFor(overrideType Type, useFirstOverloadIfNoImpl bool) *Func
 	}
 
 	if IsClassInstance(overrideType) && ClassTypeIsPropertyClass(overrideType.(*ClassType)) {
-		fgetInfo := overrideType.(*ClassType).Priv.FgetInfo
+		fgetInfo := overrideType.(*ClassType).Priv.FgetInfo()
 		if fgetInfo != nil && IsFunction(fgetInfo.MethodType) {
 			return fgetInfo.MethodType.(*FunctionType)
 		}

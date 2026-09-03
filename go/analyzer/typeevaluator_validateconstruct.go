@@ -136,8 +136,8 @@ func (e *typeEvaluator) validateCallForBuiltInClass(
 	inferenceContext *InferenceContext,
 ) (*CallResult, bool) {
 	className := expandedCallType.Shared.Name
-	if expandedCallType.Priv.AliasName != nil {
-		className = *expandedCallType.Priv.AliasName
+	if expandedCallType.Priv.AliasName() != nil {
+		className = *expandedCallType.Priv.AliasName()
 	}
 
 	// The original's comment: handle a call to a metaclass explicitly.

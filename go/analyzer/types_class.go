@@ -343,6 +343,20 @@ type ClassDetailsPriv struct {
 	// true or 'string' or 3).
 	LiteralValue LiteralValue
 
+	// rare holds the fields that exist only on a small minority of class
+	// types: properties, narrowed TypedDicts, `functools.partial`, the
+	// `deprecated` class, and the asymmetry caches. The original stores them
+	// as optional properties, which V8 lays out only when set; keeping them
+	// inline here charged every one of the millions of live class clones 96
+	// bytes for fields it does not have. Access goes through the same-named
+	// methods below, and cloneSelf copies the block, so a clone owns its
+	// fields exactly as it did when they were inline.
+	rare *classDetailsPrivRare
+}
+
+// classDetailsPrivRare holds the ClassDetailsPriv fields that most class
+// types never set. See the `rare` field above.
+type classDetailsPrivRare struct {
 	// AliasName holds the alias name where the typing module defines aliases
 	// for builtin types (e.g. Tuple, List, Dict).
 	AliasName *string
@@ -382,6 +396,84 @@ type ClassDetailsPriv struct {
 	PartialCallType Type
 }
 
+// The rare-field readers answer the zero value when the block is absent, which
+// is what the inline fields answered before they moved.
+
+func (p *ClassDetailsPriv) AliasName() *string {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.AliasName
+}
+
+func (p *ClassDetailsPriv) TypedDictNarrowedEntries() *common.OrderedMap[string, *TypedDictEntry] {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.TypedDictNarrowedEntries
+}
+
+func (p *ClassDetailsPriv) IsTypedDictPartial() bool {
+	return p.rare != nil && p.rare.IsTypedDictPartial
+}
+
+func (p *ClassDetailsPriv) IsAsymmetricDescriptor() *bool {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.IsAsymmetricDescriptor
+}
+
+func (p *ClassDetailsPriv) IsAsymmetricAttributeAccessor() *bool {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.IsAsymmetricAttributeAccessor
+}
+
+func (p *ClassDetailsPriv) FgetInfo() *PropertyMethodInfo {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.FgetInfo
+}
+
+func (p *ClassDetailsPriv) FsetInfo() *PropertyMethodInfo {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.FsetInfo
+}
+
+func (p *ClassDetailsPriv) FdelInfo() *PropertyMethodInfo {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.FdelInfo
+}
+
+func (p *ClassDetailsPriv) DeprecatedInstanceMessage() *string {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.DeprecatedInstanceMessage
+}
+
+func (p *ClassDetailsPriv) PartialCallType() Type {
+	if p.rare == nil {
+		return nil
+	}
+	return p.rare.PartialCallType
+}
+
+// ensureRare allocates the rare block on first write.
+func (p *ClassDetailsPriv) ensureRare() *classDetailsPrivRare {
+	if p.rare == nil {
+		p.rare = &classDetailsPrivRare{}
+	}
+	return p.rare
+}
+
 // ClassType corresponds to the interface of the same name.
 type ClassType struct {
 	TypeBase
@@ -392,6 +484,13 @@ type ClassType struct {
 func (t *ClassType) cloneSelf() Type {
 	clone := *t
 	clone.cloneBaseInto()
+	if clone.Priv.rare != nil {
+		// The rare block's fields were inline in Priv before they moved (see
+		// classDetailsPrivRare); copying the block keeps clone-owns-its-fields
+		// semantics identical to the struct copy above.
+		rareCopy := *clone.Priv.rare
+		clone.Priv.rare = &rareCopy
+	}
 	return &clone
 }
 
@@ -550,14 +649,14 @@ func ClassTypeCloneWithLiteral(classType *ClassType, value LiteralValue) *ClassT
 // ClassType.cloneForDeprecatedInstance.
 func ClassTypeCloneForDeprecatedInstance(t *ClassType, deprecatedMessage *string) *ClassType {
 	newClassType := CloneType(t)
-	newClassType.Priv.DeprecatedInstanceMessage = deprecatedMessage
+	newClassType.Priv.ensureRare().DeprecatedInstanceMessage = deprecatedMessage
 	return newClassType
 }
 
 // ClassTypeCloneForTypingAlias corresponds to ClassType.cloneForTypingAlias.
 func ClassTypeCloneForTypingAlias(classType *ClassType, aliasName string) *ClassType {
 	newClassType := CloneType(classType)
-	newClassType.Priv.AliasName = &aliasName
+	newClassType.Priv.ensureRare().AliasName = &aliasName
 	return newClassType
 }
 
@@ -568,7 +667,7 @@ func ClassTypeCloneForNarrowedTypedDictEntries(
 	narrowedEntries *common.OrderedMap[string, *TypedDictEntry],
 ) *ClassType {
 	newClassType := CloneType(classType)
-	newClassType.Priv.TypedDictNarrowedEntries = narrowedEntries
+	newClassType.Priv.ensureRare().TypedDictNarrowedEntries = narrowedEntries
 	return newClassType
 }
 
@@ -576,7 +675,7 @@ func ClassTypeCloneForNarrowedTypedDictEntries(
 // ClassType.cloneForPartialTypedDict.
 func ClassTypeCloneForPartialTypedDict(classType *ClassType) *ClassType {
 	newClassType := CloneType(classType)
-	newClassType.Priv.IsTypedDictPartial = true
+	newClassType.Priv.ensureRare().IsTypedDictPartial = true
 	return newClassType
 }
 
@@ -597,7 +696,7 @@ func ClassTypeCloneRemoveTypePromotions(classType *ClassType) *ClassType {
 // ClassTypeCloneForPartial corresponds to ClassType.cloneForPartial.
 func ClassTypeCloneForPartial(classType *ClassType, partialCallType Type) *ClassType {
 	newClassType := CloneType(classType)
-	newClassType.Priv.PartialCallType = partialCallType
+	newClassType.Priv.ensureRare().PartialCallType = partialCallType
 	return newClassType
 }
 
@@ -663,13 +762,13 @@ func ClassTypeIsLiteralValueSame(type1, type2 *ClassType) bool {
 // classes are equivalent given that one or both have narrowed entries (i.e.
 // entries that are guaranteed to be present).
 func ClassTypeIsTypedDictNarrowedEntriesSame(type1, type2 *ClassType) bool {
-	if type1.Priv.TypedDictNarrowedEntries != nil {
-		if type2.Priv.TypedDictNarrowedEntries == nil {
+	if type1.Priv.TypedDictNarrowedEntries() != nil {
+		if type2.Priv.TypedDictNarrowedEntries() == nil {
 			return false
 		}
 
-		tdEntries1 := type1.Priv.TypedDictNarrowedEntries
-		tdEntries2 := type2.Priv.TypedDictNarrowedEntries
+		tdEntries1 := type1.Priv.TypedDictNarrowedEntries()
+		tdEntries2 := type2.Priv.TypedDictNarrowedEntries()
 
 		if tdEntries1.Size() != tdEntries2.Size() {
 			return false
@@ -685,7 +784,7 @@ func ClassTypeIsTypedDictNarrowedEntriesSame(type1, type2 *ClassType) bool {
 				return false
 			}
 		}
-	} else if type2.Priv.TypedDictNarrowedEntries != nil {
+	} else if type2.Priv.TypedDictNarrowedEntries() != nil {
 		return false
 	}
 
@@ -696,12 +795,12 @@ func ClassTypeIsTypedDictNarrowedEntriesSame(type1, type2 *ClassType) bool {
 // narrower form of type2, i.e. all of the "narrowed entries" found within
 // type2 are also found within type1.
 func ClassTypeIsTypedDictNarrower(type1, type2 *ClassType) bool {
-	tdEntries2 := type2.Priv.TypedDictNarrowedEntries
+	tdEntries2 := type2.Priv.TypedDictNarrowedEntries()
 	if tdEntries2 == nil {
 		return true
 	}
 
-	tdEntries1 := type1.Priv.TypedDictNarrowedEntries
+	tdEntries1 := type1.Priv.TypedDictNarrowedEntries()
 	if tdEntries1 == nil {
 		tdEntries1 = common.NewOrderedMap[string, *TypedDictEntry]()
 	}
@@ -729,7 +828,7 @@ func ClassTypeIsUnspecialized(classType *ClassType) bool {
 // empty className stands in for the optional parameter being omitted; see
 // ClassTypeIsSpecialBuiltInNamed for the form that takes a name.
 func ClassTypeIsSpecialBuiltIn(classType *ClassType) bool {
-	return (classType.Shared.Flags&ClassTypeFlagsSpecialBuiltIn) != 0 || classType.Priv.AliasName != nil
+	return (classType.Shared.Flags&ClassTypeFlagsSpecialBuiltIn) != 0 || classType.Priv.AliasName() != nil
 }
 
 // ClassTypeIsSpecialBuiltInNamed corresponds to ClassType.isSpecialBuiltIn
@@ -766,7 +865,7 @@ func ClassTypeIsBuiltInNamed(classType *ClassType, classNames ...string) bool {
 		if name == classType.Shared.Name || name == classType.Shared.FullName {
 			return true
 		}
-		if classType.Priv.AliasName != nil && name == *classType.Priv.AliasName {
+		if classType.Priv.AliasName() != nil && name == *classType.Priv.AliasName() {
 			return true
 		}
 	}
@@ -1040,7 +1139,7 @@ func ClassTypeHasNamedTupleEntry(classType *ClassType, name string) bool {
 // ClassTypeIsSameGenericClass is the same as IsTypeSame except that it doesn't
 // compare type arguments. The TypeScript defaults recursionCount to 0.
 func ClassTypeIsSameGenericClass(classType, type2 *ClassType, recursionCount int) bool {
-	if classType.Priv.IsTypedDictPartial != type2.Priv.IsTypedDictPartial {
+	if classType.Priv.IsTypedDictPartial() != type2.Priv.IsTypedDictPartial() {
 		return false
 	}
 

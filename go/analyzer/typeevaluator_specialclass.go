@@ -129,8 +129,8 @@ func (e *typeEvaluator) createSpecialFormType(
 ) (*TypeResult, bool) {
 	// `classType.priv.aliasName || classType.shared.name`
 	aliasedName := classType.Shared.Name
-	if classType.Priv.AliasName != nil && *classType.Priv.AliasName != "" {
-		aliasedName = *classType.Priv.AliasName
+	if classType.Priv.AliasName() != nil && *classType.Priv.AliasName() != "" {
+		aliasedName = *classType.Priv.AliasName()
 	}
 
 	nonTypeFormFlags := EvalFlagsNoNonTypeSpecialForms | EvalFlagsTypeExpression | EvalFlagsTypeFormArg
@@ -325,8 +325,8 @@ func (e *typeEvaluator) validateClassTypeArgCount(
 ) (*TypeResult, bool) {
 	// `classType.priv.aliasName || classType.shared.name`
 	name := classType.Shared.Name
-	if classType.Priv.AliasName != nil && *classType.Priv.AliasName != "" {
-		name = *classType.Priv.AliasName
+	if classType.Priv.AliasName() != nil && *classType.Priv.AliasName() != "" {
+		name = *classType.Priv.AliasName()
 	}
 
 	minTypeArgCount := len(typeParams)

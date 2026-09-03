@@ -108,10 +108,15 @@ func (e *typeEvaluator) initializePrefetchedTypes(node parser.ParseNode) {
 	// can tell because the classes are structurally identical. Under --threads
 	// that overwrite is a data race -- worker goroutines share the singleton
 	// where the original's worker processes each had their own -- so the
-	// wiring runs once per process, first evaluator wins, and the mutex gives
-	// every later evaluator a happens-before edge on the written fields. An
-	// evaluator with no builtins (no object/type class) does not consume the
-	// wiring; the next one that has them performs it, as it would upstream.
+	// wiring runs once per process, first evaluator wins. An evaluator with no
+	// builtins (no object/type class) does not consume the wiring; the next
+	// one that has them performs it, as it would upstream.
+	//
+	// The mutex serializes writers, but it is not what readers synchronize on:
+	// an evaluator can read the singleton before its own prefetch reaches this
+	// block (its builtins may still be partially evaluated). The CLI therefore
+	// completes one file's analysis -- which performs this wiring -- before it
+	// spawns any worker goroutine; see runMultiThreaded in cmd/pyright-go.
 	anySpecialFormWiringMu.Lock()
 	defer anySpecialFormWiringMu.Unlock()
 	if !anySpecialFormWired &&

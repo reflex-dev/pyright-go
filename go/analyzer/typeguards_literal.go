@@ -389,9 +389,9 @@ func narrowTypeForTypedDictKey(
 					}
 
 					newNarrowedEntriesMap := common.NewOrderedMap[string, *TypedDictEntry]()
-					if subtypeClass.Priv.TypedDictNarrowedEntries != nil {
-						for _, key := range subtypeClass.Priv.TypedDictNarrowedEntries.Keys() {
-							value, _ := subtypeClass.Priv.TypedDictNarrowedEntries.Get(key)
+					if subtypeClass.Priv.TypedDictNarrowedEntries() != nil {
+						for _, key := range subtypeClass.Priv.TypedDictNarrowedEntries().Keys() {
+							value, _ := subtypeClass.Priv.TypedDictNarrowedEntries().Get(key)
 							newNarrowedEntriesMap.Set(key, value)
 						}
 					}
@@ -569,7 +569,7 @@ func narrowTypeForDiscriminatedLiteralFieldComparison(
 			// The original's comment: handle the case where the field is a property that
 			// has a declared literal return type for its getter.
 			if IsClassInstance(subtype) && IsClassInstance(memberType) && IsProperty(memberType) {
-				fgetInfo := memberType.(*ClassType).Priv.FgetInfo
+				fgetInfo := memberType.(*ClassType).Priv.FgetInfo()
 				if fgetInfo != nil && fgetInfo.MethodType != nil {
 					getterType := fgetInfo.MethodType
 					if IsFunction(getterType) && getterType.(*FunctionType).Shared.DeclaredReturnType != nil {

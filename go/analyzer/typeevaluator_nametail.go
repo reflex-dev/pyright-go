@@ -242,8 +242,8 @@ func (e *typeEvaluator) ReportMissingTypeArgs(node parser.ExpressionNode, t Type
 					// `string | undefined` and tested for truthiness, so an
 					// empty string falls through to the class name too.
 					name := classType.Shared.Name
-					if classType.Priv.AliasName != nil && *classType.Priv.AliasName != "" {
-						name = *classType.Priv.AliasName
+					if classType.Priv.AliasName() != nil && *classType.Priv.AliasName() != "" {
+						name = *classType.Priv.AliasName()
 					}
 					e.AddDiagnostic(
 						DiagnosticRuleReportMissingTypeArgument,

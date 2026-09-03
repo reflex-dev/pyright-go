@@ -157,8 +157,8 @@ func (m *UniqueNameMap) Build(t Type, recursionTypes *[]Type, recursionCount int
 		}
 
 		className := ""
-		if cls.Priv.AliasName != nil {
-			className = *cls.Priv.AliasName
+		if cls.Priv.AliasName() != nil {
+			className = *cls.Priv.AliasName()
 		}
 		if className == "" {
 			if (m.printTypeFlags & PrintTypeFlagsUseFullyQualifiedNames) != 0 {

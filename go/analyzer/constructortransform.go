@@ -475,7 +475,7 @@ func buildPartialParamList(
 			tdClass := newType.(*ClassType)
 			typedDictEntries := GetTypedDictMembersForClass(evaluator, tdClass, false)
 			narrowedEntriesMap := common.NewOrderedMap[string, *TypedDictEntry]()
-			if existing := tdClass.Priv.TypedDictNarrowedEntries; existing != nil {
+			if existing := tdClass.Priv.TypedDictNarrowedEntries(); existing != nil {
 				existing.ForEach(func(v *TypedDictEntry, k string) {
 					narrowedEntriesMap.Set(k, v)
 				})

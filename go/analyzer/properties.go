@@ -104,13 +104,13 @@ func CreateProperty(
 
 	propertyObject := ClassTypeCloneAsInstance(propertyClass, true)
 	isAsymmetric := false
-	propertyClass.Priv.IsAsymmetricDescriptor = &isAsymmetric
+	propertyClass.Priv.ensureRare().IsAsymmetricDescriptor = &isAsymmetric
 
 	// The original's comment: update the __set__ and __delete__ methods if present.
 	updateGetSetDelMethodForClonedProperty(evaluator, propertyObject)
 
 	// The original's comment: fill in the fget method.
-	propertyObject.Priv.FgetInfo = &PropertyMethodInfo{
+	propertyObject.Priv.ensureRare().FgetInfo = &PropertyMethodInfo{
 		MethodType: fget,
 		ClassType:  fget.Shared.MethodClass,
 	}
@@ -138,8 +138,8 @@ func ClonePropertyWithSetter(
 
 	classType := prop.(*ClassType)
 	flagsToClone := classType.Shared.Flags
-	isAsymmetricDescriptor := classType.Priv.IsAsymmetricDescriptor != nil &&
-		*classType.Priv.IsAsymmetricDescriptor
+	isAsymmetricDescriptor := classType.Priv.IsAsymmetricDescriptor() != nil &&
+		*classType.Priv.IsAsymmetricDescriptor()
 
 	// The original's comment: verify parameters for fset. We'll skip this test if
 	// the diagnostic rule is disabled because it can be somewhat expensive,
@@ -194,9 +194,9 @@ func ClonePropertyWithSetter(
 	}
 	ComputeMroLinearization(propertyClass)
 
-	propertyClass.Priv.FgetInfo = classType.Priv.FgetInfo
-	propertyClass.Priv.FdelInfo = classType.Priv.FdelInfo
-	propertyClass.Priv.IsAsymmetricDescriptor = &isAsymmetricDescriptor
+	propertyClass.Priv.ensureRare().FgetInfo = classType.Priv.FgetInfo()
+	propertyClass.Priv.ensureRare().FdelInfo = classType.Priv.FdelInfo()
+	propertyClass.Priv.ensureRare().IsAsymmetricDescriptor = &isAsymmetricDescriptor
 	propertyObject := ClassTypeCloneAsInstance(propertyClass, true)
 
 	// The original's comment: clone the symbol table of the old class type.
@@ -216,13 +216,13 @@ func ClonePropertyWithSetter(
 	// accumulated from previous declarations of this property. This supports
 	// overloads on property setters.
 	var prevSetter Type
-	if classType.Priv.FsetInfo != nil {
-		prevSetter = classType.Priv.FsetInfo.MethodType
+	if classType.Priv.FsetInfo() != nil {
+		prevSetter = classType.Priv.FsetInfo().MethodType
 	}
 	combinedSetter := combineSetterOverloads(prevSetter, fset)
 
 	// The original's comment: fill in the new fset method.
-	propertyObject.Priv.FsetInfo = &PropertyMethodInfo{
+	propertyObject.Priv.ensureRare().FsetInfo = &PropertyMethodInfo{
 		MethodType: combinedSetter,
 		ClassType:  fset.Shared.MethodClass,
 	}
@@ -267,13 +267,13 @@ func ClonePropertyWithDeleter(
 	}
 	ComputeMroLinearization(propertyClass)
 
-	propertyClass.Priv.FgetInfo = classType.Priv.FgetInfo
-	propertyClass.Priv.FsetInfo = classType.Priv.FsetInfo
+	propertyClass.Priv.ensureRare().FgetInfo = classType.Priv.FgetInfo()
+	propertyClass.Priv.ensureRare().FsetInfo = classType.Priv.FsetInfo()
 	propertyObject := ClassTypeCloneAsInstance(propertyClass, true)
 	// The original sets isAsymmetricDescriptor on propertyClass *after* cloning,
 	// so the clone does not see it. Kept as written.
-	isAsymmetric := classType.Priv.IsAsymmetricDescriptor != nil && *classType.Priv.IsAsymmetricDescriptor
-	propertyClass.Priv.IsAsymmetricDescriptor = &isAsymmetric
+	isAsymmetric := classType.Priv.IsAsymmetricDescriptor() != nil && *classType.Priv.IsAsymmetricDescriptor()
+	propertyClass.Priv.ensureRare().IsAsymmetricDescriptor = &isAsymmetric
 
 	// The original's comment: clone the symbol table of the old class type.
 	fields := ClassTypeGetSymbolTable(propertyClass)
@@ -289,7 +289,7 @@ func ClonePropertyWithDeleter(
 	updateGetSetDelMethodForClonedProperty(evaluator, propertyObject)
 
 	// The original's comment: fill in the fdel method.
-	propertyObject.Priv.FdelInfo = &PropertyMethodInfo{
+	propertyObject.Priv.ensureRare().FdelInfo = &PropertyMethodInfo{
 		MethodType: fdel,
 		ClassType:  fdel.Shared.MethodClass,
 	}
@@ -552,17 +552,17 @@ func addDelMethodToPropertySymbolTable(
 }
 
 func updateGetSetDelMethodForClonedProperty(evaluator TypeEvaluator, propertyObject *ClassType) {
-	fgetInfo := propertyObject.Priv.FgetInfo
+	fgetInfo := propertyObject.Priv.FgetInfo()
 	if fgetInfo != nil && IsFunction(fgetInfo.MethodType) {
 		addGetMethodToPropertySymbolTable(evaluator, propertyObject, fgetInfo.MethodType.(*FunctionType))
 	}
 
-	fsetInfo := propertyObject.Priv.FsetInfo
+	fsetInfo := propertyObject.Priv.FsetInfo()
 	if fsetInfo != nil && (IsFunction(fsetInfo.MethodType) || IsOverloaded(fsetInfo.MethodType)) {
 		addSetMethodToPropertySymbolTable(evaluator, propertyObject, fsetInfo.MethodType)
 	}
 
-	fdelInfo := propertyObject.Priv.FdelInfo
+	fdelInfo := propertyObject.Priv.FdelInfo()
 	if fdelInfo != nil && IsFunction(fdelInfo.MethodType) {
 		addDelMethodToPropertySymbolTable(evaluator, propertyObject, fdelInfo.MethodType.(*FunctionType))
 	}
@@ -615,30 +615,30 @@ func AssignProperty(
 	accessors := []accessorInfo{
 		{
 			getFunction: func(c *ClassType) Type {
-				if c.Priv.FgetInfo == nil {
+				if c.Priv.FgetInfo() == nil {
 					return nil
 				}
-				return c.Priv.FgetInfo.MethodType
+				return c.Priv.FgetInfo().MethodType
 			},
 			missingDiagMsg:      localization.LocAddendum.MissingGetter,
 			incompatibleDiagMsg: localization.LocAddendum.IncompatibleGetter,
 		},
 		{
 			getFunction: func(c *ClassType) Type {
-				if c.Priv.FsetInfo == nil {
+				if c.Priv.FsetInfo() == nil {
 					return nil
 				}
-				return c.Priv.FsetInfo.MethodType
+				return c.Priv.FsetInfo().MethodType
 			},
 			missingDiagMsg:      localization.LocAddendum.MissingSetter,
 			incompatibleDiagMsg: localization.LocAddendum.IncompatibleSetter,
 		},
 		{
 			getFunction: func(c *ClassType) Type {
-				if c.Priv.FdelInfo == nil {
+				if c.Priv.FdelInfo() == nil {
 					return nil
 				}
-				return c.Priv.FdelInfo.MethodType
+				return c.Priv.FdelInfo().MethodType
 			},
 			missingDiagMsg:      localization.LocAddendum.MissingDeleter,
 			incompatibleDiagMsg: localization.LocAddendum.IncompatibleDeleter,

@@ -70,11 +70,11 @@ func (c *Checker) validateStandardCollectionInstantiation(node *parser.CallNode)
 
 	leftClass := leftType.(*ClassType)
 	if !ClassTypeIsBuiltIn(leftClass) || leftClass.Priv.IncludeSubclasses ||
-		leftClass.Priv.AliasName == nil || *leftClass.Priv.AliasName == "" {
+		leftClass.Priv.AliasName() == nil || *leftClass.Priv.AliasName() == "" {
 		return
 	}
 
-	aliasName := *leftClass.Priv.AliasName
+	aliasName := *leftClass.Priv.AliasName()
 	switch aliasName {
 	case "List", "Set", "Dict", "Tuple":
 	default:

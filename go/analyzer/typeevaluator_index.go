@@ -115,7 +115,7 @@ func (e *typeEvaluator) checkRuntimeSubscriptable(
 	}
 
 	baseClass := baseTypeResult.Type.(*ClassType)
-	if !ClassTypeIsBuiltIn(baseClass) || baseClass.Priv.AliasName != nil {
+	if !ClassTypeIsBuiltIn(baseClass) || baseClass.Priv.AliasName() != nil {
 		return
 	}
 
@@ -130,8 +130,8 @@ func (e *typeEvaluator) checkRuntimeSubscriptable(
 		// the guard above, so this always takes the class name; written out
 		// because the guard and the message are far apart in the original.
 		name := baseClass.Shared.Name
-		if baseClass.Priv.AliasName != nil && *baseClass.Priv.AliasName != "" {
-			name = *baseClass.Priv.AliasName
+		if baseClass.Priv.AliasName() != nil && *baseClass.Priv.AliasName() != "" {
+			name = *baseClass.Priv.AliasName()
 		}
 
 		e.AddDiagnostic(

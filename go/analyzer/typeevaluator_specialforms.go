@@ -164,8 +164,8 @@ func (e *typeEvaluator) createTypeFormType(
 	}
 
 	name := classType.Shared.Name
-	if classType.Priv.AliasName != nil && *classType.Priv.AliasName != "" {
-		name = *classType.Priv.AliasName
+	if classType.Priv.AliasName() != nil && *classType.Priv.AliasName() != "" {
+		name = *classType.Priv.AliasName()
 	}
 
 	if len(typeArgs) == 0 {

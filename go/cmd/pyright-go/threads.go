@@ -185,8 +185,70 @@ func runMultiThreaded(
 	var configParseErrorOccurred atomic.Bool
 
 	perWorkerDiagnostics := make([][]common.FileDiagnostics, workerCount)
-	var wg sync.WaitGroup
 
+	// analyzeOneFile is the 'analyzeFile' arm of runWorkerMessageLoop, plus the
+	// completion callback's filter: of everything the pass changed, only the
+	// file just opened belongs to this worker. It reports whether the worker
+	// should continue.
+	analyzeOneFile := func(workerIndex int, workerService *analyzer.AnalyzerService, fileUri uri.Uri) bool {
+		workerFS := workerService.FS()
+
+		// The original's comment: check the file's length before attempting to
+		// read its full contents.
+		if stat, err := workerFS.StatSync(fileUri); err == nil && stat.Size() > analyzer.MaxSourceFileSize {
+			fmt.Fprintf(os.Stderr,
+				"File length of \"%s\" is %d which exceeds the maximum supported file size of %d\n",
+				fileUri.String(), stat.Size(), analyzer.MaxSourceFileSize)
+			fatalErrorOccurred.Store(true)
+			return false
+		}
+
+		fileContents, err := workerFS.ReadFileSync(fileUri)
+		if err != nil {
+			// The original's readFileSync throws, killing the worker process,
+			// which the parent reports as a fatal error.
+			fmt.Fprintf(os.Stderr, "Failed to read \"%s\": %v\n", fileUri.String(), err)
+			fatalErrorOccurred.Store(true)
+			return false
+		}
+
+		version := 1
+		workerService.SetFileOpened(fileUri, &version, string(fileContents), nil)
+		for workerService.Analyze() {
+		}
+
+		for _, fileDiag := range workerService.Program().GetDiagnostics(workerService.GetConfigOptions(), true) {
+			if fileDiag.FileUri.Key() == fileUri.Key() {
+				perWorkerDiagnostics[workerIndex] = append(perWorkerDiagnostics[workerIndex], fileDiag)
+			}
+		}
+		return true
+	}
+
+	// Worker 0's first file is analyzed here, before any worker goroutine
+	// exists. This is not an optimization but a memory-ordering requirement:
+	// the first evaluator to see the builtins wires the anySpecialForm
+	// singleton (typeevaluator_prefetch.go), and an evaluator can read the
+	// singleton's unwired state while its own builtins are still partially
+	// evaluated -- before its prefetch has taken the wiring mutex. Completing
+	// one file's analysis on this goroutine performs the wiring, and spawning
+	// the workers afterwards makes it visible to all of them. The work is not
+	// duplicated; worker 0 simply starts from its second file.
+	var firstWorkerService *analyzer.AnalyzerService
+	if workerCount > 0 {
+		firstWorkerService = newWorkerService(config)
+		if firstWorkerService.ConfigParseErrorOccurred() {
+			return ExitConfigFileParseError
+		}
+		if fileUri, ok := takeNextFile(0); ok {
+			if !analyzeOneFile(0, firstWorkerService, fileUri) {
+				output.Error("Fatal error from worker")
+				return ExitFatalError
+			}
+		}
+	}
+
+	var wg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
 		go func(workerIndex int) {
@@ -198,13 +260,14 @@ func runMultiThreaded(
 				}
 			}()
 
-			workerService := newWorkerService(config)
-			if workerService.ConfigParseErrorOccurred() {
-				configParseErrorOccurred.Store(true)
-				return
+			workerService := firstWorkerService
+			if workerIndex != 0 {
+				workerService = newWorkerService(config)
+				if workerService.ConfigParseErrorOccurred() {
+					configParseErrorOccurred.Store(true)
+					return
+				}
 			}
-			workerFS := workerService.FS()
-			workerConfigOptions := workerService.GetConfigOptions()
 
 			for {
 				if fatalErrorOccurred.Load() || configParseErrorOccurred.Load() {
@@ -214,37 +277,8 @@ func runMultiThreaded(
 				if !ok {
 					return
 				}
-
-				// The original's comment: check the file's length before
-				// attempting to read its full contents.
-				if stat, err := workerFS.StatSync(fileUri); err == nil && stat.Size() > analyzer.MaxSourceFileSize {
-					fmt.Fprintf(os.Stderr,
-						"File length of \"%s\" is %d which exceeds the maximum supported file size of %d\n",
-						fileUri.String(), stat.Size(), analyzer.MaxSourceFileSize)
-					fatalErrorOccurred.Store(true)
+				if !analyzeOneFile(workerIndex, workerService, fileUri) {
 					return
-				}
-
-				fileContents, err := workerFS.ReadFileSync(fileUri)
-				if err != nil {
-					// The original's readFileSync throws, killing the worker
-					// process, which the parent reports as a fatal error.
-					fmt.Fprintf(os.Stderr, "Failed to read \"%s\": %v\n", fileUri.String(), err)
-					fatalErrorOccurred.Store(true)
-					return
-				}
-
-				version := 1
-				workerService.SetFileOpened(fileUri, &version, string(fileContents), nil)
-				for workerService.Analyze() {
-				}
-
-				// The completion callback's filter: of everything this pass
-				// changed, only the file just opened belongs to this worker.
-				for _, fileDiag := range workerService.Program().GetDiagnostics(workerConfigOptions, true) {
-					if fileDiag.FileUri.Key() == fileUri.Key() {
-						perWorkerDiagnostics[workerIndex] = append(perWorkerDiagnostics[workerIndex], fileDiag)
-					}
 				}
 			}
 		}(i)

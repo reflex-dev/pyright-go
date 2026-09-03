@@ -879,8 +879,8 @@ func printObjectTypeForClassInternal(
 	recursionCount int,
 ) string {
 	objName := ""
-	if t.Priv.AliasName != nil {
-		objName = *t.Priv.AliasName
+	if t.Priv.AliasName() != nil {
+		objName = *t.Priv.AliasName()
 	}
 	if objName == "" {
 		if (printTypeFlags & PrintTypeFlagsUseFullyQualifiedNames) != 0 {
@@ -1048,7 +1048,7 @@ func printObjectTypeForClassInternal(
 	}
 
 	// Wrap in a "Partial" for TypedDict that has been synthesized as partial.
-	if t.Priv.IsTypedDictPartial {
+	if t.Priv.IsTypedDictPartial() {
 		if (printTypeFlags & PrintTypeFlagsPythonSyntax) == 0 {
 			objName = "Partial[" + objName + "]"
 		}

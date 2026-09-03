@@ -128,7 +128,7 @@ func (e *typeEvaluator) narrowDeclaredSubtype(declaredSubtype, assignedSubtype T
 	// have narrowed fields. In this case, we want to return the assigned type.
 	if IsClass(assignedSubtype) {
 		assignedClass := assignedSubtype.(*ClassType)
-		if assignedClass.Priv.TypedDictNarrowedEntries != nil &&
+		if assignedClass.Priv.TypedDictNarrowedEntries() != nil &&
 			IsTypeSame(assignedSubtype, declaredSubtype,
 				TypeSameOptions{IgnoreTypedDictNarrowEntries: true}, 0) {
 			return assignedSubtype

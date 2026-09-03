@@ -100,7 +100,7 @@ func GetFunctionInfoFromDecorators(
 					}
 				}
 			} else if ClassTypeIsBuiltInNamed(cls, "deprecated") {
-				deprecationMessage = cls.Priv.DeprecatedInstanceMessage
+				deprecationMessage = cls.Priv.DeprecatedInstanceMessage()
 			}
 		}
 	}
@@ -222,7 +222,7 @@ func ApplyClassDecorator(
 	case IsClassInstance(decoratorType):
 		cls := decoratorType.(*ClassType)
 		if ClassTypeIsBuiltInNamed(cls, "deprecated") {
-			originalClassType.Shared.DeprecatedMessage = cls.Priv.DeprecatedInstanceMessage
+			originalClassType.Shared.DeprecatedMessage = cls.Priv.DeprecatedInstanceMessage()
 			return inputClassType
 		}
 

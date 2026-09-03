@@ -68,7 +68,7 @@ func GetTypedDictMembersForClass(
 
 		// The original's comment: if the class is "Partial", make all entries
 		// optional and convert all read-only entries to Never.
-		if classType.Priv.IsTypedDictPartial {
+		if classType.Priv.IsTypedDictPartial() {
 			tdEntry.IsRequired = false
 
 			if tdEntry.IsReadOnly {
@@ -83,8 +83,8 @@ func GetTypedDictMembersForClass(
 
 	// The original's comment: apply narrowed types on top of existing entries if
 	// present.
-	if allowNarrowed && classType.Priv.TypedDictNarrowedEntries != nil {
-		classType.Priv.TypedDictNarrowedEntries.ForEach(func(value *TypedDictEntry, key string) {
+	if allowNarrowed && classType.Priv.TypedDictNarrowedEntries() != nil {
+		classType.Priv.TypedDictNarrowedEntries().ForEach(func(value *TypedDictEntry, key string) {
 			tdEntry := *value
 			tdEntry.ValueType = ApplySolvedTypeVars(tdEntry.ValueType, solution, nil)
 			entries.Set(key, &tdEntry)

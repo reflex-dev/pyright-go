@@ -218,14 +218,14 @@ func GetClassMemberIterator(
 
 							// Handle the special case of a __call__ class
 							// member in a partial class.
-							if memberName == "__call__" && cls.Priv.PartialCallType != nil {
+							if memberName == "__call__" && cls.Priv.PartialCallType() != nil {
 								comparand := cls
 								if cls.IsInstance() {
 									comparand = ClassTypeCloneAsInstantiable(cls, true)
 								}
 								if ClassTypeIsSameGenericClass(comparand, specializedCls, 0) {
 									symbol = SymbolCreateWithType(
-										SymbolFlagsClassMember, cls.Priv.PartialCallType, nil)
+										SymbolFlagsClassMember, cls.Priv.PartialCallType(), nil)
 								}
 							}
 

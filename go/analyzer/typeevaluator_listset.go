@@ -497,7 +497,7 @@ func (e *typeEvaluator) inferTypeArgFromExpectedEntryType(
 			IsTypeSame(subtype, entryType, TypeSameOptions{IgnoreTypedDictNarrowEntries: true}, 0) &&
 			IsClass(subtype) && IsClass(entryType) && ClassTypeIsTypedDictClass(entryClass) {
 			return ClassTypeCloneForNarrowedTypedDictEntries(subtypeClass,
-				entryClass.Priv.TypedDictNarrowedEntries)
+				entryClass.Priv.TypedDictNarrowedEntries())
 		}
 
 		return subtype

@@ -296,16 +296,16 @@ func (e *typeEvaluator) specializePropertyAccessMethod(
 	var accessMethodClass *ClassType
 	switch usage.Method {
 	case "get":
-		if concreteMemberType.Priv.FgetInfo != nil {
-			accessMethodClass = concreteMemberType.Priv.FgetInfo.ClassType
+		if concreteMemberType.Priv.FgetInfo() != nil {
+			accessMethodClass = concreteMemberType.Priv.FgetInfo().ClassType
 		}
 	case "set":
-		if concreteMemberType.Priv.FsetInfo != nil {
-			accessMethodClass = concreteMemberType.Priv.FsetInfo.ClassType
+		if concreteMemberType.Priv.FsetInfo() != nil {
+			accessMethodClass = concreteMemberType.Priv.FsetInfo().ClassType
 		}
 	default:
-		if concreteMemberType.Priv.FdelInfo != nil {
-			accessMethodClass = concreteMemberType.Priv.FdelInfo.ClassType
+		if concreteMemberType.Priv.FdelInfo() != nil {
+			accessMethodClass = concreteMemberType.Priv.FdelInfo().ClassType
 		}
 	}
 
@@ -577,8 +577,8 @@ func (e *typeEvaluator) getTypeOfMemberInternal(
 func (e *typeEvaluator) isAsymmetricDescriptorClass(classType *ClassType) bool {
 	// The original's comment: if the value has already been cached in this type,
 	// return the cached value.
-	if classType.Priv.IsAsymmetricDescriptor != nil {
-		return *classType.Priv.IsAsymmetricDescriptor
+	if classType.Priv.IsAsymmetricDescriptor() != nil {
+		return *classType.Priv.IsAsymmetricDescriptor()
 	}
 
 	isAsymmetric := false
@@ -627,7 +627,7 @@ func (e *typeEvaluator) isAsymmetricDescriptorClass(classType *ClassType) bool {
 	}
 
 	// The original's comment: cache the value for next time.
-	classType.Priv.IsAsymmetricDescriptor = &isAsymmetric
+	classType.Priv.ensureRare().IsAsymmetricDescriptor = &isAsymmetric
 	return isAsymmetric
 }
 
@@ -636,8 +636,8 @@ func (e *typeEvaluator) isAsymmetricDescriptorClass(classType *ClassType) bool {
 func (e *typeEvaluator) isClassWithAsymmetricAttributeAccessor(classType *ClassType) bool {
 	// The original's comment: if the value has already been cached in this type,
 	// return the cached value.
-	if classType.Priv.IsAsymmetricAttributeAccessor != nil {
-		return *classType.Priv.IsAsymmetricAttributeAccessor
+	if classType.Priv.IsAsymmetricAttributeAccessor() != nil {
+		return *classType.Priv.IsAsymmetricAttributeAccessor()
 	}
 
 	isAsymmetric := false
@@ -658,7 +658,7 @@ func (e *typeEvaluator) isClassWithAsymmetricAttributeAccessor(classType *ClassT
 	}
 
 	// The original's comment: cache the value for next time.
-	classType.Priv.IsAsymmetricAttributeAccessor = &isAsymmetric
+	classType.Priv.ensureRare().IsAsymmetricAttributeAccessor = &isAsymmetric
 	return isAsymmetric
 }
 

@@ -161,7 +161,7 @@ func IsTypeSame(type1, type2 Type, options TypeSameOptions, recursionCount int) 
 			return false
 		}
 
-		if classType1.Priv.IsTypedDictPartial != classType2.Priv.IsTypedDictPartial {
+		if classType1.Priv.IsTypedDictPartial() != classType2.Priv.IsTypedDictPartial() {
 			return false
 		}
 

@@ -311,7 +311,7 @@ func (e *typeEvaluator) isGenericAliasAssignExempt(destType Type, srcType Type) 
 	srcProps := srcType.Base().Props
 
 	return !ClassTypeIsSpecialBuiltIn(srcClass) &&
-		srcClass.Priv.AliasName == nil &&
+		srcClass.Priv.AliasName() == nil &&
 		srcClass.Shared.ModuleName == "builtins" &&
 		srcClass.Priv.TypeArgs != nil &&
 		srcProps != nil && srcProps.TypeForm != nil &&

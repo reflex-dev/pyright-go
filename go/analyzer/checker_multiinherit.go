@@ -475,22 +475,22 @@ type propMethodAccessor struct {
 // propMethodAccessors is the original's propMethodInfo.
 var propMethodAccessors = []propMethodAccessor{
 	{"fget", func(c *ClassType) Type {
-		if c.Priv.FgetInfo == nil {
+		if c.Priv.FgetInfo() == nil {
 			return nil
 		}
-		return c.Priv.FgetInfo.MethodType
+		return c.Priv.FgetInfo().MethodType
 	}},
 	{"fset", func(c *ClassType) Type {
-		if c.Priv.FsetInfo == nil {
+		if c.Priv.FsetInfo() == nil {
 			return nil
 		}
-		return c.Priv.FsetInfo.MethodType
+		return c.Priv.FsetInfo().MethodType
 	}},
 	{"fdel", func(c *ClassType) Type {
-		if c.Priv.FdelInfo == nil {
+		if c.Priv.FdelInfo() == nil {
 			return nil
 		}
-		return c.Priv.FdelInfo.MethodType
+		return c.Priv.FdelInfo().MethodType
 	}},
 }
 

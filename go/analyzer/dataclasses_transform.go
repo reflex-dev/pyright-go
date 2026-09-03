@@ -193,15 +193,15 @@ func NarrowForKeyAssignment(classType *ClassType, key string) *ClassType {
 		return classType
 	}
 
-	if classType.Priv.TypedDictNarrowedEntries != nil {
-		if narrowedTdEntry, ok := classType.Priv.TypedDictNarrowedEntries.Get(key); ok &&
+	if classType.Priv.TypedDictNarrowedEntries() != nil {
+		if narrowedTdEntry, ok := classType.Priv.TypedDictNarrowedEntries().Get(key); ok &&
 			narrowedTdEntry != nil && narrowedTdEntry.IsProvided {
 			return classType
 		}
 	}
 
 	narrowedEntries := common.NewOrderedMap[string, *TypedDictEntry]()
-	if existing := classType.Priv.TypedDictNarrowedEntries; existing != nil {
+	if existing := classType.Priv.TypedDictNarrowedEntries(); existing != nil {
 		existing.ForEach(func(v *TypedDictEntry, k string) {
 			narrowedEntries.Set(k, v)
 		})

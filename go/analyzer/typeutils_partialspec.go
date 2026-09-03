@@ -41,7 +41,7 @@ func PartiallySpecializeType(
 	// If this is a property, we may need to partially specialize the access
 	// methods associated with it.
 	if cls, ok := AsClass(result); ok {
-		if cls.Priv.FgetInfo != nil || cls.Priv.FsetInfo != nil || cls.Priv.FdelInfo != nil {
+		if cls.Priv.FgetInfo() != nil || cls.Priv.FsetInfo() != nil || cls.Priv.FdelInfo() != nil {
 			updatePropertyMethodInfo := func(methodInfo *PropertyMethodInfo) *PropertyMethodInfo {
 				if methodInfo == nil {
 					return nil
@@ -59,9 +59,9 @@ func PartiallySpecializeType(
 			}
 
 			cls = CloneType(cls)
-			cls.Priv.FgetInfo = updatePropertyMethodInfo(cls.Priv.FgetInfo)
-			cls.Priv.FsetInfo = updatePropertyMethodInfo(cls.Priv.FsetInfo)
-			cls.Priv.FdelInfo = updatePropertyMethodInfo(cls.Priv.FdelInfo)
+			cls.Priv.ensureRare().FgetInfo = updatePropertyMethodInfo(cls.Priv.FgetInfo())
+			cls.Priv.ensureRare().FsetInfo = updatePropertyMethodInfo(cls.Priv.FsetInfo())
+			cls.Priv.ensureRare().FdelInfo = updatePropertyMethodInfo(cls.Priv.FdelInfo())
 			result = cls
 		}
 	}

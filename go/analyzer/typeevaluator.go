@@ -708,7 +708,7 @@ func (e *typeEvaluator) IsSpeculativeModeInUse(node parser.ParseNode) bool {
 func isTypeFormClass(t *ClassType) bool {
 	return ClassTypeIsBuiltInNamed(t, "TypeForm") ||
 		(ClassTypeIsSpecialBuiltIn(t) &&
-			(t.Shared.Name == "TypeForm" || (t.Priv.AliasName != nil && *t.Priv.AliasName == "TypeForm")))
+			(t.Shared.Name == "TypeForm" || (t.Priv.AliasName() != nil && *t.Priv.AliasName() == "TypeForm")))
 }
 
 // isTypeFormType corresponds to the function of the same name.

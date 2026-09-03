@@ -220,7 +220,7 @@ func narrowMappingEntries(
 					IsTypeSame(mappingSubtypeInfo.Subtype, mappingSubtypeInfo.TypedDict,
 						TypeSameOptions{}, 0) {
 					newNarrowedEntriesMap := common.NewOrderedMap[string, *TypedDictEntry]()
-					if existing := mappingSubtypeInfo.TypedDict.Priv.TypedDictNarrowedEntries; existing != nil {
+					if existing := mappingSubtypeInfo.TypedDict.Priv.TypedDictNarrowedEntries(); existing != nil {
 						existing.ForEach(func(v *TypedDictEntry, k string) {
 							newNarrowedEntriesMap.Set(k, v)
 						})

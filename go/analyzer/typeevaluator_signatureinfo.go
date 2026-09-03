@@ -260,7 +260,7 @@ func expandTypedKwargs(functionType *FunctionType) *FunctionType {
 	}
 	kwargsClass := kwargsType.(*ClassType)
 
-	tdEntries := kwargsClass.Priv.TypedDictNarrowedEntries
+	tdEntries := kwargsClass.Priv.TypedDictNarrowedEntries()
 	if tdEntries == nil && kwargsClass.Shared.TypedDictEntries != nil {
 		tdEntries = kwargsClass.Shared.TypedDictEntries.KnownItems
 	}

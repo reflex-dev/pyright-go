@@ -200,6 +200,25 @@ At pyright's memory the port is slower; at pyright's speed it wants roughly
 collection, with no application-level hot spot left, so this is the cost of the
 type model as represented in Go rather than a specific mistake.
 
+Two structure-layout changes later recovered part of that cost -- about 400 MB
+of live heap (−12%), roughly 0.5 GB of single-threaded RSS and 2-4 GB of
+16-worker RSS, at parity on wall time and with identical diagnostics in every
+mode. Both exploit the same V8 asymmetry: a JavaScript object is laid out with
+only the properties actually set, while the transliterated Go struct charged
+every instance for every field.
+
+- `AnalyzerNodeInfo` (analyzernodeinfo.go) was 104 bytes attached to millions
+  of parse nodes that carry a flowNode and nothing else. The node's `A` slot
+  now holds the FlowNode directly -- no allocation at all -- and upgrades to
+  the full struct the moment any other field is set. The file is the slot's
+  only reader and writer, so the hybrid is invisible outside it.
+- `ClassType` (types_class.go) went from 232 to 152 bytes: the ten
+  `ClassDetailsPriv` fields that exist only on properties, narrowed
+  TypedDicts, `functools.partial` and the `deprecated` class moved behind a
+  `rare` pointer that cloneSelf deep-copies, so a clone owns its fields
+  exactly as before. Reads go through same-named accessor methods; writes
+  through ensureRare().
+
 Neither implementation caches across runs, so all of this measures batch
 analysis and says nothing about language-server latency.
 

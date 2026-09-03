@@ -12,8 +12,23 @@
  * Transliterated from analyzer/analyzerNodeInfo.ts (pyright 1.1.412).
  *
  * The TypeScript stores this on the untyped `a` slot of ParseNodeBase and casts
- * on the way out. Go's equivalent slot is `ParseNodeBase.A any`, so the reads go
- * through a type assertion instead of a cast; the storage is the same.
+ * on the way out. Go's equivalent slot is `ParseNodeBase.A any`, and this file
+ * is its only reader and writer.
+ *
+ * The representation diverges from the original for memory's sake, invisibly
+ * outside this file. V8 lays a JavaScript object out with only the properties
+ * actually set, and the overwhelmingly common shape here -- by an order of
+ * magnitude -- is a node carrying a flowNode and nothing else. A Go struct
+ * with all ten fields costs 104 bytes for every such node. So the `A` slot
+ * holds either:
+ *
+ *   - a FlowNode directly (the flow-only shape, no allocation at all), or
+ *   - a *AnalyzerNodeInfo, from the moment any other field is set.
+ *
+ * Every accessor handles both; SetFlowNode on an upgraded node writes the
+ * struct field, and getAnalyzerInfoForWrite upgrades a direct FlowNode into
+ * the struct it becomes a field of. The observable behavior of every Get/Set
+ * pair is identical to storing the struct always.
  */
 
 package analyzer
@@ -87,20 +102,23 @@ type ScopedNode = parser.ParseNode
 // is to reset every field except importInfo, which is set during import
 // resolution rather than by an analyzer phase.
 func CleanNodeAnalysisInfo(node parser.ParseNode) {
-	info := getAnalyzerInfo(node)
-	if info == nil {
-		return
+	nodeBase := node.NodeBase()
+	switch info := nodeBase.A.(type) {
+	case *AnalyzerNodeInfo:
+		info.Scope = nil
+		info.Declaration = nil
+		info.FlowNode = nil
+		info.AfterFlowNode = nil
+		info.FileInfo = nil
+		info.CodeFlowExpressions = nil
+		info.CodeFlowComplexity = 0
+		info.StaticConditionValue = nil
+		info.DunderAllInfo = nil
+	case FlowNode:
+		// A directly stored FlowNode is an analyzer-phase field and nothing
+		// else; clearing it empties the slot.
+		nodeBase.A = nil
 	}
-
-	info.Scope = nil
-	info.Declaration = nil
-	info.FlowNode = nil
-	info.AfterFlowNode = nil
-	info.FileInfo = nil
-	info.CodeFlowExpressions = nil
-	info.CodeFlowComplexity = 0
-	info.StaticConditionValue = nil
-	info.DunderAllInfo = nil
 }
 
 // GetImportInfo returns nil where the TypeScript returns undefined.
@@ -144,15 +162,24 @@ func SetDeclaration(node parser.ParseNode, decl Declaration) {
 
 // GetFlowNode returns nil where the TypeScript returns undefined.
 func GetFlowNode(node parser.ParseNode) FlowNode {
-	info := getAnalyzerInfo(node)
-	if info == nil {
-		return nil
+	switch a := node.NodeBase().A.(type) {
+	case *AnalyzerNodeInfo:
+		return a.FlowNode
+	case FlowNode:
+		return a
 	}
-	return info.FlowNode
+	return nil
 }
 
 func SetFlowNode(node parser.ParseNode, flowNode FlowNode) {
-	getAnalyzerInfoForWrite(node).FlowNode = flowNode
+	nodeBase := node.NodeBase()
+	if info, ok := nodeBase.A.(*AnalyzerNodeInfo); ok {
+		info.FlowNode = flowNode
+		return
+	}
+	// The flow-only shape: the FlowNode sits in the slot directly, replacing
+	// nil or a previous FlowNode.
+	nodeBase.A = flowNode
 }
 
 // GetAfterFlowNode returns nil where the TypeScript returns undefined.
@@ -255,18 +282,28 @@ func IsCodeUnreachable(node parser.ParseNode) bool {
 	return false
 }
 
-// getAnalyzerInfo returns nil when the node has no analyzer info attached.
+// getAnalyzerInfo returns nil when the node has no analyzer info attached
+// beyond, possibly, a directly stored FlowNode -- for which every field this
+// function serves reads as its zero value, exactly as it would from a struct
+// holding only FlowNode.
 func getAnalyzerInfo(node parser.ParseNode) *AnalyzerNodeInfo {
 	info, _ := node.NodeBase().A.(*AnalyzerNodeInfo)
 	return info
 }
 
-// getAnalyzerInfoForWrite creates the analyzer info if it is not there yet.
+// getAnalyzerInfoForWrite creates the analyzer info if it is not there yet,
+// upgrading a directly stored FlowNode into the struct's field.
 func getAnalyzerInfoForWrite(node parser.ParseNode) *AnalyzerNodeInfo {
-	info, _ := node.NodeBase().A.(*AnalyzerNodeInfo)
-	if info == nil {
-		info = &AnalyzerNodeInfo{}
-		node.NodeBase().A = info
+	nodeBase := node.NodeBase()
+	switch a := nodeBase.A.(type) {
+	case *AnalyzerNodeInfo:
+		return a
+	case FlowNode:
+		info := &AnalyzerNodeInfo{FlowNode: a}
+		nodeBase.A = info
+		return info
 	}
+	info := &AnalyzerNodeInfo{}
+	nodeBase.A = info
 	return info
 }

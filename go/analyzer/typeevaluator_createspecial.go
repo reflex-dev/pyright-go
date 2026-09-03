@@ -73,8 +73,8 @@ func (e *typeEvaluator) createSpecialType(
 	if paramLimit != nil {
 		if hasTypeArgs && len(typeArgTypes) > *paramLimit {
 			name := classType.Shared.Name
-			if classType.Priv.AliasName != nil && *classType.Priv.AliasName != "" {
-				name = *classType.Priv.AliasName
+			if classType.Priv.AliasName() != nil && *classType.Priv.AliasName() != "" {
+				name = *classType.Priv.AliasName()
 			}
 
 			e.AddDiagnostic(
