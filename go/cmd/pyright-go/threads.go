@@ -404,7 +404,15 @@ func configureSingleThreadedGC() {
 		return
 	}
 
-	debug.SetMemoryLimit(int64(total / 2))
+	// Half of physical memory, capped: past ~24 GiB the extra headroom only
+	// buys more first-touch page faults (measured: wall time flat from 12 to
+	// 30 GiB, kernel time growing with the heap).
+	limit := total / 2
+	const maxLimit = 24 << 30
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	debug.SetMemoryLimit(int64(limit))
 	debug.SetGCPercent(-1)
 }
 
