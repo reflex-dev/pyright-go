@@ -233,6 +233,34 @@ const maxTupleTypeArgRecursionDepth = 10
 // instance because they are independent of each other.
 type UniqueSignatureTracker struct {
 	trackedSignatures []*SignatureWithOffsets
+
+	// fingerprints runs parallel to trackedSignatures. A fingerprint is a
+	// cheap sound discriminator for IsTypeSame -- different fingerprints
+	// guarantee the deep comparison would return false -- so FindSignature's
+	// linear scan skips the deep walk for almost every non-match. That scan
+	// runs for every function type an argument list touches and was the
+	// single largest named entry in the whole-project CPU profile.
+	fingerprints []uint64
+}
+
+// signatureFingerprint condenses exactly the properties IsTypeSame checks
+// before it recurses: the category, the compatibility-relevant type flags,
+// and for functions the parameter count and the gradual-callable bit, for
+// overloads the overload count. Anything else hashes equal and falls through
+// to the real comparison.
+func signatureFingerprint(t Type) uint64 {
+	fp := uint64(t.Base().Category)<<40 |
+		uint64(t.Base().Flags&TypeFlagsTypeCompatibilityMask)<<32
+	switch s := t.(type) {
+	case *FunctionType:
+		fp |= uint64(len(s.Shared.Parameters)) << 1
+		if FunctionTypeIsGradualCallableForm(s) {
+			fp |= 1
+		}
+	case *OverloadedType:
+		fp |= uint64(len(s.Priv.Overloads)) << 1
+	}
+	return fp
 }
 
 func NewUniqueSignatureTracker() *UniqueSignatureTracker {
@@ -262,7 +290,14 @@ func (t *UniqueSignatureTracker) FindSignature(signature Type) *SignatureWithOff
 		effectiveSignature = fn.Priv.Overloaded
 	}
 
-	for _, s := range t.trackedSignatures {
+	// AddTrackedSignatures can leave fingerprints shorter than the signature
+	// list (it appends through AddSignature, which maintains both); guard by
+	// index rather than assuming equal lengths.
+	fp := signatureFingerprint(effectiveSignature)
+	for i, s := range t.trackedSignatures {
+		if i < len(t.fingerprints) && t.fingerprints[i] != fp {
+			continue
+		}
 		if IsTypeSame(effectiveSignature, s.Type, TypeSameOptions{}, 0) {
 			return s
 		}
@@ -295,6 +330,7 @@ func (t *UniqueSignatureTracker) AddSignature(signature Type, offset int) {
 			Type:              effectiveSignature,
 			ExpressionOffsets: []int{offset},
 		})
+		t.fingerprints = append(t.fingerprints, signatureFingerprint(effectiveSignature))
 	}
 }
 
