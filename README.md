@@ -23,13 +23,15 @@ Node, identical diagnostics in every row — full tables and methodology in
 
 | invocation | pyright 1.1.412 | Go port |
 | --- | --- | --- |
+| full check, single-threaded | 1× | **~0.9× the wall time, ~0.65× the CPU** |
 | full check, no cache | 59 s (`--threads`) | 115 s (`--threads 4`) |
 | `--cachedir`, nothing changed | n/a — pyright has no cache | **5.0 s / 0.6 GB** |
 | `--cachedir`, typical (leaf) file changed | n/a | **~7 s** |
 | pre-commit file list (1,779 files), warm | 107 s every run | **5.8 s** |
 
-The two implementations differ in shape, not just speed. Uncached, pyright
-is faster on this heavily-interconnected project. The port's result is
+The two implementations differ in shape, not just speed. Uncached, pyright's
+multi-process `--threads` is still faster on this heavily-interconnected
+project. The port's result is
 `--cachedir`: a run-to-run cache keyed by each file's transitive dependency
 closure, so unchanged files replay their diagnostics and a changed file
 re-checks only its reverse import closure — while import resolution reruns

@@ -14,7 +14,10 @@ on the pre-commit subset. That equivalence is the point of the port;
 PORTING.md documents how it is verified.
 
 Wall-clock and peak RSS come from `wait4`'s `ru_maxrss`. Figures are single
-runs and vary ±10% with thermal state; treat small deltas as noise.
+runs and vary ±10% with thermal state; treat small deltas as noise. The
+single-threaded pyright/pyright-go comparison was additionally measured as
+three interleaved pairs on a busy machine (both tools eating the same
+contention), which is where the ratios quoted below come from.
 
 ## Whole project, config-driven
 
@@ -24,7 +27,7 @@ runs and vary ±10% with thermal state; treat small deltas as noise.
 | --- | --- | --- |
 | pyright, single-threaded | 111 s | 5.3 GB |
 | pyright `--threads` | **59 s** | multi-process (parent 1.7 GB) |
-| pyright-go, single-threaded | 133 s | 7.2 GB |
+| pyright-go, single-threaded | ~0.9× pyright's wall, ~0.65× its CPU | 24 GB (its default memory limit; 7.2 GB with `GOGC=100`) |
 | pyright-go `--threads 4` | 115 s | 16 GB |
 | pyright-go `--threads 8` | 132 s | 20 GB |
 | pyright-go `--threads 16` | exceeds this machine's memory | — |
@@ -35,16 +38,22 @@ runs and vary ±10% with thermal state; treat small deltas as noise.
 
 Reading this honestly:
 
+- **Single-threaded, the port is now the faster checker** — about 10% on
+  wall clock and 30% on CPU in interleaved same-load pairs. Two things
+  closed the former 1.2× gap: a round of allocation and recompute cuts in
+  the call-validation path (parameter-list memoization, a paged per-node
+  type cache, pooled type transformers), and a collector policy that trades
+  memory for time — on machines with ≥32 GiB and no explicit GOGC or
+  GOMEMLIMIT, a single-worker run disables GOGC under a memory limit of
+  half of RAM capped at 24 GiB, which removes almost all GC CPU from the
+  run. Set `GOGC=100` to keep the old ~7 GB footprint at the old speed.
 - **Uncached, pyright's `--threads` still wins this workload.** The port's
-  single-threaded run is ~1.2× slower than pyright's, and its workers scale
-  only to 4 before the duplicated framework closure and the shared heap's
-  collector take the gains back — each worker re-infers its own copy of the
-  closure, memory grows roughly 5 GB per worker, and 16 workers exceed a
-  60 GB machine. pyright's forked workers duplicate the same work but each
-  brings an independent V8 heap, which is why its `--threads` halves its
-  time. The remaining single-threaded gap has no profile hotspot: it is the
-  cost of the clone-heavy type model under Go's collector, spread across the
-  whole evaluator.
+  workers scale only to 4 before the duplicated framework closure and the
+  shared heap's collector take the gains back — each worker re-infers its
+  own copy of the closure, memory grows roughly 5 GB per worker, and 16
+  workers exceed a 60 GB machine. pyright's forked workers duplicate the
+  same work but each brings an independent V8 heap, which is why its
+  `--threads` halves its time.
 - **The cache is the port's result.** A no-change run answers in ~6 seconds
   at half a gigabyte; a typical edit costs seconds more. That mode has no
   pyright equivalent — pyright re-checks everything, every run.
@@ -96,8 +105,12 @@ system (a new file shadowing a module invalidates correctly).
 
 ## Memory
 
-The port trades memory for its architecture: ~8 GB single-threaded on this
-workload against pyright's 5.3 GB, multiplying per worker under `--threads`.
+The port trades memory for its architecture, and now does so deliberately:
+a single-worker run on a big machine lets the heap grow to its memory limit
+(24 GB here) because collecting tens of gigabytes of short-lived garbage
+over a multi-gigabyte live set costs more CPU than the checking itself.
+`GOGC=100` restores ~8 GB against pyright's 5.3 GB. Memory multiplies per
+worker under `--threads`.
 `GOMEMLIMIT` bounds it — diagnostics are identical at every setting, time
 degrades as the bound tightens — and the threaded mode raises GOGC on its
 own unless GOGC or GOMEMLIMIT is set in the environment (a shared Go heap
